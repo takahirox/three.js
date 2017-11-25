@@ -1919,7 +1919,7 @@ THREE.GLTFLoader = ( function () {
 
 			var group = new THREE.Group();
 
-			var primitives = meshDef.primitives || [];
+			var primitives = meshDef.primitives;
 
 			return scope.loadGeometries( primitives ).then( function ( geometries ) {
 
@@ -2324,20 +2324,55 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
-	GLTFParser.prototype.loadScene = function ( sceneIndex ) {
-
-		var json = this.json;
-		var extensions = this.extensions;
-		var sceneDef = this.json.scenes[ sceneIndex ];
+	GLTFParser.prototype.loadScene = function () {
 
 		// scene node hierachy builder
 
-		function buildNodeHierachy( nodeId, parentObject, allNodes, skins ) {
+		function buildNodeHierachy( nodeId, parentObject, json, allNodes, skins ) {
 
 			var node = allNodes[ nodeId ];
-			parentObject.add( node );
-
 			var nodeDef = json.nodes[ nodeId ];
+
+			if ( nodeDef.skin !== undefined ) {
+
+				var meshes = node.isGroup === true ? node.children : [ node ];
+
+				for ( var i = 0, il = meshes.length; i < il; i ++ ) {
+
+					var mesh = meshes[ i ];
+					var skinEntry = skins[ nodeDef.skin ];
+
+					var bones = [];
+					var boneInverses = [];
+
+					for ( var j = 0, jl = skinEntry.joints.length; j < jl; j ++ ) {
+
+						var jointId = skinEntry.joints[ j ];
+						var jointNode = allNodes[ jointId ];
+
+						if ( jointNode ) {
+
+							bones.push( jointNode );
+
+							var m = skinEntry.inverseBindMatrices.array;
+							var mat = new THREE.Matrix4().fromArray( m, j * 16 );
+							boneInverses.push( mat );
+
+						} else {
+
+							console.warn( 'THREE.GLTFLoader: Joint "%s" could not be found.', jointId );
+
+						}
+
+					}
+
+					mesh.bind( new THREE.Skeleton( bones, boneInverses ), mesh.matrixWorld );
+
+				}
+
+			}
+
+			parentObject.add( node );
 
 			if ( nodeDef.children ) {
 
@@ -2346,94 +2381,69 @@ THREE.GLTFLoader = ( function () {
 				for ( var i = 0, il = children.length; i < il; i ++ ) {
 
 					var child = children[ i ];
-					buildNodeHierachy( child, node, allNodes, skins );
+					buildNodeHierachy( child, node, json, allNodes, skins );
 
 				}
-
-			}
-
-			if ( nodeDef.skin !== undefined ) {
-
-				var mesh = node;
-				var skinEntry = skins[ nodeDef.skin ];
-
-				var bones = [];
-				var boneInverses = [];
-
-				for ( var j = 0, jl = skinEntry.joints.length; j < jl; j ++ ) {
-
-					var jointId = skinEntry.joints[ j ];
-					var jointNode = allNodes[ jointId ];
-
-					if ( jointNode ) {
-
-						bones.push( jointNode );
-
-						var m = skinEntry.inverseBindMatrices.array;
-						var mat = new THREE.Matrix4().fromArray( m, j * 16 );
-						boneInverses.push( mat );
-
-					} else {
-
-						console.warn( 'THREE.GLTFLoader: Joint "%s" could not be found.', jointId );
-
-					}
-
-				}
-
-				mesh.bind( new THREE.Skeleton( bones, boneInverses ), mesh.matrixWorld );
 
 			}
 
 		}
 
-		return this.getMultiDependencies( [
+		return function loadScene( sceneIndex ) {
 
-			'node',
-			'skin'
+			var json = this.json;
+			var extensions = this.extensions;
+			var sceneDef = this.json.scenes[ sceneIndex ];
 
-		] ).then( function ( dependencies ) {
+			return this.getMultiDependencies( [
 
-			var scene = new THREE.Scene();
-			if ( sceneDef.name !== undefined ) scene.name = sceneDef.name;
+				'node',
+				'skin'
 
-			if ( sceneDef.extras ) scene.userData = sceneDef.extras;
+			] ).then( function ( dependencies ) {
 
-			var nodeIds = sceneDef.nodes || [];
+				var scene = new THREE.Scene();
+				if ( sceneDef.name !== undefined ) scene.name = sceneDef.name;
 
-			for ( var i = 0, il = nodeIds.length; i < il; i ++ ) {
+				if ( sceneDef.extras ) scene.userData = sceneDef.extras;
 
-				var nodeId = nodeIds[ i ];
-				buildNodeHierachy( nodeId, scene, dependencies.nodes, dependencies.skins );
+				var nodeIds = sceneDef.nodes || [];
 
-			}
+				for ( var i = 0, il = nodeIds.length; i < il; i ++ ) {
 
-			scene.traverse( function ( child ) {
-
-				// for Specular-Glossiness.
-				if ( child.material && child.material.isGLTFSpecularGlossinessMaterial ) {
-
-					child.onBeforeRender = extensions[ EXTENSIONS.KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS ].refreshUniforms;
+					var nodeId = nodeIds[ i ];
+					buildNodeHierachy( nodeId, scene, json, dependencies.nodes, dependencies.skins );
 
 				}
 
+				scene.traverse( function ( child ) {
+
+					// for Specular-Glossiness.
+					if ( child.material && child.material.isGLTFSpecularGlossinessMaterial ) {
+
+						child.onBeforeRender = extensions[ EXTENSIONS.KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS ].refreshUniforms;
+
+					}
+
+				} );
+
+				// Ambient lighting, if present, is always attached to the scene root.
+				if ( sceneDef.extensions
+						 && sceneDef.extensions[ EXTENSIONS.KHR_LIGHTS ]
+						 && sceneDef.extensions[ EXTENSIONS.KHR_LIGHTS ].light !== undefined ) {
+
+					var lights = extensions[ EXTENSIONS.KHR_LIGHTS ].lights;
+					scene.add( lights[ sceneDef.extensions[ EXTENSIONS.KHR_LIGHTS ].light ] );
+
+				}
+
+				return scene;
+
 			} );
 
-			// Ambient lighting, if present, is always attached to the scene root.
-			if ( sceneDef.extensions
-					 && sceneDef.extensions[ EXTENSIONS.KHR_LIGHTS ]
-					 && sceneDef.extensions[ EXTENSIONS.KHR_LIGHTS ].light !== undefined ) {
+		};
 
-				var lights = extensions[ EXTENSIONS.KHR_LIGHTS ].lights;
-				scene.add( lights[ sceneDef.extensions[ EXTENSIONS.KHR_LIGHTS ].light ] );
-
-			}
-
-			return scene;
-
-		} );
-
-	};
+	}();
 
 	return GLTFLoader;
 
