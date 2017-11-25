@@ -1223,6 +1223,7 @@ THREE.GLTFLoader = ( function () {
 		// Clear the loader cache
 		this.cache.removeAll();
 
+		//
 		this.markDefs();
 
 		// Fire the callback on complete
@@ -2032,6 +2033,13 @@ THREE.GLTFLoader = ( function () {
 
 					if ( primitive.extras ) mesh.userData = primitive.extras;
 
+					// for Specular-Glossiness.
+					if ( material.isGLTFSpecularGlossinessMaterial === true ) {
+
+						mesh.onBeforeRender = extensions[ EXTENSIONS.KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS ].refreshUniforms;
+
+					}
+
 					if ( primitives.length > 1 ) {
 
 						mesh.name += '_' + i;
@@ -2257,7 +2265,12 @@ THREE.GLTFLoader = ( function () {
 
 			} else if ( nodeDef.mesh !== undefined ) {
 
-				var node = dependencies.meshes[ nodeDef.mesh ].clone();
+				var mesh = dependencies.meshes[ nodeDef.mesh ];
+
+				var node = mesh.clone();
+
+				// for Specular-Glossiness
+				node.onBeforeRender = mesh.onBeforeRender;
 
 				if ( meshReferences[ nodeDef.mesh ] > 1 ) {
 
@@ -2411,21 +2424,9 @@ THREE.GLTFLoader = ( function () {
 
 				for ( var i = 0, il = nodeIds.length; i < il; i ++ ) {
 
-					var nodeId = nodeIds[ i ];
-					buildNodeHierachy( nodeId, scene, json, dependencies.nodes, dependencies.skins );
+					buildNodeHierachy( nodeIds[ i ], scene, json, dependencies.nodes, dependencies.skins );
 
 				}
-
-				scene.traverse( function ( child ) {
-
-					// for Specular-Glossiness.
-					if ( child.material && child.material.isGLTFSpecularGlossinessMaterial ) {
-
-						child.onBeforeRender = extensions[ EXTENSIONS.KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS ].refreshUniforms;
-
-					}
-
-				} );
 
 				// Ambient lighting, if present, is always attached to the scene root.
 				if ( sceneDef.extensions
