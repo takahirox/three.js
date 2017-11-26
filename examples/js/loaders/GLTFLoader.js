@@ -106,7 +106,7 @@ THREE.GLTFLoader = ( function () {
 
 			if ( json.asset === undefined || json.asset.version[ 0 ] < 2 ) {
 
-				if ( onError ) onError( new Error( 'THREE.GLTFLoader: Unsupported asset. glTF versions >=2.0 are supported.' ) );
+				if ( onError ) onError( new Error( 'THREE.GLTFLoader: Unsupported asset. glTF versions >=2.0 are supported. Use LegacyGLTFLoader instead.' ) );
 				return;
 
 			}
@@ -421,7 +421,7 @@ THREE.GLTFLoader = ( function () {
 
 		} else if ( this.header.version < 2.0 ) {
 
-			throw new Error( 'THREE.GLTFLoader: Legacy binary file detected. Use GLTFLoader instead.' );
+			throw new Error( 'THREE.GLTFLoader: Legacy binary file detected. Use LegacyGLTFLoader instead.' );
 
 		}
 
@@ -529,6 +529,7 @@ THREE.GLTFLoader = ( function () {
 					'vec3 specularFactor = specular;',
 					'#ifdef USE_SPECULARMAP',
 					'	vec4 texelSpecular = texture2D( specularMap, vUv );',
+					'	texelSpecular = sRGBToLinear( texelSpecular );',
 					'	// reads channel RGB, compatible with a glTF Specular-Glossiness (RGBA) texture',
 					'	specularFactor *= texelSpecular.rgb;',
 					'#endif'
@@ -2272,7 +2273,7 @@ THREE.GLTFLoader = ( function () {
 				// for Specular-Glossiness
 				node.onBeforeRender = mesh.onBeforeRender;
 
-				if ( mesh instanceof THREE.Group ) {
+				if ( mesh.isGroup === true ) {
 
 					for ( var i = 0, il = mesh.children.length; i < il; i ++ ) {
 
@@ -2358,7 +2359,7 @@ THREE.GLTFLoader = ( function () {
 
 			if ( nodeDef.skin !== undefined ) {
 
-				var meshes = node instanceof THREE.Group ? node.children : [ node ];
+				var meshes = node.isGroup === true ? node.children : [ node ];
 
 				for ( var i = 0, il = meshes.length; i < il; i ++ ) {
 
