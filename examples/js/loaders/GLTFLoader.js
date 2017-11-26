@@ -2272,6 +2272,16 @@ THREE.GLTFLoader = ( function () {
 				// for Specular-Glossiness
 				node.onBeforeRender = mesh.onBeforeRender;
 
+				if ( mesh instanceof THREE.Group ) {
+
+					for ( var i = 0, il = mesh.children.length; i < il; i ++ ) {
+
+						node.children[ i ].onBeforeRender = mesh.children[ i ].onBeforeRender;
+
+					}
+
+				}
+
 				if ( meshReferences[ nodeDef.mesh ] > 1 ) {
 
 					node.name += '_instance_' + meshUses[ nodeDef.mesh ] ++;
@@ -2348,7 +2358,7 @@ THREE.GLTFLoader = ( function () {
 
 			if ( nodeDef.skin !== undefined ) {
 
-				var meshes = node.isGroup === true ? node.children : [ node ];
+				var meshes = node instanceof THREE.Group ? node.children : [ node ];
 
 				for ( var i = 0, il = meshes.length; i < il; i ++ ) {
 
