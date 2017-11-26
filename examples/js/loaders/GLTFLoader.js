@@ -1224,7 +1224,7 @@ THREE.GLTFLoader = ( function () {
 		// Clear the loader cache
 		this.cache.removeAll();
 
-		//
+		// Mark the special nodes/meshes in json for efficient parse
 		this.markDefs();
 
 		// Fire the callback on complete
@@ -1247,6 +1247,9 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Marks the special nodes/meshes in json for efficient parse.
+	 */
 	GLTFParser.prototype.markDefs = function () {
 
 		var nodeDefs = this.json.nodes || [];
@@ -1270,6 +1273,11 @@ THREE.GLTFLoader = ( function () {
 
 		}
 
+		// Meshes can (and should) be reused by multiple nodes in a glTF asset. To
+		// avoid having more than one THREE.Mesh with the same name, count
+		// references and rename instances below.
+		//
+		// Example: CesiumMilkTruck sample model reuses "Wheel" meshes.
 		for ( var nodeIndex = 0, nodeLength = nodeDefs.length; nodeIndex < nodeLength; nodeIndex ++ ) {
 
 			var nodeDef = nodeDefs[ nodeIndex ];
@@ -1340,6 +1348,11 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Requests all multiple dependencies of the specified types asynchronously, with caching.
+	 * @param {Array<string>} types
+	 * @return {Promise<Object<Array<Object>>>}
+	 */
 	GLTFParser.prototype.getMultiDependencies = function ( types ) {
 
 		var results = {};
@@ -1424,6 +1437,11 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#accessors
+	 * @param {number} accessorIndex
+	 * @return {Promise<THREE.(Interleaved)BufferAttribute>}
+	 */
 	GLTFParser.prototype.loadAccessor = function ( accessorIndex ) {
 
 		var json = this.json;
@@ -1633,7 +1651,8 @@ THREE.GLTFLoader = ( function () {
 
 	/**
 	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#materials
-	 * @return {Promise<Array<THREE.Material>>}
+	 * @param {number} materialIndex
+	 * @return {Promise<THREE.Material>}
 	 */
 	GLTFParser.prototype.loadMaterial = function ( materialIndex ) {
 
@@ -1818,6 +1837,11 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#geometry
+	 * @param {Array<Object>} primitives
+	 * @return {Promise<Array<THREE.BufferGeometry>>}
+	 */
 	GLTFParser.prototype.loadGeometries = function ( primitives ) {
 
 		return this.getDependencies( 'accessor' ).then( function ( accessors ) {
@@ -1903,6 +1927,8 @@ THREE.GLTFLoader = ( function () {
 
 	/**
 	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#meshes
+	 * @param {number} meshIndex
+	 * @return {Promise<THREE.(Skinned)Material>}
 	 */
 	GLTFParser.prototype.loadMesh = function ( meshIndex ) {
 
@@ -2101,6 +2127,11 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#skins
+	 * @param {number} skinIndex
+	 * @return {Promise<Object>}
+	 */
 	GLTFParser.prototype.loadSkin = function ( skinIndex ) {
 
 		var skinDef = this.json.skins[ skinIndex ];
@@ -2116,11 +2147,16 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
-	GLTFParser.prototype.loadAnimation = function ( animationId ) {
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#animations
+	 * @param {number} animationIndex
+	 * @return {Promise<THREE.AnimationClip>}
+	 */
+	GLTFParser.prototype.loadAnimation = function ( animationIndex ) {
 
 		var json = this.json;
 
-		var animationDef = this.json.animations[ animationId ];
+		var animationDef = this.json.animations[ animationIndex ];
 
 		return this.getMultiDependencies( [
 
@@ -2231,7 +2267,7 @@ THREE.GLTFLoader = ( function () {
 
 			}
 
-			var name = animationDef.name !== undefined ? animationDef.name : 'animation_' + animationId;
+			var name = animationDef.name !== undefined ? animationDef.name : 'animation_' + animationIndex;
 
 			return new THREE.AnimationClip( name, undefined, tracks );
 
@@ -2239,6 +2275,11 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#nodes-and-hierarchy
+	 * @param {number} nodeIndex
+	 * @return {Promise<THREE.Object3D>}
+	 */
 	GLTFParser.prototype.loadNode = function ( nodeIndex ) {
 
 		var json = this.json;
@@ -2348,6 +2389,11 @@ THREE.GLTFLoader = ( function () {
 
 	};
 
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#scenes
+	 * @param {number} sceneIndex
+	 * @return {Promise<THREE.Scene>}
+	 */
 	GLTFParser.prototype.loadScene = function () {
 
 		// scene node hierachy builder
@@ -2356,6 +2402,8 @@ THREE.GLTFLoader = ( function () {
 
 			var node = allNodes[ nodeId ];
 			var nodeDef = json.nodes[ nodeId ];
+
+			// build skeleton here as well
 
 			if ( nodeDef.skin !== undefined ) {
 
@@ -2395,6 +2443,8 @@ THREE.GLTFLoader = ( function () {
 				}
 
 			}
+
+			// build node hierachy
 
 			parentObject.add( node );
 
