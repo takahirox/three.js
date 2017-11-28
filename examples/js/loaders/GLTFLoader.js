@@ -1292,6 +1292,9 @@ THREE.GLTFLoader = ( function () {
 
 				meshReferences[ nodeDef.mesh ] ++;
 
+				// Nothing in the mesh definition indicates whether it is
+				// a SkinnedMesh or Mesh. Use the node's mesh reference
+				// to mark SkinnedMesh if node has skin.
 				if ( nodeDef.skin !== undefined ) {
 
 					meshDefs[ nodeDef.mesh ].isSkinnedMesh = true;
@@ -2136,12 +2139,19 @@ THREE.GLTFLoader = ( function () {
 
 		var skinDef = this.json.skins[ skinIndex ];
 
+		var skinEntry = { joints: skinDef.joints };
+
+		if ( skinDef.inverseBindMatrices === undefined ) {
+
+			return Promise.resolve( skinEntry );
+
+		}
+
 		return this.getDependency( 'accessor', skinDef.inverseBindMatrices ).then( function ( accessor ) {
 
-			return {
-				joints: skinDef.joints,
-				inverseBindMatrices: accessor
-			};
+			skinEntry.inverseBindMatrices = accessor;
+
+			return skinEntry;
 
 		} );
 
@@ -2167,7 +2177,7 @@ THREE.GLTFLoader = ( function () {
 
 			var tracks = [];
 
-			for ( var i = 0; i < animationDef.channels.length; i ++ ) {
+			for ( var i = 0, il = animationDef.channels.length; i < il; i ++ ) {
 
 				var channel = animationDef.channels[ i ];
 				var sampler = animationDef.samplers[ channel.sampler ];
@@ -2284,14 +2294,13 @@ THREE.GLTFLoader = ( function () {
 
 		var json = this.json;
 		var extensions = this.extensions;
-		var scope = this;
 
 		var meshReferences = this.json.meshReferences;
 		var meshUses = this.json.meshUses;
 
 		var nodeDef = this.json.nodes[ nodeIndex ];
 
-		return scope.getMultiDependencies( [
+		return this.getMultiDependencies( [
 
 			'mesh',
 			'skin',
@@ -2309,16 +2318,28 @@ THREE.GLTFLoader = ( function () {
 
 				var mesh = dependencies.meshes[ nodeDef.mesh ];
 
-				var node = mesh.clone();
+				node = mesh.clone();
 
 				// for Specular-Glossiness
-				node.onBeforeRender = mesh.onBeforeRender;
-
 				if ( mesh.isGroup === true ) {
 
 					for ( var i = 0, il = mesh.children.length; i < il; i ++ ) {
 
-						node.children[ i ].onBeforeRender = mesh.children[ i ].onBeforeRender;
+						var child = mesh.children[ i ];
+
+						if ( child.material && child.material.isGLTFSpecularGlossinessMaterial === true ) {
+
+							node.children[ i ].onBeforeRender = child.onBeforeRender;
+
+						}
+
+					}
+
+				} else {
+
+					if ( mesh.material && mesh.material.isGLTFSpecularGlossinessMaterial === true ) {
+
+						node.onBeforeRender = mesh.onBeforeRender;
 
 					}
 
@@ -2426,8 +2447,14 @@ THREE.GLTFLoader = ( function () {
 
 							bones.push( jointNode );
 
-							var m = skinEntry.inverseBindMatrices.array;
-							var mat = new THREE.Matrix4().fromArray( m, j * 16 );
+							var mat = new THREE.Matrix4();
+
+							if ( skinEntry.inverseBindMatrices !== undefined ) {
+
+								mat.fromArray( skinEntry.inverseBindMatrices.array, j * 16 );
+
+							}
+
 							boneInverses.push( mat );
 
 						} else {
