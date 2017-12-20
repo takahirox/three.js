@@ -68,6 +68,7 @@ THREE.GLTFExporter.prototype = {
 			onlyVisible: true,
 			truncateDrawRange: true,
 			embedImages: true,
+			zipArchive: true,
 			animations: []
 		};
 
@@ -90,6 +91,8 @@ THREE.GLTFExporter.prototype = {
 			}
 
 		};
+
+		var outputFiles = [];
 
 		var byteOffset = 0;
 		var dataViews = [];
@@ -411,7 +414,7 @@ THREE.GLTFExporter.prototype = {
 			var mimeType = map.format === THREE.RGBAFormat ? 'image/png' : 'image/jpeg';
 			var gltfImage = {mimeType: mimeType};
 
-			if ( options.embedImages ) {
+			if ( options.embedImages || options.zipArchive ) {
 
 				var canvas = cachedCanvas = cachedCanvas || document.createElement( 'canvas' );
 				canvas.width = map.image.width;
@@ -429,7 +432,25 @@ THREE.GLTFExporter.prototype = {
 
 				// @TODO Embed in { bufferView } if options.binary set.
 
-				gltfImage.uri = canvas.toDataURL( mimeType );
+				var data = canvas.toDataURL( mimeType );
+
+				if ( options.embedImages ) {
+
+					gltfImage.uri = data;
+
+				} else {
+
+					var name = map.image.src.split( '/' ).pop();
+
+					gltfImage.uri = name;
+
+					outputFiles.push( {
+						name: name,
+						data: data.split( 'base64,' ).pop(),
+						base64: true
+					} );
+
+				}
 
 			} else {
 
@@ -1242,14 +1263,34 @@ THREE.GLTFExporter.prototype = {
 
 		}
 
-		processInput( input );
+		function processZip( onDone ) {
 
-		// Generate buffer
-		// Create a new blob with all the dataviews from the buffers
-		var blob = new Blob( dataViews, { type: 'application/octet-stream' } );
+			var zip = new JSZip();
+
+			for ( var i = 0, il = outputFiles.length; i < il; i ++ ) {
+
+				var file = outputFiles[ i ];
+				var options = {};
+				if ( file.base64 === true ) options.base64 = true;
+				zip.file( file.name, file.data, options );
+
+			}
+
+			zip.generateAsync( {
+				type: 'blob',
+				compression: 'DEFLATE',
+			} ).then( onDone );
+
+		}
+
+		processInput( input );
 
 		// Update the bytlength of the only main buffer and update the uri with the base64 representation of it
 		if ( outputJSON.buffers && outputJSON.buffers.length > 0 ) {
+
+			// Generate buffer
+			// Create a new blob with all the dataviews from the buffers
+			var blob = new Blob( dataViews, { type: 'application/octet-stream' } );
 
 			outputJSON.buffers[ 0 ].byteLength = blob.size;
 
@@ -1301,32 +1342,80 @@ THREE.GLTFExporter.prototype = {
 						binaryChunk
 					], { type: 'application/octet-stream' } );
 
-					var glbReader = new window.FileReader();
-					glbReader.readAsArrayBuffer( glbBlob );
-					glbReader.onloadend = function () {
+					if ( options.zipArchive ) {
 
-						onDone( glbReader.result );
+						outputFiles.push( {
+							name: 'scene.glb',
+							data: glbBlob,
+							blob: true
+						} );
 
-					};
+						processZip( onDone );
+
+					} else {
+
+						var glbReader = new window.FileReader();
+						glbReader.readAsArrayBuffer( glbBlob );
+						glbReader.onloadend = function () {
+
+							onDone( glbReader.result );
+
+						};
+
+					}
 
 				};
 
 			} else {
 
-				reader.readAsDataURL( blob );
-				reader.onloadend = function () {
+				if ( options.zipArchive ) {
 
-					var base64data = reader.result;
-					outputJSON.buffers[ 0 ].uri = base64data;
-					onDone( outputJSON );
+					outputJSON.buffers[ 0 ].uri = 'buffer.bin';
 
-				};
+					outputFiles.push( {
+						name: 'buffer.bin',
+						data: blob,
+						blob: true
+					} );
+
+					outputFiles.push( {
+						name: 'scene.gltf',
+						data: JSON.stringify( outputJSON, null, 2 )
+					} );
+
+					processZip( onDone );
+
+				} else {
+
+					reader.readAsDataURL( blob );
+					reader.onloadend = function () {
+
+						var base64data = reader.result;
+						outputJSON.buffers[ 0 ].uri = base64data;
+						onDone( outputJSON );
+
+					};
+
+				}
 
 			}
 
 		} else {
 
-			onDone( outputJSON );
+			if ( options.zipArchive ) {
+
+				outputFiles.push( {
+					name: 'scene.gltf',
+					data: JSON.stringify( outputJSON, null, 2 )
+				} );
+
+				processZip( onDone );
+
+			} else {
+
+				onDone( outputJSON );
+
+			}
 
 		}
 
