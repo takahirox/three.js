@@ -108,7 +108,8 @@ var ShaderLib = {
 
 		uniforms: UniformsUtils.merge( [
 			UniformsLib.points,
-			UniformsLib.fog
+			UniformsLib.fog,
+			UniformsLib.lights
 		] ),
 
 		vertexShader: ShaderChunk.points_vert,

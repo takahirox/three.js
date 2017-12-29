@@ -1,6 +1,8 @@
 uniform float size;
 uniform float scale;
 
+varying vec3 vViewPosition;
+
 #include <common>
 #include <color_pars_vertex>
 #include <fog_pars_vertex>
@@ -22,6 +24,9 @@ void main() {
 
 	#include <logdepthbuf_vertex>
 	#include <clipping_planes_vertex>
+
+	vViewPosition = - mvPosition.xyz;
+
 	#include <worldpos_vertex>
 	#include <shadowmap_vertex>
 	#include <fog_vertex>

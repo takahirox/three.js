@@ -465,6 +465,8 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters 
 			'#define NUM_CLIPPING_PLANES ' + parameters.numClippingPlanes,
 			'#define UNION_CLIPPING_PLANES ' + ( parameters.numClippingPlanes - parameters.numClipIntersection ),
 
+			parameters.lights ? '#define USE_LIGHTS': '',
+
 			parameters.shadowMapEnabled ? '#define USE_SHADOWMAP' : '',
 			parameters.shadowMapEnabled ? '#define ' + shadowMapTypeDefine : '',
 
