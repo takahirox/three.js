@@ -167,12 +167,12 @@
 
 				//
 
-				renderer1 = new THREE.WebGLRenderer( { antialias: true } );
+				renderer1 = new THREE.WebGL2Renderer( { antialias: true } );
 				renderer1.setPixelRatio( window.devicePixelRatio );
 				renderer1.setSize( window.innerWidth, window.innerHeight / 2 );
 				document.body.appendChild( renderer1.domElement );
 
-				renderer2 = new THREE.WebGLRenderer();
+				renderer2 = new THREE.WebGL2Renderer();
 				renderer2.setPixelRatio( window.devicePixelRatio );
 				renderer2.setSize( window.innerWidth, window.innerHeight / 2 );
 				document.body.appendChild( renderer2.domElement );

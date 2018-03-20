@@ -67,7 +67,7 @@
 				var mesh = new THREE.Points( geometry, material );
 				scene.add( mesh );
 
-				renderer = new THREE.WebGLRenderer( { preserveDrawingBuffer: true } );
+				renderer = new THREE.WebGL2Renderer( { preserveDrawingBuffer: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.autoClearColor = false;

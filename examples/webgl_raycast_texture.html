@@ -216,7 +216,7 @@
 				camera.position.z = 50;
 				camera.lookAt( scene.position );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGL2Renderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( width, height );
 				container.appendChild( renderer.domElement );

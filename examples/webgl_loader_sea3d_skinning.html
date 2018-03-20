@@ -166,7 +166,7 @@
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 20000 );
 				camera.position.set( 1000, - 300, 1000 );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGL2Renderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );

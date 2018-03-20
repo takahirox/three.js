@@ -123,7 +123,7 @@
 
 			}
 
-			renderer = new THREE.WebGLRenderer();
+			renderer = new THREE.WebGL2Renderer();
 
 			if ( renderer.extensions.get( 'ANGLE_instanced_arrays' ) === false ) {
 				document.getElementById( 'notSupported' ).style.display = '';

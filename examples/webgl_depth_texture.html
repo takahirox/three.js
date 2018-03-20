@@ -109,7 +109,7 @@
 
 			function init() {
 
-				renderer = new THREE.WebGLRenderer( { canvas: document.querySelector( 'canvas' ) } );
+				renderer = new THREE.WebGL2Renderer( { canvas: document.querySelector( 'canvas' ) } );
 
 				if ( !renderer.extensions.get( 'WEBGL_depth_texture' ) ) {
 

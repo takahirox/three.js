@@ -203,7 +203,7 @@
 				softwareRenderer.setSize( width, height );
 				document.body.appendChild( softwareRenderer.domElement );
 
-				webglRenderer = new THREE.WebGLRenderer( { antialias: true } );
+				webglRenderer = new THREE.WebGL2Renderer( { antialias: true } );
 				webglRenderer.setPixelRatio( window.devicePixelRatio );
 				webglRenderer.setSize( width, height );
 				document.body.appendChild( webglRenderer.domElement );

@@ -43,7 +43,7 @@
 				info.innerHTML = '<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - geometry extrude shapes';
 				document.body.appendChild( info );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGL2Renderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );

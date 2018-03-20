@@ -75,7 +75,7 @@
 				loader.load( "models/json/cubecolors/cubecolors.json", createScene1 );
 				loader.load( "models/json/cubecolors/cube_fvc.json", createScene2 );
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer = new THREE.WebGL2Renderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );

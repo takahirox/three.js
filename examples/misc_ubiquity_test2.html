@@ -154,7 +154,7 @@
 				var container1 = document.getElementById( 'container1' );
 				container1.appendChild( canvasRenderer.domElement );
 
-				webglRenderer = new THREE.WebGLRenderer( { antialias: true } );
+				webglRenderer = new THREE.WebGL2Renderer( { antialias: true } );
 				webglRenderer.setPixelRatio( window.devicePixelRatio );
 				webglRenderer.setSize( width, height );
 				var container2 = document.getElementById( 'container2' );

@@ -227,8 +227,8 @@
 
 				// RENDERER
 
-				// TODO: Reuse existing WebGLRenderer, GLTFLoaders, and so on
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				// TODO: Reuse existing WebGL2Renderer, GLTFLoaders, and so on
+				renderer = new THREE.WebGL2Renderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.gammaOutput = true;

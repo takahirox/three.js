@@ -108,7 +108,7 @@
 
 				//
 
-				renderer = new THREE.WebGLRenderer(); // Detector.webgl? new THREE.WebGLRenderer(): new THREE.CanvasRenderer()
+				renderer = new THREE.WebGL2Renderer(); // Detector.webgl? new THREE.WebGL2Renderer(): new THREE.CanvasRenderer()
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );

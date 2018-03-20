@@ -165,7 +165,7 @@
 				var camera = new THREE.PerspectiveCamera( 50, screensplit * SCREEN_WIDTH / SCREEN_HEIGHT, NEAR, FAR );
 				scene.add(camera);
 
-				var renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: logDepthBuf });
+				var renderer = new THREE.WebGL2Renderer({ antialias: true, logarithmicDepthBuffer: logDepthBuf });
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize(SCREEN_WIDTH/2, SCREEN_HEIGHT);
 				renderer.domElement.style.position = "relative";

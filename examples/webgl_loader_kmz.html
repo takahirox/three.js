@@ -79,7 +79,7 @@
 				var grid = new THREE.GridHelper( 50, 50, 0xffffff, 0x555555 );
 				scene.add( grid );
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer = new THREE.WebGL2Renderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );

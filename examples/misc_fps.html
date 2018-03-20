@@ -255,7 +255,7 @@
 				return placeholder;
 			}
 
-			var renderer = new THREE.WebGLRenderer({ antialias : true });
+			var renderer = new THREE.WebGL2Renderer({ antialias : true });
 			renderer.setPixelRatio( window.devicePixelRatio );
 
 			var camera = new THREE.PerspectiveCamera( 60, 1, 0.1, 9000 );

@@ -70,7 +70,7 @@
 				mesh = new THREE.Mesh( new THREE.BoxGeometry( 200, 200, 200 ), material );
 				scene.add( mesh );
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer = new THREE.WebGL2Renderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );

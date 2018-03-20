@@ -99,7 +99,7 @@
 				var container = document.createElement( 'div' );
 				document.body.appendChild( container );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGL2Renderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );

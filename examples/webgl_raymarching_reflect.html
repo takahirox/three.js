@@ -281,7 +281,7 @@
 
 			function init() {
 
-				renderer = new THREE.WebGLRenderer( { canvas: canvas } );
+				renderer = new THREE.WebGL2Renderer( { canvas: canvas } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( config.resolution, config.resolution );
 

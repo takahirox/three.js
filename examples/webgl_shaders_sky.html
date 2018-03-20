@@ -145,7 +145,7 @@
 				var helper = new THREE.GridHelper( 10000, 2, 0xffffff, 0xffffff );
 				scene.add( helper );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGL2Renderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );

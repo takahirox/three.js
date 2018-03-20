@@ -119,7 +119,7 @@
 				canvasRenderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
 				container.appendChild( canvasRenderer.domElement );
 
-				webglRenderer = new THREE.WebGLRenderer();
+				webglRenderer = new THREE.WebGL2Renderer();
 				webglRenderer.setPixelRatio( window.devicePixelRatio );
 				webglRenderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
 				webglRenderer.domElement.style.position = "relative";

@@ -140,7 +140,7 @@
 			sphere = new THREE.Mesh( geometry, shaderMaterial );
 			scene.add( sphere );
 
-			renderer = new THREE.WebGLRenderer();
+			renderer = new THREE.WebGL2Renderer();
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( window.innerWidth, window.innerHeight );
 

@@ -176,7 +176,7 @@
 				} );
 				// renderer
 
-				renderer = new THREE.WebGLRenderer( { alpha: true } );
+				renderer = new THREE.WebGL2Renderer( { alpha: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -250,7 +250,7 @@
 				container2.height = insetHeight;
 
 				// renderer
-				renderer2 = new THREE.WebGLRenderer({alpha : true});
+				renderer2 = new THREE.WebGL2Renderer({alpha : true});
 				renderer2.setClearColor( 0x000000, 0 );
 				renderer2.setSize( insetWidth, insetHeight );
 				container2.appendChild( renderer2.domElement );

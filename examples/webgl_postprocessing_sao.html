@@ -89,7 +89,7 @@
 				var height = window.innerHeight || 1;
 				var devicePixelRatio = window.devicePixelRatio || 1;
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer = new THREE.WebGL2Renderer( { antialias: true } );
 				renderer.setClearColor( 0x000000 );
 				renderer.setPixelRatio( devicePixelRatio );
 				renderer.setSize( width, height );

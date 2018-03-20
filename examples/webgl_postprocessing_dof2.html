@@ -93,7 +93,7 @@ Use WEBGL Depth buffer support?
 				scene = new THREE.Scene();
 				scene.add( camera );
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGL2Renderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, height );
 				//renderer.sortObjects = false;

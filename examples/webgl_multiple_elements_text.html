@@ -122,7 +122,7 @@
 
 				canvas = document.getElementById( 'c' );
 
-				renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
+				renderer = new THREE.WebGL2Renderer( { canvas: canvas, antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 
 				views = document.querySelectorAll( '.view' );

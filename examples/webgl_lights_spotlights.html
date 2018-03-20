@@ -49,7 +49,7 @@
 
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-			var renderer = new THREE.WebGLRenderer();
+			var renderer = new THREE.WebGL2Renderer();
 			renderer.setPixelRatio( window.devicePixelRatio );
 
 			var camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 1, 2000 );
