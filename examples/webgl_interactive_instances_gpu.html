@@ -176,8 +176,6 @@
 	<script id="fragMerged" type="x-shader/x-fragment">
 		#define SHADER_NAME fragMerged
 
-		#extension GL_OES_standard_derivatives : enable
-
 		precision highp float;
 
 		varying vec3 vColor;
@@ -253,8 +251,6 @@
 	<script id="fragInstanced" type="x-shader/x-fragment">
 		#define SHADER_NAME fragInstanced
 
-		#extension GL_OES_standard_derivatives : enable
-
 		precision highp float;
 
 		varying vec3 vColor;
@@ -310,8 +306,6 @@
 
 	<script id="fragMaterial" type="x-shader/x-fragment">
 		#define SHADER_NAME fragMaterial
-
-		#extension GL_OES_standard_derivatives : enable
 
 		precision highp float;
 
@@ -952,22 +946,11 @@
 				antialias: true,
 				alpha: true
 			} );
-			if ( renderer.extensions.get( 'ANGLE_instanced_arrays' ) === false ) {
 
-				document.getElementById( "notSupported" ).style.display = "";
-				return;
-
-			}
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			//renderer.sortObjects = false;
 			container.appendChild( renderer.domElement );
-
-			if ( renderer.extensions.get( 'ANGLE_instanced_arrays' ) === false ) {
-
-				throw 'ANGLE_instanced_arrays not supported';
-
-			}
 
 			// controls
 

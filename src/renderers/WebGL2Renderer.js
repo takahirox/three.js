@@ -21,8 +21,8 @@ import { Vector3 } from '../math/Vector3.js';
 import { Vector4 } from '../math/Vector4.js';
 import { WebGLAttributes } from './webgl/WebGLAttributes.js';
 import { WebGLBackground } from './webgl/WebGLBackground.js';
-import { WebGLBufferRenderer } from './webgl/WebGLBufferRenderer.js';
-import { WebGLCapabilities } from './webgl/WebGLCapabilities.js';
+import { WebGLBufferRenderer } from './webgl2/WebGLBufferRenderer.js';
+import { WebGLCapabilities } from './webgl2/WebGLCapabilities.js';
 import { WebGLClipping } from './webgl/WebGLClipping.js';
 import { WebGLExtensions } from './webgl/WebGLExtensions.js';
 import { WebGLGeometries } from './webgl/WebGLGeometries.js';
@@ -30,14 +30,14 @@ import { WebGLIndexedBufferRenderer } from './webgl/WebGLIndexedBufferRenderer.j
 import { WebGLInfo } from './webgl/WebGLInfo.js';
 import { WebGLMorphtargets } from './webgl/WebGLMorphtargets.js';
 import { WebGLObjects } from './webgl/WebGLObjects.js';
-import { WebGLPrograms } from './webgl/WebGLPrograms.js';
+import { WebGLPrograms } from './webgl2/WebGLPrograms.js';
 import { WebGLProperties } from './webgl/WebGLProperties.js';
 import { WebGLRenderLists } from './webgl/WebGLRenderLists.js';
 import { WebGLRenderStates } from './webgl/WebGLRenderStates.js';
 import { WebGLShadowMap } from './webgl/WebGLShadowMap.js';
 import { WebGLSpriteRenderer } from './webgl/WebGLSpriteRenderer.js';
-import { WebGLState } from './webgl/WebGLState.js';
-import { WebGLTextures } from './webgl/WebGLTextures.js';
+import { WebGLState } from './webgl2/WebGLState.js';
+import { WebGLTextures } from './webgl2/WebGLTextures.js';
 import { WebGLUniforms } from './webgl/WebGLUniforms.js';
 import { WebGLUtils } from './webgl/WebGLUtils.js';
 import { WebVRManager } from './webvr/WebVRManager.js';
@@ -236,14 +236,7 @@ function WebGL2Renderer( parameters ) {
 	function initGLContext() {
 
 		extensions = new WebGLExtensions( _gl );
-		extensions.get( 'WEBGL_depth_texture' );
-		extensions.get( 'OES_texture_float' );
 		extensions.get( 'OES_texture_float_linear' );
-		extensions.get( 'OES_texture_half_float' );
-		extensions.get( 'OES_texture_half_float_linear' );
-		extensions.get( 'OES_standard_derivatives' );
-		extensions.get( 'OES_element_index_uint' );
-		extensions.get( 'ANGLE_instanced_arrays' );
 
 		utils = new WebGLUtils( _gl, extensions );
 
@@ -836,17 +829,6 @@ function WebGL2Renderer( parameters ) {
 	};
 
 	function setupVertexAttributes( material, program, geometry ) {
-
-		if ( geometry && geometry.isInstancedBufferGeometry ) {
-
-			if ( extensions.get( 'ANGLE_instanced_arrays' ) === null ) {
-
-				console.error( 'THREE.WebGL2Renderer.setupVertexAttributes: using THREE.InstancedBufferGeometry but hardware does not support extension ANGLE_instanced_arrays.' );
-				return;
-
-			}
-
-		}
 
 		state.initAttributes();
 
@@ -2524,7 +2506,7 @@ function WebGL2Renderer( parameters ) {
 				}
 
 				if ( textureType !== UnsignedByteType && utils.convert( textureType ) !== _gl.getParameter( _gl.IMPLEMENTATION_COLOR_READ_TYPE ) && // IE11, Edge and Chrome Mac < 52 (#9513)
-					! ( textureType === FloatType && ( extensions.get( 'OES_texture_float' ) || extensions.get( 'WEBGL_color_buffer_float' ) ) ) && // Chrome Mac >= 52 and Firefox
+					! ( textureType === FloatType && extensions.get( 'WEBGL_color_buffer_float' ) ) && // Chrome Mac >= 52 and Firefox
 					! ( textureType === HalfFloatType && extensions.get( 'EXT_color_buffer_half_float' ) ) ) {
 
 					console.error( 'THREE.WebGL2Renderer.readRenderTargetPixels: renderTarget is not in UnsignedByteType or implementation defined type.' );
