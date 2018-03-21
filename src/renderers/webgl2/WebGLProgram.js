@@ -2,7 +2,7 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-import { WebGLUniforms } from '../webgl/WebGLUniforms.js';
+import { WebGLUniforms } from '../webgl2/WebGLUniforms.js';
 import { WebGLShader } from '../webgl/WebGLShader.js';
 import { ShaderChunk } from '../shaders/ShaderChunk.js';
 import { NoToneMapping, AddOperation, MixOperation, MultiplyOperation, EquirectangularRefractionMapping, CubeRefractionMapping, SphericalReflectionMapping, EquirectangularReflectionMapping, CubeUVRefractionMapping, CubeUVReflectionMapping, CubeReflectionMapping, PCFSoftShadowMap, PCFShadowMap, CineonToneMapping, Uncharted2ToneMapping, ReinhardToneMapping, LinearToneMapping, GammaEncoding, RGBDEncoding, RGBM16Encoding, RGBM7Encoding, RGBEEncoding, sRGBEncoding, LinearEncoding } from '../../constants.js';
@@ -372,11 +372,16 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters 
 			parameters.logarithmicDepthBuffer ? '#define USE_LOGDEPTHBUF' : '',
 			parameters.logarithmicDepthBuffer && extensions.get( 'EXT_frag_depth' ) ? '#define USE_LOGDEPTHBUF_EXT' : '',
 
-			'uniform mat4 modelMatrix;',
-			'uniform mat4 modelViewMatrix;',
+			// How can I share the block with WebGL1 renderer?
+
+			'layout(std140) uniform Matrices {',
+			'	mat4 modelMatrix;',
+			'	mat4 modelViewMatrix;',
+			'	mat3 normalMatrix;',
+			'};',
+
 			'uniform mat4 projectionMatrix;',
 			'uniform mat4 viewMatrix;',
-			'uniform mat3 normalMatrix;',
 			'uniform vec3 cameraPosition;',
 
 			'attribute vec3 position;',

@@ -38,7 +38,7 @@ import { WebGLShadowMap } from './webgl/WebGLShadowMap.js';
 import { WebGLSpriteRenderer } from './webgl/WebGLSpriteRenderer.js';
 import { WebGLState } from './webgl2/WebGLState.js';
 import { WebGLTextures } from './webgl2/WebGLTextures.js';
-import { WebGLUniforms } from './webgl/WebGLUniforms.js';
+import { WebGLUniforms } from './webgl2/WebGLUniforms.js';
 import { WebGLUtils } from './webgl/WebGLUtils.js';
 import { WebVRManager } from './webvr/WebVRManager.js';
 
@@ -1898,9 +1898,49 @@ function WebGL2Renderer( parameters ) {
 
 		// common matrices
 
-		p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
-		p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
-		p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
+		// UBO modelMatrix, modelViewMatrix, normalMatrix update
+
+		/*
+		 * API proposals
+		 *
+		 * 1. (maybe better)
+		 *
+		 *  In .setValue(), check if uniform is in block. If so, get offset and update buffer.
+		 *
+		 *  p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
+		 *  p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
+		 *  p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
+		 *  p_uniforms.updateUBO( _gl, 'Matrices' );  // fire in the end
+		 *
+		 * 2.
+		 *
+		 *  p_uniforms.setValue( _gl, 'Matrices',
+		 *  	[ object.matrixWorld, object.modelViewMatrix, object.normalMatrix ] );
+		 */
+
+		// temporal work
+
+		var buffer = p_uniforms.map.Matrices.buffer;
+		var array = p_uniforms.map.Matrices.array;
+		var index = p_uniforms.map.Matrices.index;
+
+		array.set( object.matrixWorld.elements, 0 );
+		array.set( object.modelViewMatrix.elements, 16 );
+
+		// How can I write efficiently?
+		array[ 32 ] = object.normalMatrix.elements[ 0 ];
+		array[ 33 ] = object.normalMatrix.elements[ 1 ];
+		array[ 34 ] = object.normalMatrix.elements[ 2 ];
+		array[ 36 ] = object.normalMatrix.elements[ 3 ];
+		array[ 37 ] = object.normalMatrix.elements[ 4 ];
+		array[ 38 ] = object.normalMatrix.elements[ 5 ];
+		array[ 40 ] = object.normalMatrix.elements[ 6 ];
+		array[ 41 ] = object.normalMatrix.elements[ 7 ];
+		array[ 42 ] = object.normalMatrix.elements[ 8 ];
+
+		_gl.bindBuffer( _gl.UNIFORM_BUFFER, buffer );
+		_gl.bufferData( _gl.UNIFORM_BUFFER, array, _gl.DYNAMIC_DRAW );
+		_gl.bindBufferBase( _gl.UNIFORM_BUFFER, index, buffer );
 
 		return program;
 
