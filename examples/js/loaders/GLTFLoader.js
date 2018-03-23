@@ -2277,6 +2277,7 @@ THREE.GLTFLoader = ( function () {
 							pointsMaterial.color.copy( material.color );
 							pointsMaterial.map = material.map;
 							pointsMaterial.lights = false;  // PointsMaterial doesn't support lights yet
+							pointsMaterial.sizeAttenuation = false;
 
 							scope.cache.add( cacheKey, pointsMaterial );
 
