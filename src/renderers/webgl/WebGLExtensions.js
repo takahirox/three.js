@@ -6,8 +6,6 @@ function WebGLExtensions( gl ) {
 
 	var extensions = {};
 
-	var isWebGL2 = ( typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext );
-
 	return {
 
 		get: function ( name ) {
