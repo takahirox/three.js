@@ -4,8 +4,6 @@
 
 function WebGLIndexedBufferRenderer( gl, extensions, info ) {
 
-	var isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
-
 	var mode;
 
 	function setMode( value ) {
@@ -35,7 +33,7 @@ function WebGLIndexedBufferRenderer( gl, extensions, info ) {
 
 		var extension;
 
-		if ( isWebGL2 ) {
+		if ( gl.isWebGL2 ) {
 
 			extension = gl;
 
@@ -52,7 +50,7 @@ function WebGLIndexedBufferRenderer( gl, extensions, info ) {
 
 		}
 
-		extension[ isWebGL2 ? 'drawElementsInstanced' : 'drawElementsInstancedANGLE' ]( mode, count, type, start * bytesPerElement, geometry.maxInstancedCount );
+		extension[ gl.isWebGL2 ? 'drawElementsInstanced' : 'drawElementsInstancedANGLE' ]( mode, count, type, start * bytesPerElement, geometry.maxInstancedCount );
 
 		info.update( count, mode, geometry.maxInstancedCount );
 

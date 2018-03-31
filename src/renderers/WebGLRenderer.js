@@ -173,7 +173,6 @@ function WebGLRenderer( parameters ) {
 	// initialize
 
 	var _gl;
-	var _isWebGL2;
 
 	try {
 
@@ -212,7 +211,7 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		_isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && _gl instanceof WebGL2RenderingContext;
+		_gl.isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && _gl instanceof WebGL2RenderingContext;
 
 		// Some experimental-webgl implementations do not have getShaderPrecisionFormat
 
@@ -245,7 +244,7 @@ function WebGLRenderer( parameters ) {
 
 		extensions = new WebGLExtensions( _gl );
 
-		if ( ! _isWebGL2 ) {
+		if ( ! _gl.isWebGL2 ) {
 
 			extensions.get( 'WEBGL_depth_texture' );
 			extensions.get( 'OES_texture_float' );
@@ -851,7 +850,7 @@ function WebGLRenderer( parameters ) {
 
 	function setupVertexAttributes( material, program, geometry ) {
 
-		if ( geometry && geometry.isInstancedBufferGeometry & ! _isWebGL2 ) {
+		if ( geometry && geometry.isInstancedBufferGeometry & ! _gl.isWebGL2 ) {
 
 			if ( extensions.get( 'ANGLE_instanced_arrays' ) === null ) {
 
@@ -2538,8 +2537,8 @@ function WebGLRenderer( parameters ) {
 				}
 
 				if ( textureType !== UnsignedByteType && utils.convert( textureType ) !== _gl.getParameter( _gl.IMPLEMENTATION_COLOR_READ_TYPE ) && // IE11, Edge and Chrome Mac < 52 (#9513)
-					! ( textureType === FloatType && ( _isWebGL2 || extensions.get( 'OES_texture_float' ) || extensions.get( 'WEBGL_color_buffer_float' ) ) ) && // Chrome Mac >= 52 and Firefox
-					! ( textureType === HalfFloatType && ( _isWebGL2 ? extensions.get( 'EXT_color_buffer_float' ) : extensions.get( 'EXT_color_buffer_half_float' ) ) ) ) {
+					! ( textureType === FloatType && ( _gl.isWebGL2 || extensions.get( 'OES_texture_float' ) || extensions.get( 'WEBGL_color_buffer_float' ) ) ) && // Chrome Mac >= 52 and Firefox
+					! ( textureType === HalfFloatType && ( _gl.isWebGL2 ? extensions.get( 'EXT_color_buffer_float' ) : extensions.get( 'EXT_color_buffer_half_float' ) ) ) ) {
 
 					console.error( 'THREE.WebGLRenderer.readRenderTargetPixels: renderTarget is not in UnsignedByteType or implementation defined type.' );
 					return;
