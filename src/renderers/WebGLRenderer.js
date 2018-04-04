@@ -2442,7 +2442,7 @@ function WebGLRenderer( parameters ) {
 
 	};
 
-	this.setRenderTarget = function ( renderTarget, optType ) {
+	this.setRenderTarget = function ( renderTarget ) {
 
 		_currentRenderTarget = renderTarget;
 
@@ -2484,7 +2484,7 @@ function WebGLRenderer( parameters ) {
 
 		if ( _currentFramebuffer !== framebuffer ) {
 
-			_gl.bindFramebuffer( optType || _gl.FRAMEBUFFER, framebuffer );
+			_gl.bindFramebuffer( _gl.FRAMEBUFFER, framebuffer );
 			_currentFramebuffer = framebuffer;
 
 		}
