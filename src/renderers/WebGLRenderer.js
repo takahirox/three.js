@@ -236,6 +236,7 @@ function WebGLRenderer( parameters ) {
 	var extensions, capabilities, state, info;
 	var properties, textures, attributes, geometries, objects;
 	var programCache, renderLists, renderStates;
+	var vaoMap;
 
 	var background, morphtargets, bufferRenderer, indexedBufferRenderer;
 	var spriteRenderer;
@@ -278,6 +279,11 @@ function WebGLRenderer( parameters ) {
 		programCache = new WebGLPrograms( _this, extensions, capabilities );
 		renderLists = new WebGLRenderLists();
 		renderStates = new WebGLRenderStates();
+
+		// @TODO Rename
+		// @TODO Use better data structure
+		// @TODO Modularize or embeded into WebGLAttributes or something
+		vaoMap = new WeakMap();
 
 		background = new WebGLBackground( _this, state, geometries, _premultipliedAlpha );
 
@@ -695,12 +701,14 @@ function WebGLRenderer( parameters ) {
 		var program = setProgram( camera, fog, material, object );
 		var geometryProgram = geometry.id + '_' + program.id + '_' + ( material.wireframe === true );
 
+		var ext = extensions.get( 'OES_vertex_array_object' );
+
 		var updateBuffers = false;
 
 		if ( geometryProgram !== _currentGeometryProgram ) {
 
 			_currentGeometryProgram = geometryProgram;
-			updateBuffers = true;
+			if ( ext === null ) updateBuffers = true;
 
 		}
 
@@ -737,13 +745,50 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		if ( updateBuffers ) {
+		// @TODO Optimize
+		if ( ext !== null ) {
 
-			setupVertexAttributes( material, program, geometry );
+			// @TODO Any better mapping to VAO from?
+			if ( ! vaoMap.has( geometry ) ) vaoMap.set( geometry, new WeakMap() );
 
-			if ( index !== null ) {
+			if ( ! vaoMap.get( geometry ).has( material ) ) {
 
-				_gl.bindBuffer( _gl.ELEMENT_ARRAY_BUFFER, attribute.buffer );
+				var vao = ext.createVertexArrayOES();
+				vaoMap.get( geometry ).set( material, vao );
+				updateBuffers = true;
+
+			}
+
+			// @TODO I wanna remove
+			state.initAttributes();
+			state.disableUnusedAttributes();
+
+			ext.bindVertexArrayOES( vaoMap.get( geometry ).get( material ) );
+
+			// @TODO How can we detect attributes/index change runtime?
+			if ( updateBuffers ) {
+
+				setupVertexAttributes( material, program, geometry );
+
+				if ( index !== null ) {
+
+					_gl.bindBuffer( _gl.ELEMENT_ARRAY_BUFFER, attribute.buffer );
+
+				}
+
+			}
+
+		} else {
+
+			if ( updateBuffers ) {
+
+				setupVertexAttributes( material, program, geometry );
+
+				if ( index !== null ) {
+
+					_gl.bindBuffer( _gl.ELEMENT_ARRAY_BUFFER, attribute.buffer );
+
+				}
 
 			}
 
@@ -845,6 +890,13 @@ function WebGLRenderer( parameters ) {
 		} else {
 
 			renderer.render( drawStart, drawCount );
+
+		}
+
+		// @TODO Optimize. Avoid null call when possible.
+		if ( ext !== null ) {
+
+			ext.bindVertexArrayOES( null );
 
 		}
 
