@@ -54,11 +54,14 @@
 		<script src="js/controls/OrbitControls.js"></script>
 		<script src="js/loaders/GLTFLoader_client.js"></script>
 
+		<script src="js/libs/stats.min.js"></script>
+
 		<script>
 			var orbitControls;
 			var container, camera, scene, renderer, loader;
 			var gltf, envMap, mixer, gui, extensionControls;
 
+			var stats = new Stats();
 			var clock = new THREE.Clock();
 
 			var scenes = {
@@ -179,6 +182,8 @@
 			function initScene( sceneInfo ) {
 
 				container = document.getElementById( 'container' );
+
+				container.appendChild( stats.dom );
 
 				var descriptionEl = document.getElementById( 'description' );
 
@@ -403,6 +408,8 @@
 				orbitControls.update();
 
 				render();
+
+				stats.update();
 
 			}
 
