@@ -191,6 +191,7 @@ THREE.GLTFLoader = ( function () {
 
 					if ( data.encoding !== undefined ) texture.encoding = data.encoding;
 					if ( data.type !== undefined ) texture.type = data.type;
+					if ( data.tiles !== undefined ) texture.tiles = data.tiles;
 
 				}
 

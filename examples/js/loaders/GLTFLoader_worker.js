@@ -41,6 +41,10 @@ onmessage = function ( event ) {
 				var scenesJson = [];
 				var animationsJson = [];
 				var transferableObjects = [];
+				var tileWidth = 256;
+				var tileHeight = 256;
+
+				var pendings = [];
 
 				for ( var i = 0, il = gltf.scenes.length; i < il; i ++ ) {
 
@@ -50,38 +54,129 @@ onmessage = function ( event ) {
 					var sceneJson = scene.toJSON();
 					scenesJson.push( sceneJson );
 
-					var geometries = sceneJson.geometries;
+					var geometries = sceneJson.geometries || [];
+					var textures = sceneJson.textures || [];
+					var images = sceneJson.images || [];
+					var imageTable = {};
 
-					if ( geometries ) {
+					for ( var j = 0, jl = geometries.length; j < jl; j ++ ) {
 
-						for ( var j = 0, jl = geometries.length; j < jl; j ++ ) {
+						var geometry = geometries[ j ];
+						var data = geometry.data;
+						var attributes = data.attributes;
+						var index = data.index;
 
-							var geometry = geometries[ j ];
-							var data = geometry.data;
-							var attributes = data.attributes;
-							var index = data.index;
+						for ( var key in attributes ) {
 
-							for ( var key in attributes ) {
+							var attribute = attributes[ key ];
 
-								var attribute = attributes[ key ];
+							if ( transferableObjects.indexOf( attribute.array.buffer ) === - 1 ) {
 
-								if ( transferableObjects.indexOf( attribute.array.buffer ) === - 1 ) {
+								transferableObjects.push( attribute.array.buffer );
 
-									transferableObjects.push( attribute.array.buffer );
+							}
 
-								}
+						}
+
+						if ( index ) {
+
+							if ( transferableObjects.indexOf( index.array.buffer ) === - 1 ) {
+
+								transferableObjects.push( index.array.buffer );
 
 							}
 
-							if ( index ) {
+						}
 
-								if ( transferableObjects.indexOf( index.array.buffer ) === - 1 ) {
+					}
 
-									transferableObjects.push( index.array.buffer );
+					for ( var j = 0, jl = images.length; j < jl; j ++ ) {
+
+						var image = images[ j ];
+						imageTable[ image.uuid ] = image.bitmap;
+
+					}
+
+					for ( var j = 0, jl = textures.length; j < jl; j ++ ) {
+
+						var texture = textures[ j ];
+						var image = imageTable[ texture.image ];
+						texture.tiles = [];
+
+						function createTiles( image, texture, level ) {
+
+							var pendings = [];
+
+							var width = image.width;
+							var height = image.height;
+
+							var sx = 0, sy = 0, sw = tileWidth, sh = tileHeight;
+
+							if ( sw > width ) sw = width;
+							if ( sh > height ) sh = height;
+
+							while ( true ) {
+
+								var pending = createImageBitmap( image, sx, sy, sw, sh ).then( function ( texture, sx, sy, bitmap ) {
+
+									texture.tiles.push( {
+										sx: sx,
+										sy: sy,
+										level: level,
+										bitmap: bitmap
+									} );
+
+									transferableObjects.push( bitmap );
+
+								}.bind( this, texture, sx, sy ) );
+
+								pendings.push( pending );
+
+								if ( sx + sw === width ) {
+
+									if ( sy + sh === height ) break;
+
+									sy += tileHeight;
+									sx = 0;
+
+								} else {
+
+									sx += tileWidth;
 
 								}
 
+								sw = Math.min( tileWidth, width - sx );
+								sh = Math.min( tileHeight, height - sy );
+
 							}
+
+							return Promise.all( pendings );
+
+						}
+
+						var level = 0;
+						var width = image.width;
+						var height = image.height;
+
+						while( true ) {
+
+							var pending = createImageBitmap( image, 0, 0, image.width, image.height, { resizeWidth: width, resizeHeight: height } ).then( function ( texture, level, bitmap ) {
+
+								return createTiles( bitmap, texture, level );
+
+							}.bind( this, texture, level ) );
+
+							pendings.push( pending );
+
+							if ( width === 1 && height === 1 ) break;
+
+							width = ( width / 2 ) | 0;
+							height = ( height / 2 ) | 0;
+
+							if ( width < 1 ) width = 1;
+							if ( height < 1 ) height = 1;
+
+							level ++;
 
 						}
 
@@ -120,15 +215,19 @@ onmessage = function ( event ) {
 				// send message to main thread.
 				// note that objects in  transferableObjects will be no longer accessible.
 
-				postMessage( {
-					command: 'onLoad',
-					id: id,
-					gltf: {
-						sceneIndex: gltf.scenes.indexOf( gltf.scene ),
-						scenes: scenesJson,
-						animations: animationsJson
-					}
-				}, transferableObjects );
+				Promise.all( pendings ).then( function () {
+
+					postMessage( {
+						command: 'onLoad',
+						id: id,
+						gltf: {
+							sceneIndex: gltf.scenes.indexOf( gltf.scene ),
+							scenes: scenesJson,
+							animations: animationsJson
+						}
+					}, transferableObjects );
+
+				} );
 
 			}, undefined, function ( error ) {
 

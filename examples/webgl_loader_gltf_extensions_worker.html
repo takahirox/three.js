@@ -60,6 +60,7 @@
 			var orbitControls;
 			var container, camera, scene, renderer, loader;
 			var gltf, envMap, mixer, gui, extensionControls;
+			var tileIndex = -10;
 
 			var stats = new Stats();
 			var clock = new THREE.Clock();
@@ -88,17 +89,6 @@
 					addGround: true,
 					shadows: true,
 					extensions: [ 'glTF-MaterialsUnlit' ]
-				},
-				MetalRoughSpheres: {
-					name: 'MetalRoughSpheres (PBR)',
-					url: './models/gltf/MetalRoughSpheres/%s/MetalRoughSpheres.gltf',
-					author: '@emackey',
-					authorURL: 'https://twitter.com/emackey',
-					cameraPos: new THREE.Vector3( 2, 1, 15 ),
-					objectRotation: new THREE.Euler( 0, 0, 0 ),
-					addLights: true,
-					extensions: [ 'glTF', 'glTF-Embedded' ],
-					addEnvMap: true
 				},
 				Duck: {
 					name: 'Duck',
@@ -148,19 +138,7 @@
 					addGround: true,
 					shadows: true,
 					extensions: [ 'glTF', 'glTF-Embedded', 'glTF-Binary', 'glTF-Draco' ]
-				},
-				'Outlined Box': {
-					name: 'Outlined Box',
-					url: './models/gltf/OutlinedBox/OutlinedBox.gltf',
-					author: '@twittmann',
-					authorURL: 'https://github.com/twittmann',
-					cameraPos: new THREE.Vector3( 0, 5, 15 ),
-					objectScale: new THREE.Vector3( 0.01, 0.01, 0.01 ),
-					objectRotation: new THREE.Euler( 0, 90, 0 ),
-					addLights: true,
-					shadows: true,
-					extensions: [ 'glTF' ]
-				},
+				}
 			};
 
 			var state = {
@@ -170,6 +148,50 @@
 			};
 
 			function onload() {
+
+				container = document.getElementById( 'container' );
+				container.appendChild( stats.dom );
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x222222 );
+
+				camera = new THREE.PerspectiveCamera( 45, container.offsetWidth / container.offsetHeight, 0.001, 1000 );
+				//scene.add( camera );
+
+				var ambient = new THREE.AmbientLight( 0x222222 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0xdddddd, 4 );
+				directionalLight.position.set( 0, 0, 1 ).normalize();
+				scene.add( directionalLight );
+
+				spot1 = new THREE.SpotLight( 0xffffff, 1 );
+				spot1.position.set( 10, 20, 10 );
+				spot1.angle = 0.25;
+				spot1.penumbra = 0.75;
+
+				scene.add( spot1 );
+
+				var plane = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry( 0.03, 0.03 ),
+					new THREE.MeshBasicMaterial()
+				);
+				plane.position.y = - 0.01;
+				plane.rotation.x = - Math.PI / 2;
+
+				scene.add( plane );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true, webglVersion: 'webgl2' } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.gammaOutput = true;
+				renderer.physicallyCorrectLights = true;
+
+				container.appendChild( renderer.domElement );
+
+				orbitControls = new THREE.OrbitControls( camera, renderer.domElement );
+
+				loader = new THREE.GLTFLoader();
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -181,10 +203,6 @@
 
 			function initScene( sceneInfo ) {
 
-				container = document.getElementById( 'container' );
-
-				container.appendChild( stats.dom );
-
 				var descriptionEl = document.getElementById( 'description' );
 
 				if ( sceneInfo.author && sceneInfo.authorURL ) {
@@ -193,84 +211,21 @@
 
 				}
 
-				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0x222222 );
+				done = {};
 
-				camera = new THREE.PerspectiveCamera( 45, container.offsetWidth / container.offsetHeight, 0.001, 1000 );
-				scene.add( camera );
+				while ( scene.children.length > 4 ) {
 
-				var spot1;
+					var node = scene.children[ 4 ];
 
-				if ( sceneInfo.addLights ) {
+					node.traverse( function ( object ) {
 
-					var ambient = new THREE.AmbientLight( 0x222222 );
-					scene.add( ambient );
+						freeTextures( object.material );
 
-					var directionalLight = new THREE.DirectionalLight( 0xdddddd, 4 );
-					directionalLight.position.set( 0, 0, 1 ).normalize();
-					scene.add( directionalLight );
+					} );
 
-					spot1 = new THREE.SpotLight( 0xffffff, 1 );
-					spot1.position.set( 10, 20, 10 );
-					spot1.angle = 0.25;
-					spot1.penumbra = 0.75;
-
-					if ( sceneInfo.shadows ) {
-
-						spot1.castShadow = true;
-						spot1.shadow.bias = 0.0001;
-						spot1.shadow.mapSize.width = 2048;
-						spot1.shadow.mapSize.height = 2048;
-
-					}
-
-					scene.add( spot1 );
+					scene.remove( node );
 
 				}
-
-				// RENDERER
-
-				// TODO: Reuse existing WebGLRenderer, GLTFLoaders, and so on
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.gammaOutput = true;
-				renderer.physicallyCorrectLights = true;
-
-				if ( sceneInfo.shadows ) {
-
-					renderer.shadowMap.enabled = true;
-					renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-				}
-
-				container.appendChild( renderer.domElement );
-
-				orbitControls = new THREE.OrbitControls( camera, renderer.domElement );
-
-				if ( sceneInfo.addGround ) {
-
-					var groundMaterial = new THREE.MeshPhongMaterial( { color: 0xFFFFFF } );
-					var ground = new THREE.Mesh( new THREE.PlaneBufferGeometry( 512, 512 ), groundMaterial );
-					ground.receiveShadow = !! sceneInfo.shadows;
-
-					if ( sceneInfo.groundPos ) {
-
-						ground.position.copy( sceneInfo.groundPos );
-
-					} else {
-
-						ground.position.z = - 70;
-
-					}
-
-					ground.rotation.x = - Math.PI / 2;
-
-					scene.add( ground );
-
-				}
-
-				loader = new THREE.GLTFLoader();
 
 				var url = sceneInfo.url.replace( /%s/g, state.extension );
 
@@ -283,6 +238,8 @@
 				var loadStartTime = performance.now();
 
 				loader.load( url, function( data ) {
+
+					tileIndex = -10;
 
 					gltf = data;
 
@@ -298,20 +255,13 @@
 
 					if ( sceneInfo.center ) {
 
-						orbitControls.target.copy( sceneInfo.center );
+					//	orbitControls.target.copy( sceneInfo.center );
 
 					}
 
 					if ( sceneInfo.objectPosition ) {
 
 						object.position.copy( sceneInfo.objectPosition );
-
-						if ( spot1 ) {
-
-							spot1.position.set( sceneInfo.objectPosition.x - 100, sceneInfo.objectPosition.y + 200, sceneInfo.objectPosition.z - 100 );
-							spot1.target.position.copy( sceneInfo.objectPosition );
-
-						}
 
 					}
 
@@ -327,29 +277,11 @@
 
 					}
 
-					if ( sceneInfo.addEnvMap ) {
-
-						if ( ! envMap ) envMap = getEnvMap();
-
-						object.traverse( function( node ) {
-
-							if ( node.material && ( node.material.isMeshStandardMaterial ||
-								 ( node.material.isShaderMaterial && node.material.envMap !== undefined ) ) ) {
-
-								node.material.envMap = envMap;
-								node.material.needsUpdate = true;
-
-							}
-
-						} );
-
-						scene.background = envMap;
-
-					}
+					cache = {};
 
 					object.traverse( function ( node ) {
 
-						if ( node.isMesh || node.isLight ) node.castShadow = true;
+						allocTextures( node.material );
 
 					} );
 
@@ -399,7 +331,13 @@
 
 			}
 
+			var startTime = performance.now();
+
 			function animate() {
+
+				var endTime = performance.now();
+				var elapsedTime = endTime - startTime;
+				// if ( elapsedTime > 30.0 ) console.log( tileIndex, elapsedTime );
 
 				requestAnimationFrame( animate );
 
@@ -407,9 +345,15 @@
 
 				orbitControls.update();
 
+				scene.rotation.y += - 0.01;
+
+				uploadTextures();
+
 				render();
 
 				stats.update();
+
+				startTime = performance.now();
 
 			}
 
@@ -483,16 +427,128 @@
 
 			function reload() {
 
-				if ( container && renderer ) {
-
-					container.removeChild( renderer.domElement );
-
-				}
-
 				if ( loader && mixer ) mixer.stopAllAction();
 
 				updateGUI();
 				initScene( scenes[ state.scene ] );
+
+			}
+
+			function uploadTextures() {
+
+				scene.traverse( function ( mesh ) {
+
+					if ( mesh.material === undefined ) return;
+
+					var material = mesh.material;
+
+					uploadTexture( material.map, tileIndex );
+					uploadTexture( material.aoMap, tileIndex );
+					uploadTexture( material.emissiveMap, tileIndex );
+					uploadTexture( material.normalMap, tileIndex );
+					uploadTexture( material.metalnessMap, tileIndex );
+					uploadTexture( material.roughnessMap, tileIndex );
+
+				} );
+
+				tileIndex ++;
+
+			}
+
+			function uploadTexture( map, index ) {
+
+				if ( index < 0 ||  map === undefined || map === null || map.tiles === undefined ) return;
+
+				var tiles = map.tiles;
+
+				if ( index >= tiles.length ) return;
+
+				var tile = tiles[ index ];
+				var tex = map.clone();
+				tex.image = tile.bitmap;
+				renderer.copyTextureToTexture( new THREE.Vector2( tile.sx, tile.sy ), tex, map, tile.level );
+
+			}
+
+			var textures = {};
+			var done = {};
+			var cache = {};
+
+			function freeTextures( material ) {
+
+				if ( material === undefined ) return;
+
+				for ( var key in material ) {
+
+					if ( ! material[ key ] || material[ key ].isTexture !== true ) continue;
+
+					var map = material[ key ];
+
+					if ( done[ map.uuid ] === true ) continue;
+
+					freeTexture( map );
+
+					done[ map.uuid ] = true;
+
+				}
+
+			}
+
+			function freeTexture( map ) {
+
+				var image = map.image;
+				var key = image.width + ':' + image.height;
+
+				if ( textures[ key ] === undefined ) {
+
+					textures[ key ] = [];
+
+				}
+
+				textures[ key ].push( map );
+
+			}
+
+			function allocTextures( material ) {
+
+				if ( material === undefined ) return;
+
+				for ( var key in material ) {
+
+					if ( ! material[ key ] || material[ key ].isTexture !== true ) continue;
+
+					var map = material[ key ];
+
+					if ( cache[ map.uuid ] === undefined ) {
+
+						cache[ map.uuid ] = allocTexture( map );
+
+					}
+
+					material[ key ] = cache[ map.uuid ];
+
+				}
+
+			}
+
+			function allocTexture( map ) {
+
+				var image = map.image;
+				var key = image.width + ':' + image.height;
+
+				if ( textures[ key ] === undefined || textures[ key ].length === 0 ) {
+
+					return map;
+
+				}
+
+				var map2 = textures[ key ].pop();
+
+				map2.copy( map );
+
+				map2.tiles = map.tiles;
+
+				return map2;
 
 			}
 
