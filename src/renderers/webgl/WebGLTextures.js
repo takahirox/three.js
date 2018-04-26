@@ -88,14 +88,34 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	}
 
-	function generateMipmap( target, texture, width, height ) {
+	function generateMipmap( target, texture, width, height, glFormat, glType ) {
 
-		_gl.generateMipmap( target );
+		//_gl.generateMipmap( target );
 
 		var textureProperties = properties.get( texture );
 
 		// Note: Math.log( x ) * Math.LOG2E used instead of Math.log2( x ) which is not supported by IE11
 		textureProperties.__maxMipLevel = Math.log( Math.max( width, height ) ) * Math.LOG2E;
+
+		if ( width === 1 && height === 1 ) return;
+
+		var level = 1;
+
+		while( true ) {
+
+			width = ( width / 2 ) | 0;
+			height = ( height / 2 ) | 0;
+
+			if ( width < 1 ) width = 1;
+			if ( height < 1 ) height = 1;
+
+			state.texImage2D( _gl.TEXTURE_2D, level, glFormat, width, height, 0, glFormat, glType, null );
+
+			level ++;
+
+			if ( width === 1 && height === 1 ) break;
+
+		}
 
 	}
 
@@ -602,7 +622,10 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			} else {
 
-				state.texImage2D( _gl.TEXTURE_2D, 0, glFormat, glFormat, glType, image );
+				//state.texImage2D( _gl.TEXTURE_2D, 0, glFormat, glFormat, glType, image );
+				state.texImage2D( _gl.TEXTURE_2D, 0, glFormat, image.width, image.height, 0, glFormat, glType, null );
+				textureProperties.__maxMipLevel = 0;
+
 				textureProperties.__maxMipLevel = 0;
 
 			}
@@ -611,7 +634,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 		if ( textureNeedsGenerateMipmaps( texture, isPowerOfTwoImage ) ) {
 
-			generateMipmap( _gl.TEXTURE_2D, texture, image.width, image.height );
+			generateMipmap( _gl.TEXTURE_2D, texture, image.width, image.height, glFormat, glType );
 
 		}
 
