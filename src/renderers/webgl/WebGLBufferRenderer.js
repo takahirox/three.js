@@ -22,12 +22,22 @@ function WebGLBufferRenderer( gl, extensions, info ) {
 
 	function renderInstances( geometry, start, count ) {
 
-		var extension = extensions.get( 'ANGLE_instanced_arrays' );
+		var extension;
 
-		if ( extension === null ) {
+		if ( gl.isWebGL2 ) {
 
-			console.error( 'THREE.WebGLBufferRenderer: using THREE.InstancedBufferGeometry but hardware does not support extension ANGLE_instanced_arrays.' );
-			return;
+			extension = gl;
+
+		} else {
+
+			extension = extensions.get( 'ANGLE_instanced_arrays' );
+
+			if ( extension === null ) {
+
+				console.error( 'THREE.WebGLBufferRenderer: using THREE.InstancedBufferGeometry but hardware does not support extension ANGLE_instanced_arrays.' );
+				return;
+
+			}
 
 		}
 
@@ -37,11 +47,11 @@ function WebGLBufferRenderer( gl, extensions, info ) {
 
 			count = position.data.count;
 
-			extension.drawArraysInstancedANGLE( mode, 0, count, geometry.maxInstancedCount );
+			extension[ gl.isWebGL2 ? 'drawArraysInstanced' : 'drawArraysInstancedANGLE' ]( mode, 0, count, geometry.maxInstancedCount );
 
 		} else {
 
-			extension.drawArraysInstancedANGLE( mode, start, count, geometry.maxInstancedCount );
+			extension[ gl.isWebGL2 ? 'drawArraysInstanced' : 'drawArraysInstancedANGLE' ]( mode, start, count, geometry.maxInstancedCount );
 
 		}
 

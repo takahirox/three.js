@@ -65,7 +65,8 @@ function WebGLRenderer( parameters ) {
 		_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 		_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 		_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
+		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
+		_webglVersion = parameters.webglVersion !== undefined ? parameters.webglVersion : 'webgl';
 
 	var currentRenderList = null;
 	var currentRenderState = null;
@@ -190,11 +191,17 @@ function WebGLRenderer( parameters ) {
 		_canvas.addEventListener( 'webglcontextlost', onContextLost, false );
 		_canvas.addEventListener( 'webglcontextrestored', onContextRestore, false );
 
-		_gl = _context || _canvas.getContext( 'webgl', contextAttributes ) || _canvas.getContext( 'experimental-webgl', contextAttributes );
+		var webglVersion = ( _webglVersion === 'webgl2' || _webglVersion === 'auto' ) ? 'webgl2' : 'webgl';
+
+		_gl = _context || _canvas.getContext( webglVersion, contextAttributes );
+
+		if ( _gl === null && _webglVersion === 'auto' ) _gl = _canvas.getContext( 'webgl', contextAttributes );
+
+		if ( _gl === null && ( webglVersion === 'webgl' || _webglVersion === 'auto' ) ) _gl = _canvas.getContext( 'experimental-webgl', contextAttributes );
 
 		if ( _gl === null ) {
 
-			if ( _canvas.getContext( 'webgl' ) !== null ) {
+			if ( _canvas.getContext( webglVersion ) !== null ) {
 
 				throw new Error( 'Error creating WebGL context with your selected attributes.' );
 
@@ -205,6 +212,8 @@ function WebGLRenderer( parameters ) {
 			}
 
 		}
+
+		_gl.isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && _gl instanceof WebGL2RenderingContext;
 
 		// Some experimental-webgl implementations do not have getShaderPrecisionFormat
 
@@ -236,14 +245,20 @@ function WebGLRenderer( parameters ) {
 	function initGLContext() {
 
 		extensions = new WebGLExtensions( _gl );
-		extensions.get( 'WEBGL_depth_texture' );
-		extensions.get( 'OES_texture_float' );
+
+		if ( ! _gl.isWebGL2 ) {
+
+			extensions.get( 'WEBGL_depth_texture' );
+			extensions.get( 'OES_texture_float' );
+			extensions.get( 'OES_texture_half_float' );
+			extensions.get( 'OES_texture_half_float_linear' );
+			extensions.get( 'OES_standard_derivatives' );
+			extensions.get( 'OES_element_index_uint' );
+			extensions.get( 'ANGLE_instanced_arrays' );
+
+		}
+
 		extensions.get( 'OES_texture_float_linear' );
-		extensions.get( 'OES_texture_half_float' );
-		extensions.get( 'OES_texture_half_float_linear' );
-		extensions.get( 'OES_standard_derivatives' );
-		extensions.get( 'OES_element_index_uint' );
-		extensions.get( 'ANGLE_instanced_arrays' );
 
 		utils = new WebGLUtils( _gl, extensions );
 
@@ -837,7 +852,7 @@ function WebGLRenderer( parameters ) {
 
 	function setupVertexAttributes( material, program, geometry ) {
 
-		if ( geometry && geometry.isInstancedBufferGeometry ) {
+		if ( geometry && geometry.isInstancedBufferGeometry & ! _gl.isWebGL2 ) {
 
 			if ( extensions.get( 'ANGLE_instanced_arrays' ) === null ) {
 
@@ -2514,8 +2529,8 @@ function WebGLRenderer( parameters ) {
 				}
 
 				if ( textureType !== UnsignedByteType && utils.convert( textureType ) !== _gl.getParameter( _gl.IMPLEMENTATION_COLOR_READ_TYPE ) && // IE11, Edge and Chrome Mac < 52 (#9513)
-					! ( textureType === FloatType && ( extensions.get( 'OES_texture_float' ) || extensions.get( 'WEBGL_color_buffer_float' ) ) ) && // Chrome Mac >= 52 and Firefox
-					! ( textureType === HalfFloatType && extensions.get( 'EXT_color_buffer_half_float' ) ) ) {
+					! ( textureType === FloatType && ( _gl.isWebGL2 || extensions.get( 'OES_texture_float' ) || extensions.get( 'WEBGL_color_buffer_float' ) ) ) && // Chrome Mac >= 52 and Firefox
+					! ( textureType === HalfFloatType && ( _gl.isWebGL2 ? extensions.get( 'EXT_color_buffer_float' ) : extensions.get( 'EXT_color_buffer_half_float' ) ) ) ) {
 
 					console.error( 'THREE.WebGLRenderer.readRenderTargetPixels: renderTarget is not in UnsignedByteType or implementation defined type.' );
 					return;
