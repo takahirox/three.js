@@ -122,7 +122,7 @@
 
 				var loader = new THREE.MMDLoader();
 
-				loader.loadModel( modelFile, function ( object ) {
+				loader.load( modelFile, function ( object ) {
 
 					mesh = object;
 					mesh.position.y = -10;
@@ -135,7 +135,7 @@
 
 						var vpdFile = vpdFiles[ vpdIndex ];
 
-						loader.loadVpd( vpdFile, function ( vpd ) {
+						loader.loadPose( vpdFile, function ( vpd ) {
 
 							vpds.push( vpd );
 

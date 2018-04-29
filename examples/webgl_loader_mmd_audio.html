@@ -32,7 +32,7 @@
 		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank" rel="noopener">Model Data</a>
 		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank" rel="noopener">Dance Data</a>
 		<a href="http://www.nicovideo.jp/watch/sm11938255" target="_blank" rel="noopener">Audio Data</a><br />
-		<a href="http://www.nicovideo.jp/watch/sm19168559" target="_blank" rel="noopener">Original Camera Data(I've customized this)</a>
+		Camera is customized from <a href="http://www.nicovideo.jp/watch/sm19168559" target="_blank" rel="noopener">this Data</a>
 		</div>
 
 		<script src="../build/three.js"></script>
@@ -120,7 +120,7 @@
 
 				var loader = new THREE.MMDLoader();
 
-				loader.load( modelFile, vmdFiles, function ( object ) {
+				loader.loadModelWithAnimation( modelFile, vmdFiles, function ( object ) {
 
 					mesh = object;
 
@@ -128,11 +128,11 @@
 					helper.setAnimation( mesh );
 					helper.setPhysics( mesh );
 
-					loader.loadVmds( cameraFiles, function ( vmd ) {
+					loader.loadAnimation( cameraFiles, function ( vmd ) {
 
 						helper.setCamera( camera );
 
-						loader.pourVmdIntoCamera( camera, vmd );
+						loader.cameraAnimationBuilder.build( camera, vmd );
 						helper.setCameraAnimation( camera );
 
 						loader.loadAudio( audioFile, function ( audio, listener ) {
