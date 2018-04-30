@@ -120,7 +120,7 @@
 
 				var loader = new THREE.MMDLoader();
 
-				loader.loadModelWithAnimation( modelFile, vmdFiles, function ( object ) {
+				loader.loadWithAnimation( modelFile, vmdFiles, function ( object ) {
 
 					mesh = object;
 
@@ -132,7 +132,9 @@
 
 						helper.setCamera( camera );
 
-						loader.cameraAnimationBuilder.build( camera, vmd );
+						camera.animations = [ loader.animationBuilder.buildCameraAnimation( vmd, camera ) ];
+						camera.center = new THREE.Vector3();
+
 						helper.setCameraAnimation( camera );
 
 						loader.loadAudio( audioFile, function ( audio, listener ) {

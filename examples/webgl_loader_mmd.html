@@ -124,7 +124,7 @@
 
 				var loader = new THREE.MMDLoader();
 
-				loader.loadModelWithAnimation( modelFile, vmdFiles, function ( object ) {
+				loader.loadWithAnimation( modelFile, vmdFiles, function ( object ) {
 
 					mesh = object;
 					mesh.position.y = -10;

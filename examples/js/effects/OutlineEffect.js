@@ -12,7 +12,7 @@
  * } );
  *
  * // How to set outline parameters for each material
- * material.outlineParameters = {
+ * material.userData.outlineParameters = {
  * 	thickNess: 0.01,
  * 	color: new THREE.Color( 0x888888 ),
  * 	alpha: 0.8,
@@ -140,7 +140,7 @@ THREE.OutlineEffect = function ( renderer, parameters ) {
 
 		var shaderID = shaderIDs[ originalMaterial.type ];
 		var originalUniforms, originalVertexShader;
-		var outlineParameters = originalMaterial.outlineParameters;
+		var outlineParameters = originalMaterial.userData.outlineParameters;
 
 		if ( shaderID !== undefined ) {
 
@@ -300,7 +300,7 @@ THREE.OutlineEffect = function ( renderer, parameters ) {
 
 	function updateUniforms( material, originalMaterial ) {
 
-		var outlineParameters = originalMaterial.outlineParameters;
+		var outlineParameters = originalMaterial.userData.outlineParameters;
 
 		material.uniforms.outlineAlpha.value = originalMaterial.opacity;
 
@@ -318,7 +318,7 @@ THREE.OutlineEffect = function ( renderer, parameters ) {
 
 		if ( material.name === 'invisible' ) return;
 
-		var outlineParameters = originalMaterial.outlineParameters;
+		var outlineParameters = originalMaterial.userData.outlineParameters;
 
 		material.skinning = originalMaterial.skinning;
 		material.morphTargets = originalMaterial.morphTargets;
