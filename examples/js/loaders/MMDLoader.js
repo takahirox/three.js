@@ -2022,7 +2022,7 @@ THREE.MMDHelper = ( function () {
 
 			params = params || {};
 
-			if ( params.preventResetPose !== true ) mesh.pose();
+			if ( params.resetPose === false ) mesh.pose();
 
 			var bones = mesh.skeleton.bones;
 			var boneParams = vpd.bones;
@@ -2053,14 +2053,14 @@ THREE.MMDHelper = ( function () {
 
 			mesh.updateMatrixWorld( true );
 
-			if ( params.preventIk !== true ) {
+			if ( params.ik === false ) {
 
 				var solver = this._createCCDIKSolver( mesh );
 				solver.update( params.saveOriginalBonesBeforeIK );
 
 			}
 
-			if ( params.preventGrant !== true ) {
+			if ( params.grant === false ) {
 
 				var solver = new THREE.MMDGrantSolver( mesh );
 				solver.update();
@@ -2321,7 +2321,7 @@ THREE.MMDHelper = ( function () {
 
 			objects.physics = this._createMMDPhysics( mesh, params );
 
-			if ( objects.mixer && params.preventAnimationWarmup !== true ) {
+			if ( objects.mixer && params.animationWarmup !== false ) {
 
 				this._animateMesh( mesh, 0 );
 				objects.physics.reset();
