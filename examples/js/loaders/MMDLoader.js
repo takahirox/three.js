@@ -230,18 +230,19 @@ THREE.MMDLoader = ( function () {
 
 		/**
 		 * @param {string} url - url to .vpd file
+		 * @param {boolean} isUnicode
 		 * @param {function} onLoad
 		 * @param {function} onProgress
 		 * @param {function} onError
 		 */
-		loadVPD: function ( url, onLoad, onProgress, onError, params ) {
+		loadVPD: function ( url, isUnicode, onLoad, onProgress, onError, params ) {
 
 			params = params || {};
 
 			var parser = this._getParser();
 
 			this.loader
-				.setMimeType( params.charcode === 'unicode' ? undefined : 'text/plain; charset=shift_jis' )
+				.setMimeType( isUnicode ? undefined : 'text/plain; charset=shift_jis' )
 				.setResponseType( 'text' )
 				.load( url, function ( text ) {
 
@@ -1342,9 +1343,9 @@ THREE.MMDLoader = ( function () {
 
 		build: function ( vmd, mesh, name ) {
 
-			var animations = {};
-			animations.skeletal = this.buildSkeletalAnimation( vmd, mesh, name );
-			animations.morph = this.buildMorphAnimation( vmd, mesh, name );
+			var animations = [];
+			animations.push( this.buildSkeletalAnimation( vmd, mesh, name ) );
+			animations.push( this.buildMorphAnimation( vmd, mesh, name ) );
 			return animations;
 
 		},
@@ -1473,7 +1474,7 @@ THREE.MMDLoader = ( function () {
 
 			}
 
-			return new THREE.AnimationClip( name || '', - 1, tracks );
+			return new THREE.AnimationClip( ( name || '' ) + 'Morph', - 1, tracks );
 
 		},
 
@@ -2254,10 +2255,7 @@ THREE.MMDHelper = ( function () {
 		_setupMeshAnimation: function ( mesh, animation ) {
 
 			var animations = Array.isArray( animation )
-				? Array.isArray( animation )
-				: animation instanceof THREE.AnimationClip
-					? [ animation ]
-					: Object.values( animation );
+				? animation : [ animation ];
 
 			var objects = this.objects.get( mesh );
 
@@ -2291,10 +2289,7 @@ THREE.MMDHelper = ( function () {
 		_setupCameraAnimation: function ( camera, animation ) {
 
 			var animations = Array.isArray( animation )
-				? Array.isArray( animation )
-				: animation instanceof THREE.AnimationClip
-					? [ animation ]
-					: Object.values( animation );
+				? animation : [ animation ];
 
 			var objects = this.objects.get( camera );
 
