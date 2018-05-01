@@ -964,7 +964,7 @@ THREE.MMDLoader = ( function () {
 
 					params.userData.outlineParameters = {
 						thickness: material.edgeFlag === 1 ? 0.003 : 0.0,
-						color: new THREE.Color( 0.0, 0.0, 0.0 ),
+						color: [ 0, 0, 0 ],
 						alpha: 1.0,
 						visible: material.edgeFlag === 1
 					};
@@ -1022,7 +1022,7 @@ THREE.MMDLoader = ( function () {
 					// parameters for OutlineEffect
 					params.userData.outlineParameters = {
 						thickness: material.edgeSize / 300,
-						color: new THREE.Color().fromArray( material.edgeColor ),
+						color: material.edgeColor.slice( 0, 3 ),
 						alpha: material.edgeColor[ 3 ],
 						visible: ( material.flag & 0x10 ) !== 0 && material.edgeSize > 0.0
 					};
