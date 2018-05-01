@@ -10,14 +10,11 @@
  *  - THREE.OutlineEffect
  *
  *
- * This loader loads and parses PMD/PMX and VMD binary files
- * then creates mesh for Three.js.
+ * MMDLoader loads and parses PMD/PMX, VMD, and VPD files
+ * then creates Three.js Objects
  *
  * PMD/PMX is a model data format and VMD is a motion data format
  * used in MMD(Miku Miku Dance).
- *
- * MMD is a 3D CG animation tool which is popular in Japan.
- *
  *
  * MMD official site
  *  - http://www.geocities.jp/higuchuu4/index_e.htm
@@ -39,25 +36,16 @@
 
 THREE.MMDLoader = ( function () {
 
+	/**
+	 * @param {THREE.LoadingManager} manager
+	 */
 	function MMDLoader( manager ) {
-
-		if ( typeof MMDParser === 'undefined' ) {
-
-			throw new Error( 'THREE.MMDLoader: Import MMDParser https://www.npmjs.com/package/mmd-parser' );
-
-		}
-
-		if ( THREE.TGALoader === undefined ) {
-
-			throw new Error( 'THREE.MMDLoader: Import THREE.TGALoader' );
-
-		}
 
 		this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
 
 		this.loader = new THREE.FileLoader( this.manager );
 
-		this.parser = new MMDParser.Parser();
+		this.parser = null; // lazy generation
 		this.meshBuilder = new MeshBuilder( this.manager );
 		this.animationBuilder = new AnimationBuilder();
 
@@ -92,11 +80,11 @@ THREE.MMDLoader = ( function () {
 		 */
 		load: function ( url, onLoad, onProgress, onError ) {
 
-			var parser = this.parser;
+			var parser = this._getParser();
 			var builder = this.meshBuilder.setCrossOrigin( this.crossOrigin );
 
 			var texturePath = THREE.LoaderUtils.extractUrlBase( url );
-			var modelExtension = extractExtension( url ).toLowerCase();
+			var modelExtension = this._extractExtension( url ).toLowerCase();
 
 			// Should I detect by seeing header?
 			if ( modelExtension !== 'pmd' && modelExtension !== 'pmx' ) {
@@ -116,7 +104,7 @@ THREE.MMDLoader = ( function () {
 		},
 
 		/**
-		 * @param {string|Array{string}} url - url(s) to animation(.vmd) file
+		 * @param {string|Array<string>} url - url(s) to animation(.vmd) file(s)
 		 * @param {THREE.SkinnedMesh|THREE.Camera} object
 		 * @param {function} onLoad
 		 * @param {function} onProgress
@@ -128,19 +116,9 @@ THREE.MMDLoader = ( function () {
 
 			this.loadVMD( url, function ( vmd ) {
 
-				var animations;
-
-				if ( object.isCamera ) {
-
-					animations = builder.buildCameraAnimation( vmd, object );
-
-				} else {
-
-					animations = builder.build( vmd, object );
-
-				}
-
-				onLoad( animations );
+				onLoad( object.isCamera
+					? builder.buildCameraAnimation( vmd, object )
+					: builder.build( vmd, object ) );
 
 			}, onProgress, onError );
 
@@ -172,28 +150,17 @@ THREE.MMDLoader = ( function () {
 
 		},
 
-		loadPose: function ( url, onLoad, onProgress, onError, params ) {
-
-			params = params || {};
-
-			var parser = this.parser;
-
-			this.loader
-				.setMimeType( params.charcode === 'unicode' ? undefined : 'text/plain; charset=shift_jis' )
-				.setResponseType( 'text' )
-				.load( url, function ( text ) {
-
-					onLoad( parser.parseVpd( text, true ) );
-
-				}, onProgress, onError );
-
-		},
-
 		// Load MMD assets as Object data parsed by MMDParser
 
+		/**
+		 * @param {string} url - url to .pmd file
+		 * @param {function} onLoad
+		 * @param {function} onProgress
+		 * @param {function} onError
+		 */
 		loadPMD: function ( url, onLoad, onProgress, onError ) {
 
-			var parser = this.parser;
+			var parser = this._getParser();
 
 			this.loader
 				.setMimeType( undefined )
@@ -206,9 +173,15 @@ THREE.MMDLoader = ( function () {
 
 		},
 
+		/**
+		 * @param {string} url - url to .pmx file
+		 * @param {function} onLoad
+		 * @param {function} onProgress
+		 * @param {function} onError
+		 */
 		loadPMX: function ( url, onLoad, onProgress, onError ) {
 
-			var parser = this.parser;
+			var parser = this._getParser();
 
 			this.loader
 				.setMimeType( undefined )
@@ -221,6 +194,12 @@ THREE.MMDLoader = ( function () {
 
 		},
 
+		/**
+		 * @param {string|Array<string>} url - url(s) to .vmd file(s)
+		 * @param {function} onLoad
+		 * @param {function} onProgress
+		 * @param {function} onError
+		 */
 		loadVMD: function ( url, onLoad, onProgress, onError ) {
 
 			var urls = Array.isArray( url ) ? url : [ url ];
@@ -229,7 +208,7 @@ THREE.MMDLoader = ( function () {
 			var vmdNum = urls.length;
 
 			var scope = this;
-			var parser = this.parser;
+			var parser = this._getParser();
 
 			this.loader
 				.setMimeType( undefined )
@@ -249,11 +228,17 @@ THREE.MMDLoader = ( function () {
 
 		},
 
+		/**
+		 * @param {string} url - url to .vpd file
+		 * @param {function} onLoad
+		 * @param {function} onProgress
+		 * @param {function} onError
+		 */
 		loadVPD: function ( url, onLoad, onProgress, onError, params ) {
 
 			params = params || {};
 
-			var parser = this.parser;
+			var parser = this._getParser();
 
 			this.loader
 				.setMimeType( params.charcode === 'unicode' ? undefined : 'text/plain; charset=shift_jis' )
@@ -264,25 +249,38 @@ THREE.MMDLoader = ( function () {
 
 				}, onProgress, onError );
 
+		},
+
+		// private methods
+
+		_extractExtension: function ( url ) {
+
+			var index = url.lastIndexOf( '.' );
+			return index < 0 ? '' : url.slice( index + 1 );
+
+		},
+
+		_getParser: function () {
+
+			if ( this.parser === null ) {
+
+				if ( typeof MMDParser === 'undefined' ) {
+
+					throw new Error( 'THREE.MMDLoader: Import MMDParser https://www.npmjs.com/package/mmd-parser' );
+
+				}
+
+				this.parser = new MMDParser.Parser();
+
+			}
+
+			return this.parser;
+
 		}
 
 	};
 
 	// Utilities
-
-	function extractExtension( url ) {
-
-		var index = url.lastIndexOf( '.' );
-
-		if ( index < 0 ) {
-
-			return '';
-
-		}
-
-		return url.slice( index + 1 );
-
-	}
 
 	/*
 	 * base64 encoded defalut toon textures toon00.bmp - toon10.bmp.
@@ -822,8 +820,10 @@ THREE.MMDLoader = ( function () {
 
 	function MaterialBuilder( manager ) {
 
+		this.manager = manager;
+
 		this.textureLoader = new THREE.TextureLoader( this.manager );
-		this.tgaLoader = new THREE.TGALoader( this.manager );
+		this.tgaLoader = null; // lazy generation
 
 	}
 
@@ -1100,6 +1100,26 @@ THREE.MMDLoader = ( function () {
 
 		},
 
+		// private methods
+
+		_getTGALoader: function () {
+
+			if ( this.tgaLoader === null ) {
+
+				if ( THREE.TGALoader === undefined ) {
+
+					throw new Error( 'THREE.MMDLoader: Import THREE.TGALoader' );
+
+				}
+
+				this.tgaLoader = new THREE.TGALoader( this.manager );
+
+			}
+
+			return this.tgaLoader;
+
+		},
+
 		_isDefaultToonTexture: function ( name ) {
 
 			if ( name.length !== 10 ) return false;
@@ -1148,7 +1168,7 @@ THREE.MMDLoader = ( function () {
 			if ( loader === null ) {
 
 				loader = ( filePath.slice( - 4 ).toLowerCase() === '.tga' )
-					? this.tgaLoader
+					? this._getTGALoader()
 					: this.textureLoader;
 
 			}
@@ -1322,9 +1342,9 @@ THREE.MMDLoader = ( function () {
 
 		build: function ( vmd, mesh, name ) {
 
-			var animations = [];
-			animations.push( this.buildSkeletalAnimation( vmd, mesh, name ) );
-			animations.push( this.buildMorphAnimation( vmd, mesh, name ) );
+			var animations = {};
+			animations.skeletal = this.buildSkeletalAnimation( vmd, mesh, name );
+			animations.morph = this.buildMorphAnimation( vmd, mesh, name );
 			return animations;
 
 		},
@@ -1337,20 +1357,6 @@ THREE.MMDLoader = ( function () {
 				array.push( interpolation[ index + 8 ] / 127 ); // x2
 				array.push( interpolation[ index + 4 ] / 127 ); // y1
 				array.push( interpolation[ index + 12 ] / 127 ); // y2
-
-			};
-
-			function createTrack( node, typedKeyFrameTrack, times, values, interpolations ) {
-
-				var track = new typedKeyFrameTrack( node, times, values );
-
-				track.createInterpolant = function InterpolantFactoryMethodCubicBezier( result ) {
-
-					return new CubicBezierInterpolation( this.times, this.values, this.getValueSize(), result, new Float32Array( interpolations ) );
-
-				};
-
-				return track;
 
 			};
 
@@ -1420,7 +1426,7 @@ THREE.MMDLoader = ( function () {
 
 			}
 
-			return new THREE.AnimationClip( name === undefined ? '' : name, - 1, tracks );
+			return new THREE.AnimationClip( name || '', - 1, tracks );
 
 		},
 
@@ -1467,7 +1473,7 @@ THREE.MMDLoader = ( function () {
 
 			}
 
-			return new THREE.AnimationClip( ( name === undefined ? '' : name ) + 'Morph', - 1, tracks );
+			return new THREE.AnimationClip( name || '', - 1, tracks );
 
 		},
 
@@ -1579,7 +1585,7 @@ THREE.MMDLoader = ( function () {
 			tracks.push( this._createTrack( '.position', THREE.VectorKeyframeTrack, times, positions, pInterpolations ) );
 			tracks.push( this._createTrack( '.fov', THREE.NumberKeyframeTrack, times, fovs, fInterpolations ) );
 
-			return new THREE.AnimationClip( name === undefined ? '' : name, - 1, tracks );
+			return new THREE.AnimationClip( name || '', - 1, tracks );
 
 		},
 
@@ -1815,40 +1821,40 @@ THREE.MMDGrantSolver = ( function () {
 
 		update: function () {
 
-			var q = new THREE.Quaternion();
+			var quaternion = new THREE.Quaternion();
 
 			return function () {
 
 				for ( var i = 0, il = this.mesh.geometry.grants.length; i < il; i ++ ) {
 
-					var g = this.mesh.geometry.grants[ i ];
-					var b = this.mesh.skeleton.bones[ g.index ];
-					var pb = this.mesh.skeleton.bones[ g.parentIndex ];
+					var grant = this.mesh.geometry.grants[ i ];
+					var bone = this.mesh.skeleton.bones[ grant.index ];
+					var parentBone = this.mesh.skeleton.bones[ grant.parentIndex ];
 
-					if ( g.isLocal ) {
+					if ( grant.isLocal ) {
 
 						// TODO: implement
-						if ( g.affectPosition ) {
+						if ( grant.affectPosition ) {
 
 						}
 
 						// TODO: implement
-						if ( g.affectRotation ) {
+						if ( grant.affectRotation ) {
 
 						}
 
 					} else {
 
 						// TODO: implement
-						if ( g.affectPosition ) {
+						if ( grant.affectPosition ) {
 
 						}
 
-						if ( g.affectRotation ) {
+						if ( grant.affectRotation ) {
 
-							q.set( 0, 0, 0, 1 );
-							q.slerp( pb.quaternion, g.ratio );
-							b.quaternion.multiply( q );
+							quaternion.set( 0, 0, 0, 1 );
+							quaternion.slerp( parentBone.quaternion, grant.ratio );
+							bone.quaternion.multiply( quaternion );
 
 						}
 
@@ -1869,6 +1875,9 @@ THREE.MMDGrantSolver = ( function () {
 
 THREE.MMDHelper = ( function () {
 
+	/**
+	 * @param {Object} params
+	 */
 	function MMDHelper( params ) {
 
 		params = params || {};
@@ -1882,7 +1891,7 @@ THREE.MMDHelper = ( function () {
 		this.audio = null;
 		this.audioManager = null;
 
-		this.objects = new Map();
+		this.objects = new WeakMap();
 
 		this.animationConfiguration = {
 			sync: params.sync !== undefined
@@ -1909,6 +1918,11 @@ THREE.MMDHelper = ( function () {
 
 		constructor: MMDHelper,
 
+		/**
+		 * @param {THREE.SkinnedMesh|THREE.Camera|THREE.Audio} object
+		 * @param {Object} params
+		 * @return {THREE.MMDHelper}
+		 */
 		add: function ( object, params ) {
 
 			params = params || {};
@@ -1919,11 +1933,11 @@ THREE.MMDHelper = ( function () {
 
 			} else if ( object.isCamera ) {
 
-				this._setCamera( object, params );
+				this._setupCamera( object, params );
 
 			} else if ( object.type === 'Audio' ) {
 
-				this._setAudio( object, params );
+				this._setupAudio( object, params );
 
 			} else {
 
@@ -1941,6 +1955,10 @@ THREE.MMDHelper = ( function () {
 
 		},
 
+		/**
+		 * @param {THREE.SkinnedMesh|THREE.Camera|THREE.Audio} object
+		 * @return {THREE.MMDHelper}
+		 */
 		remove: function ( object ) {
 
 			if ( object.isSkinnedMesh ) {
@@ -1971,9 +1989,13 @@ THREE.MMDHelper = ( function () {
 
 		},
 
+		/**
+		 * @param {Number} delta
+		 * @return {THREE.MMDHelper}
+		 */
 		animate: function ( delta ) {
 
-			this._controlAudio( delta );
+			if ( this.audioManager !== null ) this.audioManager.control( delta );
 
 			for ( var i = 0; i < this.meshes.length; i ++ ) {
 
@@ -1989,6 +2011,12 @@ THREE.MMDHelper = ( function () {
 
 		},
 
+		/**
+		 * @param {THREE.SkinnedMesh} mesh
+		 * @param {Object} vpd
+		 * @param {Object} params
+		 * @return {THREE.MMDHelper}
+		 */
 		pose: function ( mesh, vpd, params ) {
 
 			params = params || {};
@@ -2026,12 +2054,12 @@ THREE.MMDHelper = ( function () {
 
 			if ( params.preventIk !== true ) {
 
-				var solver = new THREE.CCDIKSolver( mesh );
+				var solver = this._createCCDIKSolver( mesh );
 				solver.update( params.saveOriginalBonesBeforeIK );
 
 			}
 
-			if ( params.preventGrant !== true && mesh.geometry.grants !== undefined ) {
+			if ( params.preventGrant !== true ) {
 
 				var solver = new THREE.MMDGrantSolver( mesh );
 				solver.update();
@@ -2042,6 +2070,11 @@ THREE.MMDHelper = ( function () {
 
 		},
 
+		/**
+		 * @param {string} key
+		 * @param {boolean} enebled
+		 * @return {THREE.MMDHelper}
+		 */
 		enable: function ( key, enabled ) {
 
 			if ( this.enabled[ key ] === undefined ) {
@@ -2086,13 +2119,13 @@ THREE.MMDHelper = ( function () {
 
 			if ( params.animation !== undefined ) {
 
-				this._setMeshAnimation( mesh, params.animation );
+				this._setupMeshAnimation( mesh, params.animation );
 
 			}
 
 			if ( params.physics === true ) {
 
-				this._setMeshPhysics( mesh, params );
+				this._setupMeshPhysics( mesh, params );
 
 			}
 
@@ -2100,11 +2133,11 @@ THREE.MMDHelper = ( function () {
 
 		},
 
-		_setCamera: function ( camera, params ) {
+		_setupCamera: function ( camera, params ) {
 
 			if ( this.camera === camera ) {
 
-				throw new Error( 'THREE.MMDHelper._setCamera: '
+				throw new Error( 'THREE.MMDHelper._setupCamera: '
 					+ 'Camera \'' + camera.name + '\' has already been set.' );
 
 			}
@@ -2119,7 +2152,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( params.animation !== undefined ) {
 
-				this._setCameraAnimation( camera, params.animation )
+				this._setupCameraAnimation( camera, params.animation )
 
 			}
 
@@ -2127,11 +2160,11 @@ THREE.MMDHelper = ( function () {
 
 		},
 
-		_setAudio: function ( audio, params ) {
+		_setupAudio: function ( audio, params ) {
 
 			if ( this.audio === audio ) {
 
-				throw new Error( 'THREE.MMDHelper._setAudio: '
+				throw new Error( 'THREE.MMDHelper._setupAudio: '
 					+ 'Audio \'' + audio.name + '\' has already been set.' );
 
 			}
@@ -2140,6 +2173,10 @@ THREE.MMDHelper = ( function () {
 
 			this.audio = audio;
 			this.audioManager = new AudioManager( audio, params );
+
+			this.objects.set( this.audioManager, {
+				duration: this.audioManager.duration
+			} );
 
 			return this;
 
@@ -2205,6 +2242,8 @@ THREE.MMDHelper = ( function () {
 
 			}
 
+			this.objects.delete( this.audioManager );
+
 			this.audio = null;
 			this.audioManager = null;
 
@@ -2212,9 +2251,13 @@ THREE.MMDHelper = ( function () {
 
 		},
 
-		_setMeshAnimation: function ( mesh, animation ) {
+		_setupMeshAnimation: function ( mesh, animation ) {
 
-			var animations = Array.isArray( animation ) ? animation : [ animation ];
+			var animations = Array.isArray( animation )
+				? Array.isArray( animation )
+				: animation instanceof THREE.AnimationClip
+					? [ animation ]
+					: Object.values( animation );
 
 			var objects = this.objects.get( mesh );
 
@@ -2238,19 +2281,34 @@ THREE.MMDHelper = ( function () {
 
 			} );
 
-			objects.ikSolver = new THREE.CCDIKSolver( mesh );
-
-			if ( mesh.geometry.grants !== undefined ) {
-
-				objects.grantSolver = new THREE.MMDGrantSolver( mesh );
-
-			}
+			objects.ikSolver = this._createCCDIKSolver( mesh );
+			objects.grantSolver = new THREE.MMDGrantSolver( mesh );
 
 			return this;
 
 		},
 
-		_setMeshPhysics: function ( mesh, params ) {
+		_setupCameraAnimation: function ( camera, animation ) {
+
+			var animations = Array.isArray( animation )
+				? Array.isArray( animation )
+				: animation instanceof THREE.AnimationClip
+					? [ animation ]
+					: Object.values( animation );
+
+			var objects = this.objects.get( camera );
+
+			objects.mixer = new THREE.AnimationMixer( camera );
+
+			for ( var i = 0, il = animations.length; i < il; i ++ ) {
+
+				objects.mixer.clipAction( animations[ i ] ).play();
+
+			}
+
+		},
+
+		_setupMeshPhysics: function ( mesh, params ) {
 
 			params = Object.assign( {}, params );
 
@@ -2266,7 +2324,7 @@ THREE.MMDHelper = ( function () {
 
 			var warmup = params.warmup !== undefined ? params.warmup : 60;
 
-			objects.physics = new THREE.MMDPhysics( mesh, params );
+			objects.physics = this._createMMDPhysics( mesh, params );
 
 			if ( objects.mixer && params.preventAnimationWarmup !== true ) {
 
@@ -2278,22 +2336,6 @@ THREE.MMDHelper = ( function () {
 			objects.physics.warmup( warmup );
 
 			this._optimizeIK( mesh, true );
-
-		},
-
-		_setCameraAnimation: function ( camera, animation ) {
-
-			var animations = Array.isArray( animation ) ? animation : [ animation ];
-
-			var objects = this.objects.get( camera );
-
-			objects.mixer = new THREE.AnimationMixer( camera );
-
-			for ( var i = 0, il = animations.length; i < il; i ++ ) {
-
-				objects.mixer.clipAction( animations[ i ] ).play();
-
-			}
 
 		},
 
@@ -2397,11 +2439,27 @@ THREE.MMDHelper = ( function () {
 
 		},
 
-		_controlAudio: function ( delta ) {
+		_createCCDIKSolver: function ( mesh ) {
 
-			if ( this.audioManager === null ) return;
+			if ( THREE.CCDIKSolver === undefined ) {
 
-			this.audioManager.control( delta );
+				throw new Error( 'THREE.MMDHelper: Import THREE.CCDIKSolver.' );
+
+			}
+
+			return new THREE.CCDIKSolver( mesh );
+
+		},
+
+		_createMMDPhysics: function ( mesh, params ) {
+
+			if ( THREE.MMDPhysics === undefined ) {
+
+				throw new Error( 'THREE.MMDPhysics: Import THREE.MMDPhysics.' );
+
+			}
+
+			return new THREE.MMDPhysics( mesh, params );
 
 		},
 
@@ -2413,6 +2471,7 @@ THREE.MMDHelper = ( function () {
 
 			var max = 0.0;
 
+			var objects = this.objects;
 			var meshes = this.meshes;
 			var camera = this.camera;
 			var audioManager = this.audioManager;
@@ -2427,7 +2486,17 @@ THREE.MMDHelper = ( function () {
 
 				for ( var j = 0; j < mixer._actions.length; j ++ ) {
 
-					max = Math.max( max, mixer._actions[ j ]._clip.duration );
+					var clip = mixer._actions[ j ]._clip;
+
+					if ( ! objects.has( clip ) ) {
+
+						objects.set( clip, {
+							duration: clip.duration
+						} )
+
+					}
+
+					max = Math.max( max, objects.get( clip ).duration );
 
 				}
 
@@ -2441,7 +2510,17 @@ THREE.MMDHelper = ( function () {
 
 					for ( var i = 0, il = mixer._actions.length; i < il; i ++ ) {
 
-						max = Math.max( max, mixer._actions[ i ]._clip.duration );
+						var clip = mixer._actions[ i ]._clip;
+
+						if ( ! objects.has( clip ) ) {
+
+							objects.set( clip, {
+								duration: clip.duration
+							} )
+
+						}
+
+						max = Math.max( max, objects.get( clip ).duration );
 
 					}
 
@@ -2451,7 +2530,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( audioManager !== null ) {
 
-				max = Math.max( max, audioManager.duration );
+				max = Math.max( max, objects.get( audioManager ).duration );
 
 			}
 
