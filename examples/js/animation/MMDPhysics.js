@@ -21,6 +21,12 @@
 
 THREE.MMDPhysics = function ( mesh, params ) {
 
+	if ( typeof Ammo === 'undefined' ) {
+
+		throw new Error( 'THREE.MMDPhysics: Import ammo.js https://github.com/kripken/ammo.js' );
+
+	}
+
 	if ( params === undefined ) params = {};
 
 	this.mesh = mesh;
