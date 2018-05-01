@@ -120,34 +120,29 @@
 
 				var loader = new THREE.MMDLoader();
 
-				loader.loadWithAnimation( modelFile, vmdFiles, function ( object ) {
+				loader.loadWithAnimation( modelFile, vmdFiles, function ( mmd ) {
 
-					mesh = object;
+					mesh = mmd.mesh;
 
-					helper.add( mesh );
-					helper.setAnimation( mesh );
-					helper.setPhysics( mesh );
+					helper.add( mesh, {
+						animation: mmd.animation,
+						physics: true
+					} );
 
-					loader.loadAnimation( cameraFiles, function ( vmd ) {
+					loader.loadAnimation( cameraFiles, camera, function ( cameraAnimation ) {
 
-						helper.setCamera( camera );
+						helper.add( camera, {
+							animation: cameraAnimation
+						} );
 
-						camera.animations = [ loader.animationBuilder.buildCameraAnimation( vmd, camera ) ];
-						camera.center = new THREE.Vector3();
+						new THREE.AudioLoader().load( audioFile, function ( buffer ) {
 
-						helper.setCameraAnimation( camera );
-
-						loader.loadAudio( audioFile, function ( audio, listener ) {
+							var listener = new THREE.AudioListener();
+							var audio = new THREE.Audio( listener ).setBuffer( buffer );
 
 							listener.position.z = 1;
 
-							helper.setAudio( audio, listener, audioParams );
-
-							/*
-							 * Note: call this method after you set all animations
-							 *       including camera and audio.
-							 */
-							helper.unifyAnimationDuration();
+							helper.add( audio, audioParams );
 
 							scene.add( audio );
 							scene.add( listener );
