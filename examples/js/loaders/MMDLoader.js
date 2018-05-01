@@ -2022,7 +2022,7 @@ THREE.MMDHelper = ( function () {
 
 			params = params || {};
 
-			if ( params.resetPose === false ) mesh.pose();
+			if ( params.resetPose !== false ) mesh.pose();
 
 			var bones = mesh.skeleton.bones;
 			var boneParams = vpd.bones;
@@ -2053,14 +2053,14 @@ THREE.MMDHelper = ( function () {
 
 			mesh.updateMatrixWorld( true );
 
-			if ( params.ik === false ) {
+			if ( params.ik !== false ) {
 
 				var solver = this._createCCDIKSolver( mesh );
 				solver.update( params.saveOriginalBonesBeforeIK );
 
 			}
 
-			if ( params.grant === false ) {
+			if ( params.grant !== false ) {
 
 				var solver = new THREE.MMDGrantSolver( mesh );
 				solver.update();
