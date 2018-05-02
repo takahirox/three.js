@@ -1,6 +1,9 @@
 /**
  * @author takahiro / https://github.com/takahirox
  *
+ * MMDAnimationHelper handles animation of MMD assets loaded by MMDLoader
+ * with MMD special features as IK, Grant, and Physics.
+ *
  * Dependencies
  *  - ammo.js https://github.com/kripken/ammo.js
  *  - THREE.MMDPhysics
@@ -10,12 +13,15 @@
  *  - more precise grant skinning support.
  */
 
-THREE.MMDHelper = ( function () {
+THREE.MMDAnimationHelper = ( function () {
 
 	/**
-	 * @param {Object} params
+	 * @param {Object} params - (optional)
+	 * @param {boolean} params.sync - Whether animation durations of added objects are synched. Default is true.
+	 * @param {Number} params.afterglow - Default is 0.0.
+	 * @param {boolean} params resetPhysicsOnLoop - Default is true.
 	 */
-	function MMDHelper( params ) {
+	function MMDAnimationHelper( params ) {
 
 		params = params || {};
 
@@ -30,11 +36,13 @@ THREE.MMDHelper = ( function () {
 
 		this.objects = new WeakMap();
 
-		this.animationConfiguration = {
+		this.configuration = {
 			sync: params.sync !== undefined
 				? params.sync : true,
 			afterglow: params.afterglow !== undefined
-				? params.afterglow : 0.0
+				? params.afterglow : 0.0,
+			resetPhysicsOnLoop: params.resetPhysicsOnLoop !== undefined
+				? params.resetPhysicsOnLoop : true
 		};
 
 		this.enabled = {
@@ -51,14 +59,21 @@ THREE.MMDHelper = ( function () {
 
 	}
 
-	MMDHelper.prototype = {
+	MMDAnimationHelper.prototype = {
 
-		constructor: MMDHelper,
+		constructor: MMDAnimationHelper,
 
 		/**
+		 * Adds an Three.js Object to helper and setups animation.
+		 * The anmation durations of added objects are synched
+		 * if this.configuration.sync is true.
+		 *
 		 * @param {THREE.SkinnedMesh|THREE.Camera|THREE.Audio} object
-		 * @param {Object} params
-		 * @return {THREE.MMDHelper}
+		 * @param {Object} params - (optional)
+		 * @param {THREE.AnimationClip|Array<THREE.AnimationClip>} params.animation - Only for THREE.SkinnedMesh and THREE.Camera. Default is undefined.
+		 * @param {boolean} params.physics - Only for THREE.SkinnedMesh. Default is false.
+		 * @param {Number} params.delayTime - Only for THREE.Audio. Default is 0.0.
+		 * @return {THREE.MMDAnimationHelper}
 		 */
 		add: function ( object, params ) {
 
@@ -78,7 +93,7 @@ THREE.MMDHelper = ( function () {
 
 			} else {
 
-				throw new Error( 'THREE.MMDHelper.add: '
+				throw new Error( 'THREE.MMDAnimationHelper.add: '
 					+ 'accepts only '
 					+ 'THREE.SkinnedMesh or '
 					+ 'THREE.Camera or '
@@ -86,15 +101,17 @@ THREE.MMDHelper = ( function () {
 
 			}
 
-			if ( this.animationConfiguration.sync ) this._syncDuration();
+			if ( this.configuration.sync ) this._syncDuration();
 
 			return this;
 
 		},
 
 		/**
+		 * Removes an Three.js Object from helper.
+		 *
 		 * @param {THREE.SkinnedMesh|THREE.Camera|THREE.Audio} object
-		 * @return {THREE.MMDHelper}
+		 * @return {THREE.MMDAnimationHelper}
 		 */
 		remove: function ( object ) {
 
@@ -112,7 +129,7 @@ THREE.MMDHelper = ( function () {
 
 			} else {
 
-				throw new Error( 'THREE.MMDHelper.remove: '
+				throw new Error( 'THREE.MMDAnimationHelper.remove: '
 					+ 'accepts only '
 					+ 'THREE.SkinnedMesh or '
 					+ 'THREE.Camera or '
@@ -120,17 +137,19 @@ THREE.MMDHelper = ( function () {
 
 			}
 
-			if ( this.animationConfiguration.sync ) this._syncDuration();
+			if ( this.configuration.sync ) this._syncDuration();
 
 			return this;
 
 		},
 
 		/**
+		 * Updates the animation.
+		 *
 		 * @param {Number} delta
-		 * @return {THREE.MMDHelper}
+		 * @return {THREE.MMDAnimationHelper}
 		 */
-		animate: function ( delta ) {
+		update: function ( delta ) {
 
 			if ( this.audioManager !== null ) this.audioManager.control( delta );
 
@@ -149,10 +168,15 @@ THREE.MMDHelper = ( function () {
 		},
 
 		/**
+		 * Changes the pose of SkinnedMesh as VPD specifies.
+		 *
 		 * @param {THREE.SkinnedMesh} mesh
-		 * @param {Object} vpd
-		 * @param {Object} params
-		 * @return {THREE.MMDHelper}
+		 * @param {Object} vpd - VPD data parsed by MMDParser
+		 * @param {Object} params - (optional)
+		 * @param {boolean} params.resetPose - Default is true.
+		 * @param {boolean} params.ik - Default is true.
+		 * @param {boolean} params.grant - Default is true.
+		 * @return {THREE.MMDAnimationHelper}
 		 */
 		pose: function ( mesh, vpd, params ) {
 
@@ -192,7 +216,7 @@ THREE.MMDHelper = ( function () {
 			if ( params.ik !== false ) {
 
 				var solver = this._createCCDIKSolver( mesh );
-				solver.update( params.saveOriginalBonesBeforeIK );
+				solver.update( params.saveOriginalBonesBeforeIK );  // this param is experimental
 
 			}
 
@@ -208,15 +232,17 @@ THREE.MMDHelper = ( function () {
 		},
 
 		/**
+		 * Enabes/Disables an animation feature.
+		 *
 		 * @param {string} key
 		 * @param {boolean} enebled
-		 * @return {THREE.MMDHelper}
+		 * @return {THREE.MMDAnimationHelper}
 		 */
 		enable: function ( key, enabled ) {
 
 			if ( this.enabled[ key ] === undefined ) {
 
-				throw new Error( 'THREE.MMDHelper.enable: '
+				throw new Error( 'THREE.MMDAnimationHelper.enable: '
 					+ 'unknown key ' + key );
 
 			}
@@ -238,6 +264,8 @@ THREE.MMDHelper = ( function () {
 		},
 
 		/**
+		 * Creates an GrantSolver instance.
+		 *
 		 * @param {THREE.SkinnedMesh} mesh
 		 * @return {GrantSolver}
 		 */
@@ -253,7 +281,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( this.meshes.indexOf( mesh ) >= 0 ) {
 
-				throw new Error( 'THREE.MMDHelper._addMesh: '
+				throw new Error( 'THREE.MMDAnimationHelper._addMesh: '
 					+ 'SkinnedMesh \'' + mesh.name + '\' has already been added.' );
 
 			}
@@ -284,7 +312,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( this.camera === camera ) {
 
-				throw new Error( 'THREE.MMDHelper._setupCamera: '
+				throw new Error( 'THREE.MMDAnimationHelper._setupCamera: '
 					+ 'Camera \'' + camera.name + '\' has already been set.' );
 
 			}
@@ -311,7 +339,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( this.audio === audio ) {
 
-				throw new Error( 'THREE.MMDHelper._setupAudio: '
+				throw new Error( 'THREE.MMDAnimationHelper._setupAudio: '
 					+ 'Audio \'' + audio.name + '\' has already been set.' );
 
 			}
@@ -351,7 +379,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( ! found ) {
 
-				throw new Error( 'THREE.MMDHelper._removeMesh: '
+				throw new Error( 'THREE.MMDAnimationHelper._removeMesh: '
 					+ 'SkinnedMesh \'' + mesh.name + '\' has not been added yet.' );
 
 			}
@@ -366,7 +394,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( camera !== this.camera ) {
 
-				throw new Error( 'THREE.MMDHelper._clearCamera: '
+				throw new Error( 'THREE.MMDAnimationHelper._clearCamera: '
 					+ 'Camera \'' + camera.name + '\' has not been set yet.' );
 
 			}
@@ -384,7 +412,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( audio !== this.audio ) {
 
-				throw new Error( 'THREE.MMDHelper._clearAudio: '
+				throw new Error( 'THREE.MMDAnimationHelper._clearAudio: '
 					+ 'Audio \'' + audio.name + '\' has not been set yet.' );
 
 			}
@@ -455,11 +483,13 @@ THREE.MMDHelper = ( function () {
 
 			var objects = this.objects.get( mesh );
 
+			// shared physics is experimental
+
 			if ( params.world === undefined && this.sharedPhysics ) {
 
 				var masterPhysics = this._getMasterPhysics();
 
-				if ( masterPhysics !== null ) params.world = masterPhysics.world;
+				if ( masterPhysics !== null ) world = masterPhysics.world;
 
 			}
 
@@ -516,7 +546,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( looped === true && this.enabled.physics ) {
 
-				if ( physics ) physics.reset();
+				if ( physics && this.configuration.resetPhysicsOnLoop ) physics.reset();
 
 				objects.looped = false;
 
@@ -584,7 +614,7 @@ THREE.MMDHelper = ( function () {
 
 			if ( THREE.CCDIKSolver === undefined ) {
 
-				throw new Error( 'THREE.MMDHelper: Import THREE.CCDIKSolver.' );
+				throw new Error( 'THREE.MMDAnimationHelper: Import THREE.CCDIKSolver.' );
 
 			}
 
@@ -675,7 +705,7 @@ THREE.MMDHelper = ( function () {
 
 			}
 
-			max += this.animationConfiguration.afterglow;
+			max += this.configuration.afterglow;
 
 			// update the duration
 
@@ -846,6 +876,11 @@ THREE.MMDHelper = ( function () {
 
 	//
 
+	/**
+	 * @param {THREE.Audio} audio
+	 * @param {Object} params - (optional)
+	 * @param {Nuumber} params.delayTime
+	 */
 	function AudioManager( audio, params ) {
 
 		params = params || {};
@@ -866,6 +901,10 @@ THREE.MMDHelper = ( function () {
 
 		constructor: AudioManager,
 
+		/**
+		 * @param {Number} delta
+		 * @return {AudioManager}
+		 */
 		control: function ( delta ) {
 
 			this.elapsed += delta;
@@ -873,6 +912,8 @@ THREE.MMDHelper = ( function () {
 
 			if ( this._shouldStopAudio() ) this.audio.stop();
 			if ( this._shouldStartAudio() ) this.audio.play();
+
+			return this;
 
 		},
 
@@ -905,6 +946,9 @@ THREE.MMDHelper = ( function () {
 
 	};
 
+	/**
+	 * @param {THREE.SkinnedMesh} mesh
+	 */
 	function GrantSolver( mesh ) {
 
 		this.mesh = mesh;
@@ -915,6 +959,9 @@ THREE.MMDHelper = ( function () {
 
 		constructor: GrantSolver,
 
+		/**
+		 * @return {GrantSolver}
+		 */
 		update: function () {
 
 			var quaternion = new THREE.Quaternion();
@@ -958,12 +1005,14 @@ THREE.MMDHelper = ( function () {
 
 				}
 
+				this;
+
 			};
 
 		}()
 
 	};
 
-	return MMDHelper;
+	return MMDAnimationHelper;
 
 } )();

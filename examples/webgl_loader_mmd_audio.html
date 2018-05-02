@@ -45,7 +45,7 @@
 		<script src="js/effects/OutlineEffect.js"></script>
 		<script src="js/animation/CCDIKSolver.js"></script>
 		<script src="js/animation/MMDPhysics.js"></script>
-		<script src="js/animation/MMDHelper.js"></script>
+		<script src="js/animation/MMDAnimationHelper.js"></script>
 
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
@@ -117,7 +117,7 @@
 				var audioFile = 'models/mmd/audios/wavefile_short.mp3';
 				var audioParams = { delayTime: 160 * 1 / 30 };
 
-				helper = new THREE.MMDHelper();
+				helper = new THREE.MMDAnimationHelper();
 
 				var loader = new THREE.MMDLoader();
 
@@ -197,7 +197,7 @@
 
 				if ( ready ) {
 
-					helper.animate( clock.getDelta() );
+					helper.update( clock.getDelta() );
 
 				}
 

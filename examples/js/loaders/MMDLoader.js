@@ -1393,7 +1393,7 @@ THREE.MMDLoader = ( function () {
 		 * @param {THREE.SkinnedMesh} mesh - tracks will be fitting to mesh
 		 * @return {THREE.AnimationClip}
 		 */
-		build: function ( vmd, mesh, name ) {
+		build: function ( vmd, mesh ) {
 
 			// combine skeletal and morph animations
 
@@ -1746,7 +1746,7 @@ THREE.MMDLoader = ( function () {
 
 		THREE.Interpolant.call( this, parameterPositions, sampleValues, sampleSize, resultBuffer );
 
-		this.params = params;
+		this.interpolationParams = params;
 
 	}
 
@@ -1759,6 +1759,7 @@ THREE.MMDLoader = ( function () {
 			var result = this.resultBuffer;
 			var values = this.sampleValues;
 			var stride = this.valueSize;
+			var params = this.interpolationParams;
 
 			var offset1 = i1 * stride;
 			var offset0 = offset1 - stride;
@@ -1770,10 +1771,10 @@ THREE.MMDLoader = ( function () {
 
 			if ( stride === 4 ) { // Quaternion
 
-				var x1 = this.params[ i1 * 4 + 0 ];
-				var x2 = this.params[ i1 * 4 + 1 ];
-				var y1 = this.params[ i1 * 4 + 2 ];
-				var y2 = this.params[ i1 * 4 + 3 ];
+				var x1 = params[ i1 * 4 + 0 ];
+				var x2 = params[ i1 * 4 + 1 ];
+				var y1 = params[ i1 * 4 + 2 ];
+				var y2 = params[ i1 * 4 + 3 ];
 
 				var ratio = this._calculate( x1, x2, y1, y2, weight1 );
 
@@ -1783,10 +1784,10 @@ THREE.MMDLoader = ( function () {
 
 				for ( var i = 0; i !== stride; ++ i ) {
 
-					var x1 = this.params[ i1 * 12 + i * 4 + 0 ];
-					var x2 = this.params[ i1 * 12 + i * 4 + 1 ];
-					var y1 = this.params[ i1 * 12 + i * 4 + 2 ];
-					var y2 = this.params[ i1 * 12 + i * 4 + 3 ];
+					var x1 = params[ i1 * 12 + i * 4 + 0 ];
+					var x2 = params[ i1 * 12 + i * 4 + 1 ];
+					var y1 = params[ i1 * 12 + i * 4 + 2 ];
+					var y2 = params[ i1 * 12 + i * 4 + 3 ];
 
 					var ratio = this._calculate( x1, x2, y1, y2, weight1 );
 
@@ -1796,10 +1797,10 @@ THREE.MMDLoader = ( function () {
 
 			} else { // Number
 
-				var x1 = this.params[ i1 * 4 + 0 ];
-				var x2 = this.params[ i1 * 4 + 1 ];
-				var y1 = this.params[ i1 * 4 + 2 ];
-				var y2 = this.params[ i1 * 4 + 3 ];
+				var x1 = params[ i1 * 4 + 0 ];
+				var x2 = params[ i1 * 4 + 1 ];
+				var y1 = params[ i1 * 4 + 2 ];
+				var y2 = params[ i1 * 4 + 3 ];
 
 				var ratio = this._calculate( x1, x2, y1, y2, weight1 );
 

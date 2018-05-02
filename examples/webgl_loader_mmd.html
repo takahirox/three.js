@@ -43,7 +43,7 @@
 		<script src="js/effects/OutlineEffect.js"></script>
 		<script src="js/animation/CCDIKSolver.js"></script>
 		<script src="js/animation/MMDPhysics.js"></script>
-		<script src="js/animation/MMDHelper.js"></script>
+		<script src="js/animation/MMDAnimationHelper.js"></script>
 
 		<script src="js/controls/OrbitControls.js"></script>
 
@@ -121,7 +121,7 @@
 				var modelFile = 'models/mmd/miku/miku_v2.pmd';
 				var vmdFiles = [ 'models/mmd/vmds/wavefile_v2.vmd' ];
 
-				helper = new THREE.MMDHelper( {
+				helper = new THREE.MMDAnimationHelper( {
 					afterglow: 2.0
 				} );
 
@@ -263,9 +263,11 @@
 
 			function render() {
 
-				helper.animate( clock.getDelta() );
+				helper.update( clock.getDelta() );
+
 				if ( physicsHelper !== undefined && physicsHelper.visible ) physicsHelper.update();
 				if ( ikHelper !== undefined && ikHelper.visible ) ikHelper.update();
+
 				effect.render( scene, camera );
 
 			}
