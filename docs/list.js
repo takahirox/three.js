@@ -337,6 +337,10 @@ var list = {
 
 	"Examples": {
 
+		"Animations": {
+			"MMDAnimationHelper": "examples/animations/MMDAnimationHelper"
+		},
+
 		"Controls": {
 			"OrbitControls": "examples/controls/OrbitControls"
 		},

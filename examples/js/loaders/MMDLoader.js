@@ -6,7 +6,7 @@
  *  - THREE.TGALoader
  *  - THREE.OutlineEffect
  *
- * MMDLoader creates Three.js Objects from MMD resources,
+ * MMDLoader creates Three.js Objects from MMD resources as
  * PMD, PMX, VMD, and VPD files.
  *
  * PMD/PMX is a model data format, VMD is a motion data format
@@ -56,9 +56,9 @@ THREE.MMDLoader = ( function () {
 		 * @param {string} value
 		 * @return {THREE.MMDLoader}
 		 */
-		setCrossOrigin: function ( value ) {
+		setCrossOrigin: function ( crossOrigin ) {
 
-			this.crossOrigin = value;
+			this.crossOrigin = crossOrigin;
 			return this;
 
 		},
@@ -278,7 +278,7 @@ THREE.MMDLoader = ( function () {
 
 				if ( typeof MMDParser === 'undefined' ) {
 
-					throw new Error( 'THREE.MMDLoader: Import MMDParser https://www.npmjs.com/package/mmd-parser' );
+					throw new Error( 'THREE.MMDLoader: Import MMDParser https://github.com/takahirox/mmd-parser' );
 
 				}
 

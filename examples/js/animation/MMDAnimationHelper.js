@@ -71,7 +71,7 @@ THREE.MMDAnimationHelper = ( function () {
 		 * @param {THREE.SkinnedMesh|THREE.Camera|THREE.Audio} object
 		 * @param {Object} params - (optional)
 		 * @param {THREE.AnimationClip|Array<THREE.AnimationClip>} params.animation - Only for THREE.SkinnedMesh and THREE.Camera. Default is undefined.
-		 * @param {boolean} params.physics - Only for THREE.SkinnedMesh. Default is false.
+		 * @param {boolean} params.physics - Only for THREE.SkinnedMesh. Default is true.
 		 * @param {Number} params.delayTime - Only for THREE.Audio. Default is 0.0.
 		 * @return {THREE.MMDAnimationHelper}
 		 */
@@ -171,7 +171,7 @@ THREE.MMDAnimationHelper = ( function () {
 		 * Changes the pose of SkinnedMesh as VPD specifies.
 		 *
 		 * @param {THREE.SkinnedMesh} mesh
-		 * @param {Object} vpd - VPD data parsed by MMDParser
+		 * @param {Object} vpd - VPD content parsed MMDParser
 		 * @param {Object} params - (optional)
 		 * @param {boolean} params.resetPose - Default is true.
 		 * @param {boolean} params.ik - Default is true.
@@ -298,7 +298,7 @@ THREE.MMDAnimationHelper = ( function () {
 
 			}
 
-			if ( params.physics === true ) {
+			if ( params.physics !== false ) {
 
 				this._setupMeshPhysics( mesh, params );
 

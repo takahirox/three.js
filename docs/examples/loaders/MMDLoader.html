@@ -11,8 +11,11 @@
 		[page:Loader] &rarr;
 		<h1>[name]</h1>
 
-		<p class="desc"> A loader for <em>MMD</em> resources. <br /><br />
-		</p>
+		<p class="desc"> A loader for <a href="http://www.geocities.jp/higuchuu4/index_e.htm"><em>MMD</em></a> resources. <br /><br />
+		[name] creates Three.js Objects from MMD resources as PMD, PMX, VMD, and VPD files.
+		You can easily handle MMD special features, as IK, Grant, and Physics, with [page:MMDAnimationHelper].<br /><br />
+
+		If you want raw content of MMD resources, use .loadPMD/PMX/VMD/VPD methods.
 
 		<h2>Example</h2>
 
@@ -75,17 +78,19 @@
 		[page:Function onError] — (optional) A function to be called if an error occurs during loading. The function receives error as an argument.<br />
 		</p>
 		<p>
+		Begin loading PMD/PMX model file from url and fire the callback function with the parsed [page:SkinnedMesh] containing [page:BufferGeometry] and an array of [page:MeshToonMaterial].
 		</p>
 
 		<h3>[method:null loadAnimation]( [param:String url], [param:Object3D object], [param:Function onLoad], [param:Function onProgress], [param:Function onError] )</h3>
 		<p>
-		[page:String url] — A string or an array of string containing the path/URL of the <em>.vmd</em> file(s).<br />
-		[page:Object3D objecturl] — <br />
+		[page:String url] — A string or an array of string containing the path/URL of the <em>.vmd</em> file(s).If two or more files are specified, they'll be merged.<br />
+		[page:Object3D object] — [page:SkinnedMesh] or [page:Camera]. Clip and its tacks will be fitting to this object.<br />
 		[page:Function onLoad] — A function to be called after the loading is successfully completed.<br />
 		[page:Function onProgress] — (optional) A function to be called while the loading is in progress. The argument will be the XMLHttpRequest instance, that contains .[page:Integer total] and .[page:Integer loaded] bytes.<br />
 		[page:Function onError] — (optional) A function to be called if an error occurs during loading. The function receives error as an argument.<br />
 		</p>
 		<p>
+		Begin loading VMD motion file(s) from url(s) and fire the callback function with the parsed [page:AnimatioinClip].
 		</p>
 
 		<h3>[method:null loadWithAnimation]( [param:String modelUrl], [param:String vmdUrl], [param:Function onLoad], [param:Function onProgress], [param:Function onError] )</h3>
@@ -97,11 +102,12 @@
 		[page:Function onError] — (optional) A function to be called if an error occurs during loading. The function receives error as an argument.<br />
 		</p>
 		<p>
+		Begin loading PMD/PMX model file and VMD motion file from urls and fire the callback function with an [page:Object] containing parsed [page:SkinnedMesh] and [page:AnimationClip] fitting to the [page:SkinnedMesh].
 		</p>
 
-		<h3>[method:null setCrossOrigin]( [param:String value] )</h3>
+		<h3>[method:MMDLoader setCrossOrigin]( [param:String crossOrigin] )</h3>
 		<p>
-		[page:String value] — The crossOrigin string to implement CORS for loading the url from a different domain that allows CORS.
+		[page:String crossOrigin] — The crossOrigin string to implement CORS for loading the url from a different domain that allows CORS.
 		</p>
 
 
