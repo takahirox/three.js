@@ -799,7 +799,7 @@ THREE.GLTFExporter.prototype = {
 				gltfMaterial.pbrMetallicRoughness.metallicFactor = material.metalness;
 				gltfMaterial.pbrMetallicRoughness.roughnessFactor = material.roughness;
 
-			} else if ( material.isMeshBasicMaterial ) {
+			} else if ( material.isMeshBasicMaterial || material.isMeshToonMaterial ) {
 
 				gltfMaterial.pbrMetallicRoughness.metallicFactor = 0.0;
 				gltfMaterial.pbrMetallicRoughness.roughnessFactor = 0.9;
@@ -1201,6 +1201,8 @@ THREE.GLTFExporter.prototype = {
 
 				}
 
+				if ( geometry.userData ) primitive.extras = geometry.userData;
+
 				var material = processMaterial( materials[ groups[ i ].materialIndex ] );
 
 				if ( material !== null ) {
@@ -1344,7 +1346,7 @@ THREE.GLTFExporter.prototype = {
 
 				if ( trackProperty === PATH_PROPERTIES.morphTargetInfluences ) {
 
-					outputItemSize /= trackNode.morphTargetInfluences.length;
+//					outputItemSize /= trackNode.morphTargetInfluences.length;
 
 				}
 
