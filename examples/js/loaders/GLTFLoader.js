@@ -2817,9 +2817,20 @@ THREE.GLTFLoader = ( function () {
 
 							node.traverse( function ( object ) {
 
-								if ( object.isMesh === true && object.material.morphTargets === true ) {
+								if ( object.isMesh === true ) {
 
-									targetNames.push( object.name ? object.name : object.uuid );
+									var materials = Array.isArray( object.material ) ? object.material : [ object.material ];
+
+									for ( var j = 0, jl = materials.length; j < jl; j ++ ) {
+
+										if ( materials[ j ].morphTargets === true ) {
+
+											targetNames.push( object.name ? object.name : object.uuid );
+											break;
+
+										}
+
+									}
 
 								}
 
