@@ -286,23 +286,22 @@
 
 					if ( linkBone.name.indexOf( 'ひじ' ) !== - 1 ) {
 
+						link.limitation = new THREE.Vector3(
+							linkBone.position.y, - linkBone.position.x, 0 ).normalize();
+
+/*
 						if ( side === '左' ) {
 
-							link.limitation = new THREE.Vector3(
-								linkBone.position.y, - linkBone.position.x, 0 ).normalize();
-
-							//link.rotationMin = [ - Math.PI / 2, - Math.PI, - Math.PI ];
-							//link.rotationMax = [ Math.PI, Math.PI, Math.PI ];
+							link.rotationMin = [ - Math.PI / 2, - Math.PI, - Math.PI ];
+							link.rotationMax = [ Math.PI, Math.PI, Math.PI ];
 
 						} else {
 
-							link.limitation = new THREE.Vector3(
-								- linkBone.position.y, linkBone.position.x, 0 ).normalize();
-
-							//link.rotationMin = [ - Math.PI, - Math.PI, - Math.PI ];
-							//link.rotationMax = [ Math.PI / 2, Math.PI, Math.PI ];
+							link.rotationMin = [ - Math.PI, - Math.PI, - Math.PI ];
+							link.rotationMax = [ Math.PI / 2, Math.PI, Math.PI ];
 
 						}
+*/
 
 					} else if ( linkBone.name.indexOf( '肩' ) !== - 1 ) {
 
