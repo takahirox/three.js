@@ -275,12 +275,48 @@
 				var linkBone = effector.parent;
 				var links = [];
 
-				for ( var i = 0; i < 2; i ++ ) {
+				for ( var i = 0; i < 3; i ++ ) {
 
 					console.log( linkBone.name );
 
 					var link = {};
 					link.index = bones.indexOf( linkBone );
+
+					// heuristic
+
+					if ( linkBone.name.indexOf( 'ひじ' ) !== - 1 ) {
+
+						if ( side === '左' ) {
+
+							link.limitation = new THREE.Vector3(
+								linkBone.position.y, - linkBone.position.x, 0 ).normalize();
+
+							//link.rotationMin = [ - Math.PI / 2, - Math.PI, - Math.PI ];
+							//link.rotationMax = [ Math.PI, Math.PI, Math.PI ];
+
+						} else {
+
+							link.limitation = new THREE.Vector3(
+								- linkBone.position.y, linkBone.position.x, 0 ).normalize();
+
+							//link.rotationMin = [ - Math.PI, - Math.PI, - Math.PI ];
+							//link.rotationMax = [ Math.PI / 2, Math.PI, Math.PI ];
+
+						}
+
+					} else if ( linkBone.name.indexOf( '肩' ) !== - 1 ) {
+
+						link.rotationMin = [ - Math.PI / 128, - Math.PI / 128, - Math.PI / 128 ];
+						link.rotationMax = [ Math.PI / 128, Math.PI / 128, Math.PI / 128 ];
+
+					} else {
+
+						link.rotationMin = [ - Math.PI / 2, - Math.PI / 2, - Math.PI / 2 ];
+						link.rotationMax = [ Math.PI / 2, Math.PI / 2, Math.PI / 2 ];
+
+					}
+
+
 					links.push( link );
 
 					linkBone = linkBone.parent;
@@ -288,7 +324,7 @@
 				}
 
 				ik.links = links;
-				ik.iteration = 40;
+				ik.iteration = 10;
 				ik.maxAngle = 2;
 
 				console.log( ik );
