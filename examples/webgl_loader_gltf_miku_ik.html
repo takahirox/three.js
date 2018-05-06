@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - glTF loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #fff;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+				display:block;
+			}
+			#info a {
+				color: #75ddc1;
+				font-weight: bold;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - GLTFLoader<br />
+		</div>
+
+		<script src="../build/three.js"></script>
+
+		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/controls/TransformControls.js"></script>
+
+		<script src="js/loaders/GLTFLoader.js"></script>
+
+		<script src="js/libs/ammo.js"></script>
+		<script src="js/animation/CCDIKSolver.js"></script>
+		<script src="js/animation/MMDPhysics.js"></script>
+		<script src="js/animation/MMDAnimationHelper.js"></script>
+
+		<script src="js/effects/OutlineEffect.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats, controls;
+			var camera, scene, renderer, light;
+
+			var mesh;
+			var transformControls = [];
+			var boneCaches = {};
+			var tmpVector = new THREE.Vector3();
+
+			var effect;
+			var clock = new THREE.Clock();
+
+			var helper = new THREE.MMDAnimationHelper( { afterglow: 2.0 } );
+
+			helper.onBeforePhysics = function () { 
+
+				solveIK();
+
+			}
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.gammaOutput = true;
+				container.appendChild( renderer.domElement );
+
+				effect = new THREE.OutlineEffect( renderer );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 2000 );
+				camera.position.set( 0, 10, 30 );
+
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				controls.target.set( 0, 10, 0 );
+				controls.update();
+
+				// envmap
+				var path = 'textures/cube/skyboxsun25deg/';
+				var format = '.jpg';
+				var envMap = new THREE.CubeTextureLoader().load( [
+					path + 'px' + format, path + 'nx' + format,
+					path + 'py' + format, path + 'ny' + format,
+					path + 'pz' + format, path + 'nz' + format
+				] );
+
+				scene = new THREE.Scene();
+				scene.background = envMap;
+
+				light = new THREE.HemisphereLight( 0xbbbbff, 0x444422 );
+				light.position.set( 0, 1, 0 );
+				scene.add( light );
+
+				light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( -10, 6, -10 );
+				scene.add( light );
+
+				// model
+				var loader = new THREE.GLTFLoader();
+				loader.load( './models/gltf/Miku/glTF-Binary/Miku.glb', function ( gltf ) {
+
+					console.log( gltf );
+
+					mesh = gltf.scene.children[ 0 ];
+					var animation = gltf.animations[ 0 ];
+
+					var tracks = animation.tracks;
+
+					// workaround
+
+					var morphIndex = 0;
+
+					for ( var i = 0, il = tracks.length; i < il; i ++ ) {
+
+						var track = tracks[ i ];
+
+						if ( track instanceof THREE.NumberKeyframeTrack
+							&& track.name.slice( - 22 ) === '.morphTargetInfluences' ) {
+
+							track.name += '[' + ( morphIndex ++ ) + ']';
+
+							//console.log( track );
+
+						}
+
+					}
+
+					setupIK( mesh );
+
+					helper.add( mesh, {
+						//animation: animation,
+						physics: true
+					} );
+
+					gltf.scene.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							if ( Array.isArray( child.material ) ) {
+
+								for ( var i = 0, il = child.material.length; i < il; i ++ ) {
+
+									child.material[ i ].envMap = envMap;
+
+								}
+
+							} else {
+
+								child.material.envMap = envMap;
+
+							}
+
+						}
+
+					} );
+
+					scene.add( mesh );
+
+				} );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				// stats
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				helper.update( clock.getDelta() );
+				effect.render( scene, camera );
+
+				stats.update();
+
+			}
+
+			function addTransformControl( bone ) {
+
+				var control = new THREE.TransformControls( camera, renderer.domElement );
+				control.attach( bone );
+				scene.add( control );
+
+				transformControls.push( control );
+
+			}
+
+			function getBoneByName( mesh, name ) {
+
+				if ( boneCaches[ name ] === undefined ) {
+
+					boneCaches[ name ] = mesh.skeleton.getBoneByName( name );
+
+				}
+
+				return boneCaches[ name ];
+
+			}
+
+			function setupIK( mesh ) {
+
+				addArmIK( '左', mesh,
+					mesh.geometry.userData.MMD.iks,
+					mesh.geometry.userData.MMD.bones );
+
+				addArmIK( '右', mesh,
+					mesh.geometry.userData.MMD.iks,
+					mesh.geometry.userData.MMD.bones );
+
+				addTransformControl(
+					getBoneByName( mesh, '左足ＩＫ' ) );
+
+				addTransformControl(
+					getBoneByName( mesh, '左つま先ＩＫ' ) );
+
+				addTransformControl(
+					getBoneByName( mesh, '右足ＩＫ' ) );
+
+				addTransformControl(
+					getBoneByName( mesh, '右つま先ＩＫ' ) );
+
+				addTransformControl(
+					getBoneByName( mesh, 'センター' ) );
+
+			}
+
+			function addArmIK( side, mesh, iks, boneParams ) {
+
+				var ik = {};
+				var skeleton = mesh.skeleton;
+				var bones = mesh.skeleton.bones;
+
+				addArmPlusBones( side, mesh, iks, boneParams );
+
+				var target = getBoneByName( mesh, side + '手首ＩＫ' );
+				var effector = getBoneByName( mesh, side + '手首+' );
+
+				ik.target = bones.indexOf( target );
+				ik.effector = bones.indexOf( effector );
+
+				var linkBone = effector.parent;
+				var links = [];
+
+				for ( var i = 0; i < 2; i ++ ) {
+
+					console.log( linkBone.name );
+
+					var link = {};
+					link.index = bones.indexOf( linkBone );
+					links.push( link );
+
+					linkBone = linkBone.parent;
+
+				}
+
+				ik.links = links;
+				ik.iteration = 40;
+				ik.maxAngle = 2;
+
+				console.log( ik );
+
+				iks.push( ik );
+
+				addTransformControl( target );
+
+			}
+
+			function addArmPlusBones( side, mesh, iks, boneParams ) {
+
+				var ik = {};
+				var skeleton = mesh.skeleton;
+				var bones = mesh.skeleton.bones;
+
+				var armBone = getBoneByName( mesh, side + '腕' );
+				var elbowBone = getBoneByName( mesh, side + 'ひじ' );
+				var wristBone = getBoneByName( mesh, side + '手首' );
+
+				var ikBone = wristBone.clone();
+				ikBone.name += 'ＩＫ';
+
+				var meshWorldPosition = new THREE.Vector3();
+				var wristWorldPosition = new THREE.Vector3();
+
+				mesh.getWorldPosition( meshWorldPosition );
+				wristBone.getWorldPosition( wristWorldPosition );
+
+				ikBone.position.copy( wristWorldPosition.sub( meshWorldPosition ) );
+
+				var armBonePlus = armBone.clone();
+				armBonePlus.name += '+';
+
+				var elbowBonePlus = elbowBone.clone();
+				elbowBonePlus.name += '+';
+
+				var wristBonePlus = wristBone.clone();
+				wristBonePlus.name += '+';
+
+				armBone.parent.add( armBonePlus );
+				armBonePlus.add( elbowBonePlus );
+				elbowBonePlus.add( wristBonePlus );
+
+				mesh.add( ikBone );
+
+				skeleton.bones.push( armBonePlus );
+				skeleton.bones.push( elbowBonePlus );
+				skeleton.bones.push( wristBonePlus );
+				skeleton.bones.push( ikBone );
+
+				skeleton.boneInverses.push( new THREE.Matrix4() );
+				skeleton.boneInverses.push( new THREE.Matrix4() );
+				skeleton.boneInverses.push( new THREE.Matrix4() );
+				skeleton.boneInverses.push( new THREE.Matrix4() );
+
+				boneParams.push( {} );
+				boneParams.push( {} );
+				boneParams.push( {} );
+				boneParams.push( {} );
+
+			}
+
+			function solveIK() {
+
+				var objects = helper.objects.get( mesh );
+
+				if ( ! objects ) return;
+
+				helper.objects.get( mesh ).ikSolver.update();
+
+				updateArmBones( mesh, '左' );
+				updateArmBones( mesh, '右' );
+
+				lookAtCamera( mesh ); // just for fun
+
+			}
+
+			function updateArmBones( mesh, side ) {
+
+				getBoneByName( mesh, side + '腕' ).quaternion.copy(
+					getBoneByName( mesh, side + '腕+' ).quaternion );
+				getBoneByName( mesh, side + 'ひじ' ).quaternion.copy(
+					getBoneByName( mesh, side + 'ひじ+' ).quaternion );
+				getBoneByName( mesh, side + '手首' ).quaternion.copy(
+					getBoneByName( mesh, side + '手首+' ).quaternion );
+
+			}
+
+			function lookAtCamera( mesh ) {
+
+				var neck = getBoneByName( mesh, '首' );
+
+				camera.getWorldPosition( tmpVector );
+				tmpVector.y -= 15;  // heuristic
+
+				neck.lookAt( tmpVector );
+
+				neck.rotation.x = Math.max( 
+					Math.min( neck.rotation.x, Math.PI / 2 ),
+					- Math.PI / 2 );
+				neck.rotation.y = Math.max( 
+					Math.min( neck.rotation.y, Math.PI / 2 ),
+					- Math.PI / 2 );
+				neck.rotation.z = Math.max( 
+					Math.min( neck.rotation.z, Math.PI / 4 ),
+					- Math.PI / 4 );
+
+			}
+
+		</script>
+
+	</body>
+</html>
