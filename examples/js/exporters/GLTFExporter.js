@@ -936,6 +936,12 @@ THREE.GLTFExporter.prototype = {
 
 			}
 
+			if ( Object.keys( material.userData ).length > 0 ) {
+
+				gltfMaterial.extras = material.userData;
+
+			}
+
 			outputJSON.materials.push( gltfMaterial );
 
 			var index = outputJSON.materials.length - 1;
