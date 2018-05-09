@@ -733,7 +733,7 @@ function WebGLRenderer( parameters ) {
 
 			if ( index !== null ) {
 
-				_gl.bindBuffer( _gl.ELEMENT_ARRAY_BUFFER, attribute.buffer );
+				vertexArrayObjects.enableIndex( attribute.buffer );
 
 			}
 
@@ -855,7 +855,7 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		state.initAttributes();
+		vertexArrayObjects.initAttributes();
 
 		var geometryAttributes = geometry.attributes;
 
@@ -923,14 +923,14 @@ function WebGLRenderer( parameters ) {
 
 							}
 
+							_gl.bindBuffer( _gl.ARRAY_BUFFER, buffer );
+							_gl.vertexAttribPointer( programAttribute, size, type, normalized, 0, 0 );
+
 						} else {
 
-							state.enableAttribute( programAttribute );
+							vertexArrayObjects.enable( programAttribute, buffer, size, type, normalized, 0, 0 );
 
 						}
-
-						_gl.bindBuffer( _gl.ARRAY_BUFFER, buffer );
-						_gl.vertexAttribPointer( programAttribute, size, type, normalized, 0, 0 );
 
 					}
 
@@ -967,7 +967,7 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		state.disableUnusedAttributes();
+		vertexArrayObjects.disableUnusedAttributes();
 
 	}
 
