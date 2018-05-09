@@ -41,6 +41,7 @@ import { WebGLState } from './webgl/WebGLState.js';
 import { WebGLTextures } from './webgl/WebGLTextures.js';
 import { WebGLUniforms } from './webgl/WebGLUniforms.js';
 import { WebGLUtils } from './webgl/WebGLUtils.js';
+import { WebGLVertexArrayObjects } from './webgl/WebGLVertexArrayObjects.js';
 import { WebVRManager } from './webvr/WebVRManager.js';
 import { WebXRManager } from './webvr/WebXRManager.js';
 
@@ -228,6 +229,7 @@ function WebGLRenderer( parameters ) {
 
 	var extensions, capabilities, state, info;
 	var properties, textures, attributes, geometries, objects;
+	var vertexArrayObjects;
 	var programCache, renderLists, renderStates;
 
 	var background, morphtargets, bufferRenderer, indexedBufferRenderer;
@@ -261,6 +263,7 @@ function WebGLRenderer( parameters ) {
 		attributes = new WebGLAttributes( _gl );
 		geometries = new WebGLGeometries( _gl, attributes, info );
 		objects = new WebGLObjects( geometries, info );
+		vertexArrayObjects = new WebGLVertexArrayObjects( _gl, state, extensions );
 		morphtargets = new WebGLMorphtargets( _gl );
 		programCache = new WebGLPrograms( _this, extensions, capabilities );
 		renderLists = new WebGLRenderLists();
@@ -722,6 +725,8 @@ function WebGLRenderer( parameters ) {
 
 		}
 
+		vertexArrayObjects.bind( material, geometry );
+
 		if ( updateBuffers ) {
 
 			setupVertexAttributes( material, program, geometry );
@@ -832,6 +837,8 @@ function WebGLRenderer( parameters ) {
 			renderer.render( drawStart, drawCount );
 
 		}
+
+		vertexArrayObjects.unbind();
 
 	};
 
