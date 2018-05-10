@@ -6,10 +6,12 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	var ext = extensions.get( 'OES_vertex_array_object' );
 	var objects = new WeakMap();
-	var currentObject = null;
 	var maxVertexAttributes = gl.getParameter( gl.MAX_VERTEX_ATTRIBS );
 
-	function createObject() {
+	var defaultObject = createObject( false );
+	var currentObject = defaultObject;
+
+	function createObject( makeArray ) {
 
 		var attributes = [];
 
@@ -30,7 +32,7 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		}
 
 		return {
-			object: ext.createVertexArrayOES(),
+			object: makeArray ? ext.createVertexArrayOES() : null,
 			attributes: attributes,
 			index: null
 		};
@@ -48,7 +50,7 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		if ( ! objects.get( material ).has( geometry ) ) {
 
 			objects.get( material )
-				.set( geometry, createObject() );
+				.set( geometry, createObject( true ) );
 
 		}
 
@@ -71,13 +73,11 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		if ( ext === null ) return;
 
 		ext.bindVertexArrayOES( null );
-		currentObject = null;
+		currentObject = defaultObject;
 
 	}
 
 	function needsUpdate( index, buffer, size, type, normalized, stride, offset ) {
-
-		if ( ext === null ) return true;
 
 		var attribute = currentObject.attributes[ index ]
 
@@ -117,17 +117,6 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	function enableAttributeAndDivisor( programAttribute, meshPerAttribute, buffer, size, type, normalized, stride, offset ) {
 
-		if ( ext === null ) {
-
-			state.enableAttributeAndDivisor( programAttribute, meshPerAttribute );
-
-			gl.bindBuffer( gl.ARRAY_BUFFER, buffer );
-			gl.vertexAttribPointer( programAttribute, size, type, normalized, stride, offset );
-
-			return;
-
-		}
-
 		var attribute = currentObject.attributes[ programAttribute ];
 
 		if ( ! attribute.enabled ) {
@@ -158,24 +147,17 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	function enableIndex( buffer ) {
 
-		if ( ext === null || buffer !== currentObject.index ) {
+		if ( buffer !== currentObject.index ) {
 
 			gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffer );
 
-			if ( ext !== null ) currentObject.index = buffer;
+			currentObject.index = buffer;
 
 		}
 
 	}
 
 	function initAttributes() {
-
-		if ( ext === null ) {
-
-			state.initAttributes();
-			return;
-
-		}
 
 		for ( var i = 0; i < maxVertexAttributes; i ++ ) {
 
@@ -188,13 +170,6 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 	}
 
 	function disableUnusedAttributes() {
-
-		if ( ext === null ) {
-
-			state.disableUnusedAttributes();
-			return;
-
-		}
 
 		for ( var i = 0; i < maxVertexAttributes; i ++ ) {
 
