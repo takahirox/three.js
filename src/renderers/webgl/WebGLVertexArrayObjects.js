@@ -22,6 +22,7 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 				normalized: null,
 				stride: null,
 				offset: null,
+				divisor: null,
 				enabled: false,
 				used: false
 			} );
@@ -109,13 +110,36 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	}
 
-	function enable( programAttribute, buffer, size, type, normalized, stride, offset ) {
+	function enableAttribute( programAttribute, buffer, size, type, normalized, stride, offset ) {
 
-		state.enableAttribute( programAttribute );
+		enableAttributeAndDivisor( programAttribute, 0, buffer, size, type, normalized, stride, offset );
 
-		if ( ext === null ) return;
+	}
+
+	function enableAttributeAndDivisor( programAttribute, meshPerAttribute, buffer, size, type, normalized, stride, offset ) {
+
+		if ( ext === null ) {
+
+			state.enableAttributeAndDivisor( programAttribute, meshPerAttribute );
+			return;
+
+		}
 
 		var attribute = currentObject.attributes[ programAttribute ];
+
+		if ( ! attribute.enabled ) {
+
+			gl.enableVertexAttribArray( programAttribute );
+			attribute.enabled = true;
+
+		}
+
+		if ( attribute.divisors !== meshPerAttribute ) {
+
+			extensions.get( 'ANGLE_instanced_arrays' ).vertexAttribDivisorANGLE( programAttribute, meshPerAttribute );
+			attribute.divisor = meshPerAttribute;
+
+		}
 
 		attribute.used = true;
 
@@ -189,7 +213,8 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 		bind: bind,
 		unbind: unbind,
-		enable: enable,
+		enableAttribute: enableAttribute,
+		enableAttributeAndDivisor: enableAttributeAndDivisor,
 		enableIndex: enableIndex,
 		initAttributes: initAttributes,
 		disableUnusedAttributes: disableUnusedAttributes

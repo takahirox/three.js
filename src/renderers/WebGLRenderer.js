@@ -894,28 +894,24 @@ function WebGLRenderer( parameters ) {
 
 						if ( data && data.isInstancedInterleavedBuffer ) {
 
-							state.enableAttributeAndDivisor( programAttribute, data.meshPerAttribute );
-
 							if ( geometry.maxInstancedCount === undefined ) {
 
 								geometry.maxInstancedCount = data.meshPerAttribute * data.count;
 
 							}
 
+							vertexArrayObjects.enableAttributeAndDivisor( programAttribute, data.meshPerAttribute, buffer, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
+
 						} else {
 
+							vertexArrayObjects.enableAttribute( programAttribute, buffer, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
 							state.enableAttribute( programAttribute );
 
 						}
 
-						_gl.bindBuffer( _gl.ARRAY_BUFFER, buffer );
-						_gl.vertexAttribPointer( programAttribute, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
-
 					} else {
 
 						if ( geometryAttribute.isInstancedBufferAttribute ) {
-
-							state.enableAttributeAndDivisor( programAttribute, geometryAttribute.meshPerAttribute );
 
 							if ( geometry.maxInstancedCount === undefined ) {
 
@@ -923,12 +919,11 @@ function WebGLRenderer( parameters ) {
 
 							}
 
-							_gl.bindBuffer( _gl.ARRAY_BUFFER, buffer );
-							_gl.vertexAttribPointer( programAttribute, size, type, normalized, 0, 0 );
+							vertexArrayObjects.enableAttributeAndDivisor( programAttribute, geometryAttribute.meshPerAttribute, buffer, size, type, normalized, 0, 0 );
 
 						} else {
 
-							vertexArrayObjects.enable( programAttribute, buffer, size, type, normalized, 0, 0 );
+							vertexArrayObjects.enableAttribute( programAttribute, buffer, size, type, normalized, 0, 0 );
 
 						}
 
