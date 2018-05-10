@@ -103,7 +103,6 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		attribute.normalized = normalized;
 		attribute.stride = stride;
 		attribute.offset = offset;
-		attribute.enabled = true;
 
 		gl.bindBuffer( gl.ARRAY_BUFFER, buffer );
 		gl.vertexAttribPointer( index, size, type, normalized, stride, offset );
@@ -121,6 +120,10 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		if ( ext === null ) {
 
 			state.enableAttributeAndDivisor( programAttribute, meshPerAttribute );
+
+			gl.bindBuffer( gl.ARRAY_BUFFER, buffer );
+			gl.vertexAttribPointer( programAttribute, size, type, normalized, stride, offset );
+
 			return;
 
 		}
@@ -159,7 +162,7 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 			gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffer );
 
-			currentObject.index = buffer;
+			if ( ext !== null ) currentObject.index = buffer;
 
 		}
 
