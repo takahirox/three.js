@@ -905,7 +905,6 @@ function WebGLRenderer( parameters ) {
 						} else {
 
 							vertexArrayObjects.enableAttribute( programAttribute, buffer, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
-							state.enableAttribute( programAttribute );
 
 						}
 
