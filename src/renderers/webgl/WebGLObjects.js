@@ -6,6 +6,12 @@ function WebGLObjects( geometries, info ) {
 
 	var updateList = {};
 
+	function get( object ) {
+
+		return geometries.get( object, object.geometry );
+
+	}
+
 	function update( object ) {
 
 		var frame = info.render.frame;
@@ -41,6 +47,7 @@ function WebGLObjects( geometries, info ) {
 
 	return {
 
+		get: get,
 		update: update,
 		dispose: dispose
 

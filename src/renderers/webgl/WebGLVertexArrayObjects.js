@@ -63,7 +63,7 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	function unbind() {
 
-		if ( ext === null ) return;
+		if ( ext === null || currentObject === defaultObject ) return;
 
 		ext.bindVertexArrayOES( null );
 		currentObject = defaultObject;
@@ -128,8 +128,6 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 		attribute.used = true;
 
-		if ( ! attribute.enabled ) gl.enableVertexAttribArray( programAttribute );
-
 		if ( needsUpdate( programAttribute, buffer, size, type, normalized, stride, offset ) ) {
 
 			update( programAttribute, buffer, size, type, normalized, stride, offset );
@@ -158,7 +156,6 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 			attribute.used = false;
 
 		}
-
 
 	}
 

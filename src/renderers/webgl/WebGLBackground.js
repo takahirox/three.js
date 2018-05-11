@@ -67,8 +67,6 @@ function WebGLBackground( renderer, state, objects, premultipliedAlpha ) {
 
 				};
 
-				objects.update( boxMesh );
-
 			}
 
 			boxMesh.material.uniforms.tCube.value = background;
@@ -85,8 +83,6 @@ function WebGLBackground( renderer, state, objects, premultipliedAlpha ) {
 					new PlaneBufferGeometry( 2, 2 ),
 					new MeshBasicMaterial( { depthTest: false, depthWrite: false, fog: false } )
 				);
-
-				objects.update( planeMesh );
 
 			}
 

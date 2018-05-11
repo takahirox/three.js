@@ -582,6 +582,8 @@ function WebGLRenderer( parameters ) {
 
 	this.renderBufferImmediate = function ( object, program, material ) {
 
+		objects.update( object );
+
 		vertexArrayObjects.initAttributes();
 
 		var buffers = properties.get( object );
@@ -716,6 +718,14 @@ function WebGLRenderer( parameters ) {
 		var attribute;
 		var renderer = bufferRenderer;
 
+		if ( updateBuffers ) {
+
+			vertexArrayObjects.bind( geometry );
+
+		}
+
+		objects.update( object );
+
 		if ( index !== null ) {
 
 			attribute = attributes.get( index );
@@ -724,8 +734,6 @@ function WebGLRenderer( parameters ) {
 			renderer.setIndex( attribute );
 
 		}
-
-		vertexArrayObjects.bind( geometry );
 
 		if ( updateBuffers ) {
 
@@ -837,8 +845,6 @@ function WebGLRenderer( parameters ) {
 			renderer.render( drawStart, drawCount );
 
 		}
-
-		vertexArrayObjects.unbind();
 
 	};
 
@@ -1321,7 +1327,7 @@ function WebGLRenderer( parameters ) {
 
 					}
 
-					var geometry = objects.update( object );
+					var geometry = objects.get( object );
 					var material = object.material;
 
 					if ( Array.isArray( material ) ) {
