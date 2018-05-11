@@ -725,7 +725,7 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		vertexArrayObjects.bind( material, geometry );
+		vertexArrayObjects.bind( geometry );
 
 		if ( updateBuffers ) {
 

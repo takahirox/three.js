@@ -39,30 +39,23 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	}
 
-	function getObject( material, geometry ) {
+	function getObject( geometry ) {
 
-		if ( ! objects.has( material ) ) {
+		if ( ! objects.has( geometry ) ) {
 
-			objects.set( material, new WeakMap() );
-
-		}
-
-		if ( ! objects.get( material ).has( geometry ) ) {
-
-			objects.get( material )
-				.set( geometry, createObject( true ) );
+			objects.set( geometry, createObject( true ) );
 
 		}
 
-		return objects.get( material ).get( geometry );
+		return objects.get( geometry );
 
 	}
 
-	function bind( material, geometry ) {
+	function bind( geometry ) {
 
 		if ( ext === null ) return;
 
-		var object = getObject( material, geometry )
+		var object = getObject( geometry )
 		ext.bindVertexArrayOES( object.object );
 		currentObject = object;
 
