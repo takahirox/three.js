@@ -7,7 +7,7 @@ import { CanvasTexture } from '../../textures/CanvasTexture.js';
 import { Vector3 } from '../../math/Vector3.js';
 import { Quaternion } from '../../math/Quaternion.js';
 
-function WebGLSpriteRenderer( renderer, gl, state, textures, capabilities ) {
+function WebGLSpriteRenderer( renderer, gl, state, textures, capabilities, vertexArrayObjects ) {
 
 	var vertexBuffer, elementBuffer;
 	var program, attributes, uniforms;
@@ -37,11 +37,8 @@ function WebGLSpriteRenderer( renderer, gl, state, textures, capabilities ) {
 		vertexBuffer = gl.createBuffer();
 		elementBuffer = gl.createBuffer();
 
-		gl.bindBuffer( gl.ARRAY_BUFFER, vertexBuffer );
-		gl.bufferData( gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW );
-
-		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, elementBuffer );
-		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, faces, gl.STATIC_DRAW );
+		vertexArrayObjects.bindAndBufferData( gl.ARRAY_BUFFER, vertexBuffer, vertices, gl.STATIC_DRAW );
+		vertexArrayObjects.bindAndBufferData( gl.ELEMENT_ARRAY_BUFFER, elementBuffer, faces, gl.STATIC_DRAW );
 
 		program = createProgram();
 
@@ -101,19 +98,16 @@ function WebGLSpriteRenderer( renderer, gl, state, textures, capabilities ) {
 
 		state.useProgram( program );
 
-		state.initAttributes();
-		state.enableAttribute( attributes.position );
-		state.enableAttribute( attributes.uv );
-		state.disableUnusedAttributes();
+		vertexArrayObjects.unbind();
+		vertexArrayObjects.initAttributes();
+		vertexArrayObjects.enableAttribute( attributes.position, vertexBuffer, 2, gl.FLOAT, false, 2 * 8, 0 );
+		vertexArrayObjects.enableAttribute( attributes.uv, vertexBuffer, 2, gl.FLOAT, false, 2 * 8, 8 );
+		vertexArrayObjects.disableUnusedAttributes();
+
+		vertexArrayObjects.enableIndex( elementBuffer );
 
 		state.disable( gl.CULL_FACE );
 		state.enable( gl.BLEND );
-
-		gl.bindBuffer( gl.ARRAY_BUFFER, vertexBuffer );
-		gl.vertexAttribPointer( attributes.position, 2, gl.FLOAT, false, 2 * 8, 0 );
-		gl.vertexAttribPointer( attributes.uv, 2, gl.FLOAT, false, 2 * 8, 8 );
-
-		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, elementBuffer );
 
 		gl.uniformMatrix4fv( uniforms.projectionMatrix, false, camera.projectionMatrix.elements );
 
