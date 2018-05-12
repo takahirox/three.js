@@ -5,7 +5,7 @@
 function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	var ext = extensions.get( 'OES_vertex_array_object' );
-	var objects = new WeakMap();
+	var objects = {};
 	var maxVertexAttributes = gl.getParameter( gl.MAX_VERTEX_ATTRIBS );
 
 	var defaultObject = createObject( false );
@@ -34,28 +34,32 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		return {
 			object: makeArray ? ext.createVertexArrayOES() : null,
 			attributes: attributes,
-			index: null
+			index: null,
+			version: - 1
 		};
 
 	}
 
-	function getObject( geometry ) {
+	function getObject( geometryProgram ) {
 
-		if ( ! objects.has( geometry ) ) {
+		if ( objects[ geometryProgram ] === undefined ) {
 
-			objects.set( geometry, createObject( true ) );
+			objects[ geometryProgram ] = createObject( true );
 
 		}
 
-		return objects.get( geometry );
+		return objects[ geometryProgram ];
 
 	}
 
-	function bind( geometry ) {
+	function bind( geometryProgram ) {
 
 		if ( ext === null ) return;
 
-		var object = getObject( geometry )
+		var object = getObject( geometryProgram )
+
+		if ( currentObject === object ) return;
+
 		ext.bindVertexArrayOES( object.object );
 		currentObject = object;
 
@@ -67,6 +71,28 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 		ext.bindVertexArrayOES( null );
 		currentObject = defaultObject;
+
+	}
+
+	function needsSetup( geometry, program ) {
+
+		if ( ext === null ) return true;
+
+		return currentObject.version !== geometry.version;
+
+	}
+
+	function saveVersion( geometry ) {
+
+		if ( ext === null ) return;
+
+		currentObject.version = geometry.version;
+
+	}
+
+	function onDispose( geometryProgram ) {
+
+		delete objects[ geometryProgram ];
 
 	}
 
@@ -181,6 +207,8 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 		bind: bind,
 		unbind: unbind,
+		needsSetup: needsSetup,
+		saveVersion: saveVersion,
 		enableAttribute: enableAttribute,
 		enableAttributeAndDivisor: enableAttributeAndDivisor,
 		enableIndex: enableIndex,

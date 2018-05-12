@@ -38,6 +38,8 @@ function BufferGeometry() {
 
 	this.drawRange = { start: 0, count: Infinity };
 
+	this.version = 0;
+
 }
 
 BufferGeometry.prototype = Object.assign( Object.create( EventDispatcher.prototype ), {
@@ -64,9 +66,13 @@ BufferGeometry.prototype = Object.assign( Object.create( EventDispatcher.prototy
 
 		}
 
+		this.version ++;
+
 	},
 
 	addAttribute: function ( name, attribute ) {
+
+		this.version ++;
 
 		if ( ! ( attribute && attribute.isBufferAttribute ) && ! ( attribute && attribute.isInterleavedBufferAttribute ) ) {
 
@@ -100,6 +106,8 @@ BufferGeometry.prototype = Object.assign( Object.create( EventDispatcher.prototy
 	},
 
 	removeAttribute: function ( name ) {
+
+		this.version ++;
 
 		delete this.attributes[ name ];
 
