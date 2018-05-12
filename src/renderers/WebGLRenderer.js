@@ -260,10 +260,10 @@ function WebGLRenderer( parameters ) {
 		info = new WebGLInfo( _gl );
 		properties = new WebGLProperties();
 		textures = new WebGLTextures( _gl, extensions, state, properties, capabilities, utils, info );
-		attributes = new WebGLAttributes( _gl );
+		vertexArrayObjects = new WebGLVertexArrayObjects( _gl, state, extensions );
+		attributes = new WebGLAttributes( _gl, vertexArrayObjects );
 		geometries = new WebGLGeometries( _gl, attributes, info );
 		objects = new WebGLObjects( geometries, info );
-		vertexArrayObjects = new WebGLVertexArrayObjects( _gl, state, extensions );
 		morphtargets = new WebGLMorphtargets( _gl );
 		programCache = new WebGLPrograms( _this, extensions, capabilities );
 		renderLists = new WebGLRenderLists();
@@ -583,9 +583,6 @@ function WebGLRenderer( parameters ) {
 	this.renderBufferImmediate = function ( object, program, material ) {
 
 		vertexArrayObjects.unbind();
-
-		objects.update( object );
-
 		vertexArrayObjects.initAttributes();
 
 		var buffers = properties.get( object );
@@ -721,7 +718,6 @@ function WebGLRenderer( parameters ) {
 		var renderer = bufferRenderer;
 
 		vertexArrayObjects.bind( geometryProgram );
-		objects.update( object );
 
 		if ( index !== null ) {
 
@@ -1326,7 +1322,7 @@ function WebGLRenderer( parameters ) {
 
 					}
 
-					var geometry = objects.get( object );
+					var geometry = objects.update( object );
 					var material = object.material;
 
 					if ( Array.isArray( material ) ) {

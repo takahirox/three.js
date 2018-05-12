@@ -382,7 +382,7 @@ function WebGLShadowMap( _renderer, _objects, maxTextureSize ) {
 
 				object.modelViewMatrix.multiplyMatrices( shadowCamera.matrixWorldInverse, object.matrixWorld );
 
-				var geometry = _objects.get( object );
+				var geometry = _objects.update( object );
 				var material = object.material;
 
 				if ( Array.isArray( material ) ) {

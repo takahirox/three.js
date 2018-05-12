@@ -90,6 +90,58 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 
 	}
 
+	function bindAndBufferData( bufferType, buffer, array, usage ) {
+
+		if ( ext !== null && bufferType === gl.ELEMENT_ARRAY_BUFFER ) {
+
+			if ( currentObject !== defaultObject ) {
+
+				ext.bindVertexArrayOES( null );
+
+			}
+
+			defaultObject.index = buffer;
+
+		}
+
+		gl.bindBuffer( bufferType, buffer );
+		gl.bufferData( bufferType, array, usage );
+
+		if ( ext !== null && currentObject !== defaultObject &&
+			bufferType === gl.ELEMENT_ARRAY_BUFFER ) {
+
+			ext.bindVertexArrayOES( currentObject.object );
+
+		}
+
+	}
+
+	function bindAndBufferSubData( bufferType, buffer, offset, array ) {
+
+		if ( ext !== null && bufferType === gl.ELEMENT_ARRAY_BUFFER ) {
+
+			if ( currentObject !== defaultObject ) {
+
+				ext.bindVertexArrayOES( null );
+
+			}
+
+			defaultObject.index = buffer;
+
+		}
+
+		gl.bindBuffer( bufferType, buffer );
+		gl.bufferSubData( bufferType, offset, array );
+
+		if ( ext !== null && currentObject !== defaultObject &&
+			bufferType === gl.ELEMENT_ARRAY_BUFFER ) {
+
+			ext.bindVertexArrayOES( currentObject.object );
+
+		}
+
+	}
+
 	function onDispose( geometryProgram ) {
 
 		delete objects[ geometryProgram ];
@@ -209,6 +261,8 @@ function WebGLVertexArrayObjects( gl, state, extensions ) {
 		unbind: unbind,
 		needsSetup: needsSetup,
 		saveVersion: saveVersion,
+		bindAndBufferData: bindAndBufferData,
+		bindAndBufferSubData: bindAndBufferSubData,
 		enableAttribute: enableAttribute,
 		enableAttributeAndDivisor: enableAttributeAndDivisor,
 		enableIndex: enableIndex,

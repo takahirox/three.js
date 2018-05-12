@@ -2,7 +2,7 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-function WebGLAttributes( gl ) {
+function WebGLAttributes( gl, vertexArrayObjects ) {
 
 	var buffers = new WeakMap();
 
@@ -13,8 +13,7 @@ function WebGLAttributes( gl ) {
 
 		var buffer = gl.createBuffer();
 
-		gl.bindBuffer( bufferType, buffer );
-		gl.bufferData( bufferType, array, usage );
+		vertexArrayObjects.bindAndBufferData( bufferType, buffer, array, usage );
 
 		attribute.onUploadCallback();
 
@@ -68,17 +67,15 @@ function WebGLAttributes( gl ) {
 		var array = attribute.array;
 		var updateRange = attribute.updateRange;
 
-		gl.bindBuffer( bufferType, buffer );
-
 		if ( attribute.dynamic === false ) {
 
-			gl.bufferData( bufferType, array, gl.STATIC_DRAW );
+			vertexArrayObjects.bindAndBufferData( bufferType, buffer, array, gl.STATIC_DRAW );
 
 		} else if ( updateRange.count === - 1 ) {
 
 			// Not using update ranges
 
-			gl.bufferSubData( bufferType, 0, array );
+			vertexArrayObjects.bindAndBufferSubData( bufferType, buffer, 0, array );
 
 		} else if ( updateRange.count === 0 ) {
 
@@ -86,7 +83,7 @@ function WebGLAttributes( gl ) {
 
 		} else {
 
-			gl.bufferSubData( bufferType, updateRange.offset * array.BYTES_PER_ELEMENT,
+			vertexArrayObjects.bindAndBufferSubData( bufferType, buffer, updateRange.offset * array.BYTES_PER_ELEMENT,
 				array.subarray( updateRange.offset, updateRange.offset + updateRange.count ) );
 
 			updateRange.count = - 1; // reset range
