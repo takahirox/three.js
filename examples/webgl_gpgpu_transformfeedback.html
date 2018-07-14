@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - gpgpu - transform feedback</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #ffffff;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				text-align:center;
+				cursor: pointer;
+			}
+
+			a {
+				color:#0078ff;
+			}
+
+			#info {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<script src="../build/three.js"></script>
+		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script id="computeShader" type="x-shader/x-vertex">
+			#version 300 es
+
+			in vec3 position;
+			in vec3 velocity;
+			in vec3 acceleration;
+
+			out vec3 outPosition;
+			out vec3 outVelocity;
+
+			uniform float delta;
+			uniform float elapsed;
+
+			const float GRAVITY = - 9.8 * 5.0;
+
+			void main() {
+
+				outPosition = position + velocity * delta;
+				outVelocity = vec3( velocity.x, velocity.y + GRAVITY * delta, velocity.z );
+
+				if ( outPosition.y < 0.0 ) {
+
+					outPosition.y = - outPosition.y;
+					outVelocity = vec3( outVelocity.x * 1.02, - outVelocity.y * 0.9, outVelocity.z * 1.02 );
+
+				}
+
+			}
+
+		</script>
+
+		<script id="fragmentTemplate" type="x-shader/x-fragment">
+			#version 300 es
+			precision highp float;
+
+			out vec4 fragColor;
+
+			void main() {
+
+				fragColor = vec4( 1.0, 1.0, 1.0, 1.0 );
+
+			}
+		</script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+			var camera, scene, renderer;
+			var controls;
+
+			var clock = new THREE.Clock();
+
+			var points, material;
+			var source, target;
+
+			var NUM = 100000;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 3000 );
+				camera.position.y = 30;
+				camera.position.z = 50;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x000000 );
+				scene.fog = new THREE.Fog( 0xffffff, 100, 1000 );
+
+				controls = new THREE.OrbitControls( camera );
+
+				var canvas = document.createElement( 'canvas' );
+				var context = canvas.getContext( 'webgl2' );
+
+				renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				initPoints();
+				initComputeMaterial();
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+			}
+
+			function initPoints() {
+
+				source = new THREE.BufferGeometry();
+
+				source.addAttribute( 'position', new THREE.Float32BufferAttribute(
+					createPositionArray( NUM ), 3, false
+				) );
+
+				source.addAttribute( 'velocity', new THREE.Float32BufferAttribute(
+					createVelocityArray( NUM ), 3, false
+				) );
+
+				source.addAttribute( 'color', new THREE.Float32BufferAttribute(
+					createColorArray( NUM ), 4, false
+				) );
+
+				target = source.clone();
+
+				points = new THREE.Points( source, new THREE.PointsMaterial( {
+					size: 0.5,
+					vertexColors: THREE.VertexColors
+				} ) );
+
+				scene.add( points );
+
+			}
+
+			function createPositionArray( num ) {
+
+				var array = [];
+
+				for ( var i = 0; i < num; i ++ ) {
+
+					array.push( 0.0 );
+					array.push( 30.0 );
+					array.push( 0.0 );
+
+				}
+
+				return array;
+
+			}
+
+			function createVelocityArray( num ) {
+
+				var array = [];
+
+				for ( var i = 0; i < num; i ++ ) {
+
+					var r = Math.random() * 20.0 + 2.0;
+					var angle = Math.random() * 360 * Math.PI / 180;
+					var angle2 = Math.random() * 360 * Math.PI / 180;
+
+					array.push( r * Math.sin( angle ) * Math.cos( angle2 ) );
+					array.push( r * Math.sin( angle ) * Math.sin( angle2 ) );
+					array.push( r * Math.cos( angle ) );
+
+				}
+
+				return array;
+
+			}
+
+			function createColorArray( num ) {
+
+				var array = [];
+
+				for ( var i = 0; i < num; i ++ ) {
+
+					array.push( Math.random() * 0.7 + 0.3 );
+					array.push( Math.random() * 0.7 + 0.3 );
+					array.push( Math.random() * 0.7 + 0.3 );
+					array.push( 0.0 );
+
+				}
+
+				return array;
+
+			}
+
+			function initComputeMaterial() {
+
+				material = new THREE.ShaderMaterial( {
+					uniforms: {
+						delta: { value: 0.0 },
+						elapsed: { value: 0.0 }
+					},
+					vertexShader: document.getElementById( 'computeShader' ).textContent.trim(),
+					fragmentShader: document.getElementById( 'fragmentTemplate' ).textContent.trim()
+				} );
+
+				// Add .trasnformFeedbackVaryings mappings into ShaderMaterial
+
+				material.transformFeedbackVaryings = {
+					outPosition: 'position',
+					outVelocity: 'velocity'
+				};
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				compute();
+				render();
+
+				stats.update();
+
+			}
+
+			function compute() {
+
+				material.uniforms.delta.value = clock.getDelta();
+				material.uniforms.elapsed.value += material.uniforms.delta.value;
+
+				renderer.compute( source, target, material );
+
+				points.geometry = target;
+
+				target = source;
+				source = points.geometry;
+
+			}
+
+			function render() {
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>
