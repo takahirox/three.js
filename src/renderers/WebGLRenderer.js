@@ -1161,6 +1161,215 @@ function WebGLRenderer( parameters ) {
 
 	};
 
+	/**
+	 * @param {BufferGeometry} source
+	 * @param {BufferGeometry} target
+	 * @param {ShaderMaterial} material
+	 */
+	this.compute = function ( source, target, material ) {
+
+		if ( _isContextLost ) return;
+
+		var materialProperties = properties.get( material );
+		var program = materialProperties.program;
+		var transformFeedback = materialProperties.transformFeedback;
+		var programAttributes = materialProperties.programAttributes;
+		var programUniforms = materialProperties.programUniforms;
+		var varyings = materialProperties.varyings;
+
+		if ( ! program ) {
+
+			var varyingList = Object.keys( material.transformFeedbackVaryings );
+
+			// Compile shaders
+
+			var vertexShader = _gl.createShader( _gl.VERTEX_SHADER );
+			var fragmentShader = _gl.createShader( _gl.FRAGMENT_SHADER );
+
+			_gl.shaderSource( vertexShader, material.vertexShader );
+			_gl.shaderSource( fragmentShader, material.fragmentShader );
+
+			_gl.compileShader( vertexShader );
+
+			var valid = true;
+
+			if ( ! _gl.getShaderParameter( vertexShader, _gl.COMPILE_STATUS ) ) {
+
+				console.error( 'Shader failed to compile', _gl.getShaderInfoLog( vertexShader ) );
+				valid = false;
+
+			}
+
+			_gl.compileShader( fragmentShader );
+
+			if ( ! _gl.getShaderParameter( fragmentShader, _gl.COMPILE_STATUS ) ) {
+
+				console.error( 'Shader failed to compile', _gl.getShaderInfoLog( fragmentShader ) );
+				valid = false;
+
+			}
+
+			if ( ! valid ) return;
+
+			// Create program
+
+			program = _gl.createProgram();
+
+			_gl.attachShader( program, vertexShader );
+			_gl.attachShader( program, fragmentShader );
+
+			_gl.deleteShader( vertexShader );
+			_gl.deleteShader( fragmentShader );
+
+			_gl.transformFeedbackVaryings( program, varyingList, _gl.SEPARATE_ATTRIBS );
+
+			_gl.linkProgram( program );
+
+			if ( ! _gl.getProgramParameter( program, _gl.LINK_STATUS ) ) {
+
+				console.error( 'Shader program failed to link', _gl.getProgramInfoLog( program ) );
+				_gl.deleteProgram( program );
+
+			}
+
+			// Save program attributes and uniforms
+
+			programAttributes = {};
+
+			var n = _gl.getProgramParameter( program, _gl.ACTIVE_ATTRIBUTES );
+
+			for ( var i = 0; i < n; i ++ ) {
+
+				var info = _gl.getActiveAttrib( program, i );
+				var name = info.name;
+
+				programAttributes[ name ] = _gl.getAttribLocation( program, name );
+
+			}
+
+			programUniforms = {};
+
+			n = _gl.getProgramParameter( program, _gl.ACTIVE_UNIFORMS );
+
+			for ( var i = 0; i < n; i ++ ) {
+
+				var info = _gl.getActiveUniform( program, i )
+				var name = info.name;
+
+				programUniforms[ name ] = _gl.getUniformLocation( program, name )
+
+			}
+
+			// Save transform fedback varyings
+
+			varyings = {};
+
+			for ( var i = 0, il = varyingList.length; i < il; i ++ ) {
+
+				varyings[ material.transformFeedbackVaryings[ varyingList[ i ] ] ] = i;
+
+			}
+
+			// Create Transform feedback
+
+			transformFeedback = _gl.createTransformFeedback();
+
+			materialProperties.program = program;
+			materialProperties.programAttributes = programAttributes;
+			materialProperties.programUniforms = programUniforms;
+			materialProperties.varyings = varyings;
+			materialProperties.transformFeedback = transformFeedback;
+
+		}
+
+		state.useProgram( program );
+
+		// Create/Update WebGL buffers
+
+		geometries.update( source );
+		geometries.update( target );
+
+		// Bind transform feedback
+
+		_gl.bindTransformFeedback( _gl.TRANSFORM_FEEDBACK, transformFeedback );
+
+		// Bind WebGL buffer, enable Vertex attributes
+
+		state.initAttributes();
+
+		for ( var attributeName in source.attributes ) {
+
+			if ( programAttributes[ attributeName ] === undefined ) continue;
+
+			var index = programAttributes[ attributeName ];
+
+			state.enableAttribute( index );
+			_gl.bindBuffer( _gl.ARRAY_BUFFER, attributes.get( source.attributes[ attributeName ] ).buffer );
+			_gl.vertexAttribPointer( index, source.attributes[ attributeName ].itemSize, _gl.FLOAT, false, 0, 0 );
+
+		}
+
+		state.disableUnusedAttributes();
+
+		// Bind Transform feedback buffers
+
+		for ( var attributeName in target.attributes ) {
+
+			if ( varyings[ attributeName ] === undefined ) continue;
+
+			var index = varyings[ attributeName ];
+
+			_gl.bindBufferBase( _gl.TRANSFORM_FEEDBACK_BUFFER, index, attributes.get( target.attributes[ attributeName ] ).buffer );
+
+		}
+
+		// Update uniforms
+
+		for ( var uniformName in material.uniforms ) {
+
+			if ( programUniforms[ uniformName ] === undefined ) continue;
+
+			var uniform = programUniforms[ uniformName ];
+			var value = material.uniforms[ uniformName ].value;
+
+			if ( typeof value === 'number' ) {
+
+				_gl.uniform1f( uniform, value );
+
+			} else if ( value.isVector3 === true ) {
+
+			} else if ( value.isVector4 === true ) {
+
+			}
+
+		}
+
+		// Run
+
+		_gl.enable( _gl.RASTERIZER_DISCARD );
+
+		_gl.beginTransformFeedback( _gl.POINTS );
+		_gl.drawArrays( _gl.POINTS, 0, source.attributes.position.count );
+		_gl.endTransformFeedback();
+
+		_gl.disable( _gl.RASTERIZER_DISCARD );
+
+		// Unbind Transform feedback
+
+		for ( var attributeName in target.attributes ) {
+
+			if ( varyings[ attributeName ] === undefined ) continue;
+
+			var index = varyings[ attributeName ];
+
+			_gl.bindBufferBase( _gl.TRANSFORM_FEEDBACK_BUFFER, index, null );
+
+		}
+
+		_gl.bindTransformFeedback( _gl.TRANSFORM_FEEDBACK, null );
+
+	};
+
 	/*
 	// TODO Duplicated code (Frustum)
 
