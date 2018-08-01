@@ -637,7 +637,7 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		bindingState.disableUnusedAttributes();
+		bindingStates.disableUnusedAttributes();
 
 		_gl.drawArrays( _gl.TRIANGLES, 0, object.count );
 
