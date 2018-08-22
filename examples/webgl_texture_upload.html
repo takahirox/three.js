@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - geometry - cube</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				margin: 0px;
+				background-color: #000000;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="../build/three.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+		var useImageBitmap = location.href.split( '?' )[ 1 ] === 'imagebitmap';
+
+		if ( useImageBitmap ) {
+
+			THREE.TextureLoader.prototype.load = function ( url, onLoad, onProgress, onError ) {
+
+				var texture = new THREE.Texture();
+
+				var loader = new THREE.ImageBitmapLoader( this.manager );
+				loader.setCrossOrigin( this.crossOrigin );
+				loader.setPath( this.path );
+
+				loader.load( url, function ( image ) {
+
+					texture.image = image;
+
+					// JPEGs can't have an alpha channel, so memory
+					var isJPEG = url.search( /\.jpe?g$/i ) > 0 || url
+
+					texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat
+					texture.needsUpdate = true;
+
+					if ( onLoad !== undefined ) {
+
+						onLoad( texture );
+
+					}
+
+				}, onProgress, onError );
+
+				return texture;
+
+			};
+
+			THREE.ImageBitmapLoader.prototype.load = function ( url, onLoad, onProgress, onError ) {
+
+				if ( url === undefined ) url = '';
+
+				if ( this.path !== undefined ) url = this.path + url;
+
+				url = this.manager.resolveURL( url );
+
+				var scope = this;
+
+				var cached = THREE.Cache.get( url );
+
+				if ( cached !== undefined ) {
+
+					scope.manager.itemStart( url );
+
+					setTimeout( function () {
+
+						if ( onLoad ) onLoad( cached );
+
+						scope.manager.itemEnd( url );
+
+					}, 0 );
+
+					return cached;
+
+				}
+
+				fetch( url ).then( function ( res ) {
+
+					return res.blob();
+
+				} ).then( function ( blob ) {
+
+					return createImageBitmap( blob );
+
+				} ).then( function ( imageBitmap ) {
+
+					THREE.Cache.add( url, imageBitmap );
+
+					if ( onLoad ) onLoad( imageBitmap );
+
+					scope.manager.itemEnd( url );
+
+				} ).catch( function ( e ) {
+
+					if ( onError ) onError( e );
+console.error(e);
+					scope.manager.itemEnd( url );
+					scope.manager.itemError( url );
+
+				} );
+
+			};
+
+		}
+		</script>
+
+		<script>
+
+			var camera, scene, renderer;
+			var mesh;
+			var stats;
+
+			var isTextureLoading = false;
+			var textureIndex = 0;
+			var textureLoader = new THREE.TextureLoader();
+
+			var textures = [
+				'models/gltf/BoomBox/glTF/BoomBox_baseColor.png',
+				'models/gltf/BoomBox/glTF/BoomBox_occlusionRoughnessMetallic.png'
+			];
+
+			var frameCount = 0;
+
+			init();
+			animate();
+
+			function init() {
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.z = 400;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				var geometry = new THREE.BoxBufferGeometry( 200, 200, 200 );
+				var material = new THREE.MeshBasicMaterial( { map: new THREE.Texture( new Image() ) } );
+
+				mesh = new THREE.Mesh( geometry, material );
+				scene.add( mesh );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				stats = new Stats();
+				document.body.appendChild( stats.dom );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function updateTexture() {
+
+				textureLoader.load( textures[ textureIndex ++ ], function ( texture ) {
+
+					mesh.material.map = texture;
+
+					isTextureLoading = false;
+
+				} );
+
+				if ( textureIndex >= textures.length ) {
+
+					textureIndex = 0;
+
+				}
+
+				isTextureLoading = true;
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				mesh.rotation.x += 0.005;
+				mesh.rotation.y += 0.01;
+
+				renderer.render( scene, camera );
+
+				if ( isTextureLoading === false && ( ++ frameCount % 300 ) === 0 ) {
+
+					updateTexture();
+
+				}
+
+				stats.update();
+
+			}
+
+		</script>
+
+	</body>
+</html>
