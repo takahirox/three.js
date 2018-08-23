@@ -23,6 +23,8 @@
 
 		if ( useImageBitmap ) {
 
+			// Override for handling ImageBitmap on FireFox
+
 			THREE.TextureLoader.prototype.load = function ( url, onLoad, onProgress, onError ) {
 
 				var texture = new THREE.Texture();
@@ -100,7 +102,7 @@
 				} ).catch( function ( e ) {
 
 					if ( onError ) onError( e );
-console.error(e);
+
 					scope.manager.itemEnd( url );
 					scope.manager.itemError( url );
 
@@ -113,20 +115,32 @@ console.error(e);
 
 		<script>
 
-			var camera, scene, renderer;
-			var mesh;
+			var camera, scene, renderer, mesh;
 			var stats;
+			var container;
 
 			var isTextureLoading = false;
+			var isTextureLoaded = false;
+			var isTextureUploading = false;
 			var textureIndex = 0;
 			var textureLoader = new THREE.TextureLoader();
 
+			var startTime;
+
+			// 0: JPG, 1: PNG
+
+			var totalElapsedTimes = [ 0.0, 0.0 ];
+			var minElapsedTimes = [ 0.0, 0.0 ];
+			var maxElapsedTimes = [ 0.0, 0.0 ];
+			var sampleCounts = [ - 2, - 2 ];
+
 			var textures = [
-				'models/gltf/BoomBox/glTF/BoomBox_baseColor.png',
-				'models/gltf/BoomBox/glTF/BoomBox_occlusionRoughnessMetallic.png'
+				'textures/5_night_8k.jpg',  // 8192x4096 4.4MB JPG file
+				'models/gltf/BoomBox/glTF/BoomBox_occlusionRoughnessMetallic.png' // 2048x2048 4.5MB PNG file
 			];
 
 			var frameCount = 0;
+			var sampleCount = 0;
 
 			init();
 			animate();
@@ -157,6 +171,45 @@ console.error(e);
 				stats = new Stats();
 				document.body.appendChild( stats.dom );
 
+				container = document.createElement( 'div' );
+				container.style.position = 'fixed';
+				container.style.top = '0px';
+				container.style.right = '0px';
+				container.style.zIndex = '10000';
+				document.body.appendChild( container );
+
+				// Stats numbers
+
+				container.appendChild( document.createTextNode( useImageBitmap ? 'ImageBitmap' : 'Image' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( 'Texture uploading time [ms]' ) );
+				container.appendChild( document.createElement( 'br' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( 'image / min / max / avg / count' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( '8192x4096 4.4MB ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '-2' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( '2048x2048 4.5MB ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '-2' ) );
+
 			}
 
 			function onWindowResize() {
@@ -175,6 +228,7 @@ console.error(e);
 					mesh.material.map = texture;
 
 					isTextureLoading = false;
+					isTextureLoaded = true;
 
 				} );
 
@@ -194,6 +248,43 @@ console.error(e);
 
 				mesh.rotation.x += 0.005;
 				mesh.rotation.y += 0.01;
+
+				if ( isTextureLoaded ) {
+
+					startTime = performance.now();
+
+					isTextureLoaded = false;
+					isTextureUploading = true;
+
+				} else if ( isTextureUploading ) {
+
+					var endTime = performance.now();
+					var elapsedTime = endTime - startTime;
+
+					container.childNodes[ 4 ].textContent = elapsedTime.toFixed( 2 );
+
+					var index = ( sampleCount ++ ) % 2;
+					var baseNodeIndex = index === 0 ? 9 : 18;
+
+					sampleCounts[ index ] ++;
+
+					if ( sampleCounts[ index ] > 0 ) {
+
+						totalElapsedTimes[ index ] += elapsedTime;
+						minElapsedTimes[ index ] = minElapsedTimes[ index ] === 0.0 ? elapsedTime : Math.min( minElapsedTimes[ index ], elapsedTime );
+						maxElapsedTimes[ index ] = Math.max( maxElapsedTimes[ index ], elapsedTime );
+
+						container.childNodes[ baseNodeIndex ].textContent = minElapsedTimes[ index ].toFixed( 2 );
+						container.childNodes[ baseNodeIndex + 2 ].textContent = maxElapsedTimes[ index ].toFixed( 2 );
+						container.childNodes[ baseNodeIndex + 4 ].textContent = ( totalElapsedTimes[ index ] / sampleCounts[ index ] ).toFixed( 2 );
+
+					}
+
+					container.childNodes[ baseNodeIndex + 6 ].textContent = sampleCounts[ index ];
+
+					isTextureUploading = false;
+
+				}
 
 				renderer.render( scene, camera );
 
