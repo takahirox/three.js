@@ -225,6 +225,8 @@
 
 				textureLoader.load( textures[ textureIndex ++ ], function ( texture ) {
 
+					texture.flipY = false;
+
 					mesh.material.map = texture;
 
 					isTextureLoading = false;
