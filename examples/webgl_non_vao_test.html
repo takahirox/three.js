@@ -53,7 +53,7 @@
 			var elapsedTime = 0.0;
 			var minElapsedTime = 0.0;
 			var maxElapsedTime = 0.0;
-			var avgElapsedTime = 0.0;
+			var totalElapsedTime = 0.0;
 
 			init();
 			animate();
@@ -193,14 +193,14 @@
 
 						minElapsedTime = minElapsedTime === 0.0 ? elapsedTime : Math.min( elapsedTime, minElapsedTime );
 						maxElapsedTime = Math.max( elapsedTime, maxElapsedTime );
-						avgElapsedTime = avgElapsedTime === 0.0 ? elapsedTime : ( avgElapsedTime * ( count2 - 11 ) + elapsedTime ) / ( count2 - 10 );
+						totalElapsedTime += elapsedTime;
 
 					}
 
 					container2.childNodes[ 2 ].textContent = elapsedTime.toFixed( 2 );
 					container2.childNodes[ 6 ].textContent = minElapsedTime.toFixed( 2 );
 					container2.childNodes[ 8 ].textContent = maxElapsedTime.toFixed( 2 );
-					container2.childNodes[ 10 ].textContent = avgElapsedTime.toFixed( 2 );
+					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 10 ) ).toFixed( 2 );
 					container2.childNodes[ 12 ].textContent = count2 - 10;
 
 					elapsedTime = 0.0;
