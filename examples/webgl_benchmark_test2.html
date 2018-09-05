@@ -258,8 +258,6 @@
 			var container, stats;
 			var camera, scene, renderer;
 
-			var container2;
-
 			var objectNum = 100;
 			var webGLEnabled = true;
 
@@ -328,14 +326,6 @@
 			console.log( 'Object Num is', objectNum );
 			console.log( 'WebGL is', webGLEnabled === true ? 'on' : 'off' );
 
-			var count = 0;
-			var count2 = 0;
-			var elapsedTime = 0.0;
-			var minElapsedTime = 0.0;
-			var maxElapsedTime = 0.0;
-			var avgElapsedTime = 0.0;
-			var totalElapsedTime = 0.0;
-
 			init();
 			animate();
 
@@ -387,31 +377,6 @@
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
-				// stats
-				stats = new Stats();
-				//container.appendChild( stats.dom );
-
-				container2 = document.createElement( 'div' );
-				container2.style.position = 'fixed';
-				container2.style.top = '0px';
-				container2.style.right = '0px';
-				container2.style.zIndex = '10000';
-				//container.appendChild( container2 );
-
-				container2.appendChild( document.createTextNode( 'Elapsed .render() CPU time [ms] / 60 frames' ) );
-				container2.appendChild( document.createElement( 'br' ) );
-				container2.appendChild( document.createTextNode( '0' ) );
-				container2.appendChild( document.createElement( 'br' ) );
-				container2.appendChild( document.createTextNode( 'min / max / avg / count' ) );
-				container2.appendChild( document.createElement( 'br' ) );
-				container2.appendChild( document.createTextNode( '0' ) );
-				container2.appendChild( document.createTextNode( ' / ' ) );
-				container2.appendChild( document.createTextNode( '0' ) );
-				container2.appendChild( document.createTextNode( ' / ' ) );
-				container2.appendChild( document.createTextNode( '0' ) );
-				container2.appendChild( document.createTextNode( ' / ' ) );
-				container2.appendChild( document.createTextNode( '0' ) );
-
 			}
 
 			function createGeometry( id ) {
@@ -461,40 +426,7 @@
 
 				requestAnimationFrame( animate );
 
-				var startTime = performance.now();
-
 				renderer.render( scene, camera );
-
-				var endTime = performance.now();
-
-				elapsedTime += ( endTime - startTime );
-
-				if ( ++ count === 60 ) {
-
-					count2 ++;
-
-					// ignore first ten for min/max/avg
-
-					if ( count2 > 10 ) {
-
-						minElapsedTime = minElapsedTime === 0.0 ? elapsedTime : Math.min( elapsedTime, minElapsedTime );
-						maxElapsedTime = Math.max( elapsedTime, maxElapsedTime );
-						totalElapsedTime += elapsedTime;
-
-					}
-
-					container2.childNodes[ 2 ].textContent = elapsedTime.toFixed( 2 );
-					container2.childNodes[ 6 ].textContent = minElapsedTime.toFixed( 2 );
-					container2.childNodes[ 8 ].textContent = maxElapsedTime.toFixed( 2 );
-					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 10 ) ).toFixed( 2 );
-					container2.childNodes[ 12 ].textContent = count2 - 10;
-
-					elapsedTime = 0.0;
-					count = 0;
-
-				}
-
-				stats.update();
 
 			}
 		</script>
