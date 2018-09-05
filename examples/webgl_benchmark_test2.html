@@ -340,11 +340,12 @@
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
 
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 2000 );
-				camera.position.z = 10;
-
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xffffff );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 2000 );
+				camera.position.z = 10;
+				scene.add( camera );
 
 				var light = new THREE.DirectionalLight( 0xffffff );
 				light.position.set( 1, 1, 1 ).normalize();
