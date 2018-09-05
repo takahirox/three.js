@@ -427,7 +427,11 @@
 
 			function animate() {
 
-				requestAnimationFrame( animate );
+				renderer.setAnimationLoop( rrender );
+
+			}
+
+			function render() {
 
 				renderer.render( scene, camera );
 
