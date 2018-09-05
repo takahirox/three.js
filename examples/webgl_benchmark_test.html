@@ -367,7 +367,7 @@
 
 					mesh.position.x = ( ( i % 9 ) - 4 ) * 0.5;
 					mesh.position.y = ( ( ( ( i / 9 ) | 0 ) % 9 ) - 4 ) * 0.5;
-					mesh.position.z = - ( ( i / 81 ) | 0 ) * 0.5;
+					mesh.position.z = - ( ( i / 81 ) | 0 ) * 0.5 - 10.0;
 
 					scene.add( mesh );
 
