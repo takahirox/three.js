@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - benchmark test</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #fff;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+
+	<body>
+		<script src="../build/three.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			function FakeGL( gl ) {
+
+				this.gl = gl;
+
+				for ( var key in gl ) {
+
+					if ( typeof gl[ key ] !== 'function' ) {
+
+						this[ key ] = gl[ key ];
+
+					}
+
+				}
+
+			}
+
+			Object.assign( FakeGL.prototype, {
+
+				getParameter: function () {
+
+					return this.gl.getParameter.apply( this.gl, arguments );
+
+				},
+
+				getExtension: function () {
+
+					return this.gl.getExtension.apply( this.gl, arguments );
+
+				},
+
+				createTexture: function () {
+
+					return null;
+
+				},
+
+				bindTexture: function () {
+
+					return null;
+
+				},
+
+				texParameteri: function () {
+
+					return null;
+
+				},
+
+				texImage2D: function () {
+
+					return null;
+
+				},
+
+				clearColor: function () {
+
+					return null;
+
+				},
+
+				clearDepth: function () {
+
+					return null;
+
+				},
+
+				clearStencil: function () {
+
+					return null;
+
+				},
+
+				enable: function () {
+
+					return null;
+
+				},
+
+				depthFunc: function () {
+
+					return null;
+
+				},
+
+				frontFace: function () {
+
+					return null;
+
+				},
+
+				cullFace: function () {
+
+					return null;
+
+				},
+
+				scissor: function () {
+
+					return null;
+
+				},
+
+				viewport: function () {
+
+					return null;
+
+				},
+
+				createBuffer: function () {
+
+					return null;
+
+				},
+
+				bindBuffer: function () {
+
+					return null;
+
+				},
+
+				bufferData: function () {
+
+					return null;
+
+				},
+
+				disable: function () {
+
+					return null;
+
+				},
+
+				clear: function () {
+
+					return null;
+
+				},
+
+				depthMask: function () {
+
+					return null;
+
+				},
+
+				colorMask: function () {
+
+					return null;
+
+				},
+
+				createProgram: function () {
+
+					return null;
+
+				},
+
+				createShader: function () {
+
+					return null;
+
+				},
+
+				shaderSource: function () {
+
+					return null;
+
+				},
+
+				compileShader: function () {
+
+					return null;
+
+				},
+
+				getShaderParameter: function () {
+
+					return null;
+
+				},
+
+				getShaderInfoLog: function () {
+
+					return '';
+
+				},
+
+				attachShader: function () {
+
+					return null;
+
+				},
+
+				linkProgram: function () {
+
+					return null;
+
+				},
+
+				getProgramInfoLog: function () {
+
+					return '';
+
+				},
+
+				getProgramParameter: function () {
+
+					return null;
+
+				},
+
+				deleteShader: function () {
+
+					return null;
+
+				},
+
+				drawElements: function () {
+
+					return null;
+
+				}
+
+			} );
+
+
+		</script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+			var camera, scene, renderer;
+
+			var container2;
+
+			var objectNum = 100;
+			var webGLEnabled = true;
+
+			var params = location.href.split( '?' );
+
+			if ( params.length > 1 ) {
+
+				params = params.pop().split( '&' );
+
+				for ( var i = 0, il = params.length; i < il; i ++ ) {
+
+					var param = params[ i ].split( '=' );
+
+					if ( param.length !== 2 ) {
+
+						console.warn( 'Unknown Parameter: ', params[ i ] );
+						continue;
+
+					}
+
+					switch ( param[ 0 ].toLowerCase() ) {
+
+						case 'num':
+
+							var num = parseInt( param[ 1 ] );
+
+							if ( ! isNaN( objectNum ) ) {
+
+								objectNum = num;
+
+							} else {
+
+								console.warn( 'num value can not be parsed as Integer', param[ 1 ]);
+
+							}
+
+							break;
+
+						case 'webgl':
+
+							var enabled = param[ 1 ].toLowerCase();
+
+							if ( enabled === 'on' || enabled === 'off' ) {
+
+								webGLEnabled = enabled === 'on';
+
+							} else {
+
+								console.warn( 'webgl value should of on or off.' );
+
+							}
+
+							break;
+
+						defaul:
+
+							console.warn( 'Unknown parameter key: ', param[ 0 ] );
+							break;
+
+					}
+
+				}
+
+			}
+
+			console.log( 'Object Num is', objectNum );
+			console.log( 'WebGL is', webGLEnabled === true ? 'on' : 'off' );
+
+			var count = 0;
+			var count2 = 0;
+			var elapsedTime = 0.0;
+			var minElapsedTime = 0.0;
+			var maxElapsedTime = 0.0;
+			var avgElapsedTime = 0.0;
+			var totalElapsedTime = 0.0;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 2000 );
+				camera.position.z = 10;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 1, 1, 1 ).normalize();
+				scene.add( light );
+
+				// objects
+
+				var map = new THREE.DataTexture( new Uint8Array( [ 0xff, 0xff, 0xff, 0xff ] ), 1, 1 );
+				map.needsUpdate = true;
+
+				var material = new THREE.MeshStandardMaterial( { color: 0xffffff, side: THREE.DoubleSide, map: map } );
+
+				for ( var i = 0; i < objectNum; i ++ ) {
+
+					var mesh = new THREE.Mesh( createGeometry( i ), material );
+
+					mesh.position.x = ( ( i % 9 ) - 4 ) * 0.5;
+					mesh.position.y = ( ( ( ( i / 9 ) | 0 ) % 9 ) - 4 ) * 0.5;
+					mesh.position.z = - ( ( i / 81 ) | 0 ) * 0.5;
+
+					scene.add( mesh );
+
+				}
+
+				var canvas = document.createElement( 'canvas' );
+				var context = canvas.getContext( 'webgl' );
+				if ( webGLEnabled === false ) context = new FakeGL( context );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				// stats
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				container2 = document.createElement( 'div' );
+				container2.style.position = 'fixed';
+				container2.style.top = '0px';
+				container2.style.right = '0px';
+				container2.style.zIndex = '10000';
+				container.appendChild( container2 );
+
+				container2.appendChild( document.createTextNode( 'Elapsed .render() CPU time [ms] / 60 frames' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( 'min / max / avg / count' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+
+			}
+
+			function createGeometry( id ) {
+
+				switch( id % 6 ) {
+
+					case 0:
+
+						return new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
+
+					case 1:
+
+						return new THREE.SphereBufferGeometry( 0.1 );
+
+					case 2:
+
+						return new THREE.CircleBufferGeometry( 0.1 );
+
+					case 3:
+
+						return new THREE.ConeBufferGeometry( 0.1, 0.1 );
+
+					case 4:
+
+						return new THREE.CylinderBufferGeometry( 0.1, 0.1, 0.1 );
+
+					case 5:
+
+						return new THREE.PlaneBufferGeometry( 0.1, 0.1 );
+
+				}
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				var startTime = performance.now();
+
+				renderer.render( scene, camera );
+
+				var endTime = performance.now();
+
+				elapsedTime += ( endTime - startTime );
+
+				if ( ++ count === 60 ) {
+
+					count2 ++;
+
+					// ignore first ten for min/max/avg
+
+					if ( count2 > 10 ) {
+
+						minElapsedTime = minElapsedTime === 0.0 ? elapsedTime : Math.min( elapsedTime, minElapsedTime );
+						maxElapsedTime = Math.max( elapsedTime, maxElapsedTime );
+						totalElapsedTime += elapsedTime;
+
+					}
+
+					container2.childNodes[ 2 ].textContent = elapsedTime.toFixed( 2 );
+					container2.childNodes[ 6 ].textContent = minElapsedTime.toFixed( 2 );
+					container2.childNodes[ 8 ].textContent = maxElapsedTime.toFixed( 2 );
+					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 10 ) ).toFixed( 2 );
+					container2.childNodes[ 12 ].textContent = count2 - 10;
+
+					elapsedTime = 0.0;
+					count = 0;
+
+				}
+
+				stats.update();
+
+			}
+		</script>
+
+	</body>
+</html>
