@@ -369,11 +369,7 @@
 
 				}
 
-				var canvas = document.createElement( 'canvas' );
-				var context = canvas.getContext( 'webgl' );
-				if ( webGLEnabled === false ) context = new FakeGL( context );
-
-				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context } );
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
