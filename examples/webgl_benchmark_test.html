@@ -337,7 +337,6 @@
 			var totalElapsedTime = 0.0;
 
 			init();
-			animate();
 
 			function init() {
 
@@ -383,7 +382,7 @@
 				renderer.vr.enabled = true;
 				container.appendChild( renderer.domElement );
 
-				document.body.appendChild( WEBVR.createButton( renderer ) );
+				container.appendChild( WEBVR.createButton( renderer ) );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -411,6 +410,8 @@
 				container2.appendChild( document.createTextNode( '0' ) );
 				container2.appendChild( document.createTextNode( ' / ' ) );
 				container2.appendChild( document.createTextNode( '0' ) );
+
+				renderer.setAnimationLoop( animate );
 
 			}
 
