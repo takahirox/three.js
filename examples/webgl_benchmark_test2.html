@@ -482,9 +482,9 @@
 
 					count2 ++;
 
-					// ignore first five for min/max/avg
+					// ignore first ten for min/max/avg
 
-					if ( count2 > 5 ) {
+					if ( count2 > 10 ) {
 
 						minElapsedTime = minElapsedTime === 0.0 ? elapsedTime : Math.min( elapsedTime, minElapsedTime );
 						maxElapsedTime = Math.max( elapsedTime, maxElapsedTime );
@@ -495,8 +495,8 @@
 					container2.childNodes[ 2 ].textContent = elapsedTime.toFixed( 2 );
 					container2.childNodes[ 6 ].textContent = minElapsedTime.toFixed( 2 );
 					container2.childNodes[ 8 ].textContent = maxElapsedTime.toFixed( 2 );
-					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 5 ) ).toFixed( 2 );
-					container2.childNodes[ 12 ].textContent = count2 - 5;
+					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 10 ) ).toFixed( 2 );
+					container2.childNodes[ 12 ].textContent = count2 - 10;
 
 					elapsedTime = 0.0;
 					count = 0;
