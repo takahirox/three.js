@@ -158,7 +158,8 @@
 
 				clear: function () {
 
-					return null;
+					// Seems like this is necessary for FxR
+					return this.gl.clear.apply( this.gl, arguments );
 
 				},
 
