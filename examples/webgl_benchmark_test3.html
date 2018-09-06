@@ -80,19 +80,19 @@
 
 				clearColor: function () {
 
-					return null;
+					return this.gl.clearColor.apply( this.gl, arguments );
 
 				},
 
 				clearDepth: function () {
 
-					return null;
+					return this.gl.clearDepth.apply( this.gl, arguments );
 
 				},
 
 				clearStencil: function () {
 
-					return null;
+					return this.gl.clearStencil.apply( this.gl, arguments );
 
 				},
 
@@ -158,7 +158,7 @@
 
 				clear: function () {
 
-					return null;
+					return this.clear.apply( this.gl, arguments );
 
 				},
 
