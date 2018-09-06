@@ -80,19 +80,19 @@
 
 				clearColor: function () {
 
-					//return this.gl.clearColor.apply( this.gl, arguments );
+					return null;
 
 				},
 
 				clearDepth: function () {
 
-					//return this.gl.clearDepth.apply( this.gl, arguments );
+					return null;
 
 				},
 
 				clearStencil: function () {
 
-					//return this.gl.clearStencil.apply( this.gl, arguments );
+					return null;
 
 				},
 
@@ -158,6 +158,7 @@
 
 				clear: function () {
 
+					// Seems like this is necessary for FxR
 					return this.gl.clear.apply( this.gl, arguments );
 
 				},
