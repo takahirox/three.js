@@ -261,8 +261,11 @@
 
 			var container2;
 
+			var isPresenting = false;
+
 			var objectNum = 100;
 			var webGLEnabled = true;
+			var sampleOnlyInVRMode = false;
 
 			var params = location.href.split( '?' );
 
@@ -309,15 +312,31 @@
 
 							} else {
 
-								console.warn( 'webgl value should of on or off.' );
+								console.warn( 'webgl value should be on or off.' );
 
 							}
 
 							break;
 
-						defaul:
+						case 'sample':
 
-							console.warn( 'Unknown parameter key: ', param[ 0 ] );
+							var mode = param[ 1 ].toLowerCase();
+
+							if ( mode === 'all' || mode === 'vr' ) {
+
+								sampleOnlyInVRMode = mode === 'vr';
+
+							} else {
+
+								console.warn( 'sample value should be all or vr.' );
+
+							}
+
+							break;
+
+						default:
+
+							console.warn( 'Unknown parameter key:', param[ 0 ] );
 							break;
 
 					}
@@ -328,6 +347,7 @@
 
 			console.log( 'Object Num is', objectNum );
 			console.log( 'WebGL is', webGLEnabled === true ? 'on' : 'off' );
+			console.log( 'Sampling mode is', sampleOnlyInVRMode === true ? 'vr' : 'all' );
 
 			var count = 0;
 			var count2 = 0;
@@ -386,6 +406,12 @@
 				container.appendChild( WEBVR.createButton( renderer ) );
 
 				window.addEventListener( 'resize', onWindowResize, false );
+
+				window.addEventListener( 'vrdisplaypresentchange', function ( e ) {
+
+					isPresenting = e.display.isPresenting;
+
+				}, false );
 
 				// stats
 				stats = new Stats();
@@ -469,7 +495,7 @@
 
 				elapsedTime += ( endTime - startTime );
 
-				if ( ++ count === 60 ) {
+				if ( ( ! sampleOnlyInVRMode || isPresenting ) && ++ count === 60 ) {
 
 					count2 ++;
 
