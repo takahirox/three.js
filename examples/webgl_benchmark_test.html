@@ -266,6 +266,10 @@
 			var objectNum = 100;
 			var webGLEnabled = true;
 			var sampleOnlyInVRMode = false;
+			var targetIsFrame = false;
+
+			var previousBeforeRender;
+			var previousAfterRender;
 
 			var params = location.href.split( '?' );
 
@@ -334,6 +338,22 @@
 
 							break;
 
+						case 'target':
+
+							var mode = param[ 1 ].toLowerCase();
+
+							if ( mode === 'render' || mode === 'frame' ) {
+
+								targetIsFrame = mode === 'frame';
+
+							} else {
+
+								console.warn( 'timing value should be render or frame.' );
+
+							}
+
+							break;
+
 						default:
 
 							console.warn( 'Unknown parameter key:', param[ 0 ] );
@@ -348,6 +368,7 @@
 			console.log( 'Object Num is', objectNum );
 			console.log( 'WebGL is', webGLEnabled === true ? 'on' : 'off' );
 			console.log( 'Sampling mode is', sampleOnlyInVRMode === true ? 'vr' : 'all' );
+			console.log( 'Sampling target is', targetIsFrame === true ? 'frame' : 'render' );
 
 			var count = 0;
 			var count2 = 0;
@@ -487,13 +508,31 @@
 
 			function animate() {
 
-				var startTime = performance.now();
+				var beforeRenderTime = performance.now();
 
 				renderer.render( scene, camera );
 
-				var endTime = performance.now();
+				var afterRenderTime = performance.now();
+
+				var startTime;
+				var endTime;
+
+				if ( targetIsFrame ) {
+
+					startTime = previousBeforeRender;
+					endTime = beforeRenderTime;
+
+				} else {
+
+					startTime = beforeRenderTime;
+					endTime = afterRenderTime;
+
+				}
 
 				elapsedTime += ( endTime - startTime );
+
+				previousBeforeRender = beforeRenderTime;
+				previousAfterRender = afterRenderTime;
 
 				if ( ( ! sampleOnlyInVRMode || isPresenting ) && ++ count === 60 ) {
 
