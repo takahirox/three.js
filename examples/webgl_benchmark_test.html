@@ -264,6 +264,7 @@
 			var isPresenting = false;
 
 			var objectNum = 100;
+			var segmentNum = 1;
 			var webGLEnabled = true;
 			var sampleOnlyInVRMode = false;
 			var targetIsFrame = false;
@@ -294,13 +295,29 @@
 
 							var num = parseInt( param[ 1 ] );
 
-							if ( ! isNaN( objectNum ) ) {
+							if ( ! isNaN( num ) ) {
 
 								objectNum = num;
 
 							} else {
 
-								console.warn( 'num value can not be parsed as Integer', param[ 1 ]);
+								console.warn( 'num value can not be parsed as Integer', param[ 1 ] );
+
+							}
+
+							break;
+
+						case 'segment':
+
+							var num = parseInt( param[ 1 ] );
+
+							if ( ! isNaN( num ) ) {
+
+								segmentNum = num;
+
+							} else {
+
+								console.warn( 'segment value can not be parsed as Integer', param[ 1 ] );
 
 							}
 
@@ -366,6 +383,7 @@
 			}
 
 			console.log( 'Object Num is', objectNum );
+			console.log( 'Segment Num is', segmentNum );
 			console.log( 'WebGL is', webGLEnabled === true ? 'on' : 'off' );
 			console.log( 'Sampling mode is', sampleOnlyInVRMode === true ? 'vr' : 'all' );
 			console.log( 'Sampling target is', targetIsFrame === true ? 'frame' : 'render' );
@@ -469,27 +487,27 @@
 
 					case 0:
 
-						return new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
+						return new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1, segmentNum, segmentNum, segmentNum );
 
 					case 1:
 
-						return new THREE.SphereBufferGeometry( 0.1 );
+						return new THREE.SphereBufferGeometry( 0.1, segmentNum, segmentNum );
 
 					case 2:
 
-						return new THREE.CircleBufferGeometry( 0.1 );
+						return new THREE.CircleBufferGeometry( 0.1, segmentNum );
 
 					case 3:
 
-						return new THREE.ConeBufferGeometry( 0.1, 0.1 );
+						return new THREE.ConeBufferGeometry( 0.1, 0.1, segmentNum, segmentNum );
 
 					case 4:
 
-						return new THREE.CylinderBufferGeometry( 0.1, 0.1, 0.1 );
+						return new THREE.CylinderBufferGeometry( 0.1, 0.1, 0.1, segmentNum, segmentNum );
 
 					case 5:
 
-						return new THREE.PlaneBufferGeometry( 0.1, 0.1 );
+						return new THREE.PlaneBufferGeometry( 0.1, 0.1, segmentNum, segmentNum );
 
 				}
 
