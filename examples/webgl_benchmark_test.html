@@ -495,15 +495,15 @@
 
 					case 2:
 
-						return new THREE.CircleBufferGeometry( 0.1, segmentNum );
+						return new THREE.CircleBufferGeometry( 0.1, segmentNum * 12 );
 
 					case 3:
 
-						return new THREE.ConeBufferGeometry( 0.1, 0.1, segmentNum, segmentNum );
+						return new THREE.ConeBufferGeometry( 0.1, 0.1, segmentNum * 8, segmentNum );
 
 					case 4:
 
-						return new THREE.CylinderBufferGeometry( 0.1, 0.1, 0.1, segmentNum, segmentNum );
+						return new THREE.CylinderBufferGeometry( 0.1, 0.1, 0.1, segmentNum * 8, segmentNum );
 
 					case 5:
 
