@@ -463,7 +463,7 @@
 				container2.style.zIndex = '10000';
 				container.appendChild( container2 );
 
-				container2.appendChild( document.createTextNode( 'Elapsed .render() CPU time [ms] / 60 frames' ) );
+				container2.appendChild( document.createTextNode( 'Elapsed' + ( targetIsFrame ? '' : '.render() CPU' ) + ' time [ms] / 60 frames' ) );
 				container2.appendChild( document.createElement( 'br' ) );
 				container2.appendChild( document.createTextNode( '0' ) );
 				container2.appendChild( document.createElement( 'br' ) );
