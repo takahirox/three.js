@@ -303,9 +303,9 @@ body {
 		var index = geometry.index;
 
 		gl.bindBuffer( gl.ARRAY_BUFFER, geometry.buffer );
-		if ( i === 0 ) gl.vertexAttribPointer( shaderProgram.vertexPositionAttribute, position.itemSize, gl.FLOAT, false, 0, 0 );
+		gl.vertexAttribPointer( shaderProgram.vertexPositionAttribute, position.itemSize, gl.FLOAT, false, 0, 0 );
 
-		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, geometry.indexBuffer );
+		ig ( i === 0 ) gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, geometry.indexBuffer );
 
 	}
 
