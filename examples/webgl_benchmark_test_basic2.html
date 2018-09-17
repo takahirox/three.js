@@ -297,13 +297,13 @@ body {
 
 	}
 
-	function bindBuffer( geometry, index ) {
+	function bindBuffer( geometry, i ) {
 
 		var position = geometry.attributes.position;
 		var index = geometry.index;
 
 		gl.bindBuffer( gl.ARRAY_BUFFER, geometry.buffer );
-		if ( index === 0 ) gl.vertexAttribPointer( shaderProgram.vertexPositionAttribute, position.itemSize, gl.FLOAT, false, 0, 0 );
+		if ( i === 0 ) gl.vertexAttribPointer( shaderProgram.vertexPositionAttribute, position.itemSize, gl.FLOAT, false, 0, 0 );
 
 		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, geometry.indexBuffer );
 
