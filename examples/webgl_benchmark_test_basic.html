@@ -1,5 +1,15 @@
 ﻿<html>
 <head>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<style>
+body {
+	font-family: Monospace;
+	background-color: #fff;
+	color: #000;
+	margin: 0px;
+	overflow: hidden;
+}
+</style>
 <script id="shader-vs" type="x-shader/x-vertex">
 	attribute vec3 aVertexPosition;
 
@@ -132,14 +142,14 @@
 
 	function initGL() {
 
+		container = document.createElement( 'div' );
+		document.body.appendChild( container );
+
 		var canvas = document.createElement( 'canvas' );
 		canvas.width = 256;
 		canvas.height = 256;
 
-		document.body.appendChild( canvas );
-
-		container = document.createElement( 'div' );
-		document.body.appendChild( container );
+		container.appendChild( canvas );
 
 		stats = new Stats();
 		container.appendChild( stats.dom );
