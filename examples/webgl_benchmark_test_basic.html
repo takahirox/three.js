@@ -113,12 +113,6 @@
 
 		updateMatrixUniforms();
 
-		for ( var i = 0; i < 1; i ++ ) {
-
-			initBuffer( geometries[ i ] );
-
-		}
-
 		bindBuffer( geometries[ 0 ] );
 
 		gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
@@ -166,11 +160,14 @@
 
 	function initGeometries() {
 
-		for ( var i = 0; i < 1; i ++ ) {
+		for ( var i = 0; i < geometryNum; i ++ ) {
 
 			var geometry = new THREE.SphereBufferGeometry( 1.0, segmentNum * 8, segmentNum * 6 );
 			geometry.buffer = gl.createBuffer();
 			geometry.indexBuffer = gl.createBuffer();
+
+			updateBuffer( geometry );
+
 			geometries.push( geometry );
 
 		}
@@ -274,7 +271,7 @@
 
 	}
 
-	function initBuffer( geometry ) {
+	function updateBuffer( geometry ) {
 
 		var buffer = geometry.buffer;
 		var indexBuffer = geometry.indexBuffer;
@@ -309,7 +306,10 @@
 
 		for ( var i = 0, il = geometryNum; i < il; i ++ ) {
 
-			gl.drawElements( gl.TRIANGLES, geometries[ 0 ].index.count, indexType, 0 );
+			var geometry = geometries[ i ];
+
+			bindBuffer( geometry );
+			gl.drawElements( gl.TRIANGLES, geometry.index.count, indexType, 0 );
 
 		}
 
