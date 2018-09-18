@@ -1,0 +1,343 @@
+﻿<html>
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<style>
+body {
+	font-family: Monospace;
+	background-color: #fff;
+	color: #000;
+	margin: 0px;
+	overflow: hidden;
+}
+</style>
+<script id="shader-vs" type="x-shader/x-vertex">
+	attribute vec3 aVertexPosition;
+
+	uniform mat4 projectionMatrix;
+	uniform mat4 modelViewMatrix;
+
+	void main() {
+
+		gl_Position = projectionMatrix * modelViewMatrix * vec4( aVertexPosition, 1.0 );
+
+	}
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+	precision mediump float;
+
+	void main() {
+
+		gl_FragColor = vec4( 0.5, 0.5, 0.5, 1.0 );
+
+	}
+</script>
+
+<script src="../build/three.js"></script>
+<script src="js/libs/stats.min.js"></script>
+
+<script type="text/javascript">
+
+	var gl;
+	var shaderProgram;
+	var container, stats;
+
+	var camera;
+	var geometries = [];
+
+	var geometryNum = 1;
+	var segmentNum = 1
+	var indexType;
+
+	var params = location.href.split( '?' );
+
+	if ( params.length > 1 ) {
+
+		params = params.pop().split( '&' );
+
+		for ( var i = 0, il = params.length; i < il; i ++ ) {
+
+			var param = params[ i ].split( '=' );
+
+			if ( param.length !== 2 ) {
+
+				console.warn( 'Unknown Parameter: ', params[ i ] );
+				continue;
+
+			}
+
+			switch ( param[ 0 ].toLowerCase() ) {
+
+				case 'num':
+
+					var num = parseInt( param[ 1 ] );
+
+					if ( ! isNaN( num ) ) {
+
+						geometryNum = num;
+
+					} else {
+
+						console.warn( 'num value can not be parsed as Integer', param[ 1 ] );
+
+					}
+
+					break;
+
+				case 'segment':
+
+					var num = parseInt( param[ 1 ] );
+
+					if ( ! isNaN( num ) ) {
+
+						segmentNum = num;
+
+					} else {
+
+						console.warn( 'segment value can not be parsed as Integer', param[ 1 ] );
+
+					}
+
+					break;
+
+				default:
+
+					console.warn( 'Unknown parameter key:', param[ 0 ] );
+					break;
+
+			}
+
+		}
+
+	}
+
+	console.log( 'Geometry Num is', geometryNum );
+	console.log( 'Segment Num is', segmentNum );
+
+	function init() {
+
+		initGL();
+		initShaders()
+		initGeometries();
+		initCamera();
+
+		updateMatrixUniforms();
+
+		bindBuffer( geometries[ 0 ] );
+
+		gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
+		//gl.enable( gl.DEPTH_TEST );
+
+		indexType = geometries[ 0 ].index.count > 0x65535 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+
+		if ( indexType === gl.UNSIGNED_INT ) {
+
+			gl.getExtension( 'OES_element_index_uint' );
+
+		}
+
+		tick();
+
+	}
+
+	function initGL() {
+
+		container = document.createElement( 'div' );
+		document.body.appendChild( container );
+
+		var canvas = document.createElement( 'canvas' );
+		canvas.width = 256;
+		canvas.height = 256;
+
+		container.appendChild( canvas );
+
+		stats = new Stats();
+		container.appendChild( stats.dom );
+
+		try {
+
+			gl = canvas.getContext( 'webgl' );
+			gl.viewportWidth = canvas.width;
+			gl.viewportHeight = canvas.height;
+
+	        } catch ( e ) {
+
+			alert( 'Could not initialise WebGL, sorry :-(' );
+
+		}
+
+	}
+
+	function initGeometries() {
+
+		for ( var i = 0; i < geometryNum; i ++ ) {
+
+			var geometry = new THREE.SphereBufferGeometry( 1.0, segmentNum * 8, segmentNum * 6 );
+			geometry.buffer = gl.createBuffer();
+			geometry.indexBuffer = gl.createBuffer();
+
+			updateBuffer( geometry );
+
+			geometries.push( geometry );
+
+		}
+
+	}
+
+	function initCamera() {
+
+		camera = new THREE.PerspectiveCamera( 45, 1.0, 0.001, 2000 );
+		camera.position.z = 20;
+
+	}
+
+	function getShader( gl, id ) {
+
+		var shaderScript = document.getElementById( id );
+
+		if ( ! shaderScript ) {
+
+			return null;
+
+		}
+
+		var str = '';
+		var k = shaderScript.firstChild;
+
+		while ( k ) {
+
+			if ( k.nodeType === 3 ) {
+
+				str += k.textContent;
+
+			}
+
+			k = k.nextSibling;
+
+		}
+
+		var shader;
+
+		if ( shaderScript.type === 'x-shader/x-fragment' ) {
+
+			shader = gl.createShader( gl.FRAGMENT_SHADER );
+
+		} else if ( shaderScript.type === 'x-shader/x-vertex' ) {
+
+			shader = gl.createShader( gl.VERTEX_SHADER );
+
+		} else {
+
+        		return null;
+
+		}
+
+		gl.shaderSource( shader, str );
+		gl.compileShader( shader );
+
+		if ( ! gl.getShaderParameter( shader, gl.COMPILE_STATUS ) ) {
+
+			alert( gl.getShaderInfoLog( shader ) );
+			return null;
+
+		}
+
+		return shader;
+
+	}
+
+	function initShaders() {
+
+		var fragmentShader = getShader( gl, 'shader-fs' );
+		var vertexShader = getShader( gl, 'shader-vs' );
+
+		shaderProgram = gl.createProgram();
+		gl.attachShader( shaderProgram, vertexShader );
+		gl.attachShader( shaderProgram, fragmentShader );
+		gl.linkProgram( shaderProgram );
+
+		if ( ! gl.getProgramParameter( shaderProgram, gl.LINK_STATUS ) ) {
+
+			alert( 'Could not initialise shaders' );
+
+		}
+
+		gl.useProgram( shaderProgram );
+
+		shaderProgram.vertexPositionAttribute = gl.getAttribLocation( shaderProgram, 'aVertexPosition' );
+		gl.enableVertexAttribArray( shaderProgram.vertexPositionAttribute );
+
+		shaderProgram.projectionMatrixUniform = gl.getUniformLocation( shaderProgram, 'projectionMatrix' );
+		shaderProgram.modelViewMatrixUniform = gl.getUniformLocation( shaderProgram, 'modelViewMatrix' );
+
+	}
+
+	function updateMatrixUniforms() {
+
+		camera.updateMatrixWorld();
+		camera.updateProjectionMatrix();
+		gl.uniformMatrix4fv( shaderProgram.projectionMatrixUniform, false, camera.projectionMatrix.elements );
+		gl.uniformMatrix4fv( shaderProgram.modelViewMatrixUniform, false, camera.matrixWorldInverse.elements );
+
+	}
+
+	function updateBuffer( geometry ) {
+
+		var buffer = geometry.buffer;
+		var indexBuffer = geometry.indexBuffer;
+
+		var position = geometry.attributes.position;
+		var index = geometry.index;
+
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffer );
+		gl.bufferData( gl.ARRAY_BUFFER, position.array, gl.STATIC_DRAW );
+
+		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, indexBuffer );
+		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, index.array, gl.STATIC_DRAW );
+
+	}
+
+	function bindBuffer( geometry ) {
+
+		var position = geometry.attributes.position;
+		var index = geometry.index;
+
+		gl.bindBuffer( gl.ARRAY_BUFFER, geometry.buffer );
+		gl.vertexAttribPointer( shaderProgram.vertexPositionAttribute, position.itemSize, gl.FLOAT, false, 0, 0 );
+
+		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, geometry.indexBuffer );
+
+	}
+
+	function drawScene() {
+
+		gl.viewport( 0, 0, gl.viewportWidth, gl.viewportHeight );
+		gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+
+		for ( var i = 0, il = geometryNum; i < il; i ++ ) {
+
+			var geometry = geometries[ i ];
+
+			bindBuffer( geometry );
+			//gl.drawElements( gl.TRIANGLES, geometry.index.count, indexType, 0 );
+
+		}
+
+	}
+
+	function tick() {
+
+		requestAnimationFrame( tick );
+		drawScene();
+		stats.update();
+
+	}
+
+</script>
+</head>
+
+
+<body onload="init()">
+</body>
+
+</html>
