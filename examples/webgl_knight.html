@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			#meminfo {
+				margin-top: 8px;
+				font-size: 10px;
+				display: none;
+			}
+
+			a {
+				color: #0af;
+			}
+		</style>
+	</head>
+
+	<body>
+
+		<div id="container"></div>
+
+		<script src="../build/three.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/vr/WebVR.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			var SCREEN_WIDTH = window.innerWidth;
+			var SCREEN_HEIGHT = window.innerHeight;
+			var FLOOR = -250;
+
+			var container,stats;
+
+			var camera, scene;
+			var renderer;
+
+			var mesh;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var isPresenting = false;
+
+			var previousStartTime;
+
+			var count = 0;
+			var count2 = 0;
+			var elapsedTime = 0.0;
+			var minElapsedTime = 0.0;
+			var maxElapsedTime = 0.0;
+			var totalElapsedTime = 0.0;
+
+			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+			init();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 30, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
+				camera.position.z = 2200;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				scene.add( camera );
+
+				// LIGHTS
+
+				scene.add( new THREE.HemisphereLight( 0x111111, 0x444444 ) );
+
+				var light = new THREE.DirectionalLight( 0xebf3ff, 1.5 );
+				light.position.set( 0, 140, 500 ).multiplyScalar( 1.1 );
+				scene.add( light );
+
+				// RENDERER
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+				renderer.domElement.style.position = "relative";
+				renderer.vr.enabled = true;
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+
+				container.appendChild( renderer.domElement );
+
+				container.appendChild( WEBVR.createButton( renderer ) );
+
+				//
+
+				var loader = new THREE.JSONLoader();
+				loader.load( "models/skinned/knight.js", function ( geometry, materials ) {
+
+					createScene( geometry, materials, 0, FLOOR, -300, 60 );
+
+				} );
+
+				// STATS
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				container2 = document.createElement( 'div' );
+				container2.style.position = 'fixed';
+				container2.style.top = '0px';
+				container2.style.right = '0px';
+				container2.style.zIndex = '10000';
+				container.appendChild( container2 );
+
+				container2.appendChild( document.createTextNode( 'Elapsed time [ms] / 60 frames' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( 'min / max / avg / count' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+
+				renderer.setAnimationLoop( animate );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				window.addEventListener( 'vrdisplaypresentchange', function ( e ) {
+
+					isPresenting = e.display.isPresenting;
+
+				}, false );
+
+				renderer.setAnimationLoop( animate );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function createScene( geometry, materials, x, y, z, s ) {
+
+				geometry.computeBoundingBox();
+				var bb = geometry.boundingBox;
+
+				for ( var i = 0; i < materials.length; i ++ ) {
+
+					var m = materials[ i ];
+					m.skinning = true;
+					m.morphTargets = true;
+
+					m.specular.setHSL( 0, 0, 0.1 );
+					m.color.setHSL( 0.6, 0, 0.6 );
+
+				}
+
+				mesh = new THREE.SkinnedMesh( geometry, materials );
+				mesh.name = "Knight Mesh";
+				mesh.position.set( x, y - bb.min.y * s, z );
+				mesh.scale.set( s, s, s );
+				scene.add( mesh );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				mouseX = ( event.clientX - windowHalfX );
+				mouseY = ( event.clientY - windowHalfY );
+
+			}
+
+			//
+
+			function animate() {
+
+				var startTime = performance.now();
+
+				renderer.render( scene, camera );
+
+				stats.update();
+
+				elapsedTime += ( startTime - previousStartTime );
+
+				previousStartTime = startTime;
+
+				if ( isPresenting && ++ count === 60 ) {
+
+					count2 ++;
+
+					// ignore first ten for min/max/avg
+
+					if ( count2 > 10 ) {
+
+						minElapsedTime = minElapsedTime === 0.0 ? elapsedTime : Math.min( elapsedTime, minElapsedTime );
+						maxElapsedTime = Math.max( elapsedTime, maxElapsedTime );
+						totalElapsedTime += elapsedTime;
+
+					}
+
+					container2.childNodes[ 2 ].textContent = elapsedTime.toFixed( 2 );
+					container2.childNodes[ 6 ].textContent = minElapsedTime.toFixed( 2 );
+					container2.childNodes[ 8 ].textContent = maxElapsedTime.toFixed( 2 );
+					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 10 ) ).toFixed( 2 );
+					container2.childNodes[ 12 ].textContent = count2 - 10;
+
+					elapsedTime = 0.0;
+					count = 0;
+
+				}
+
+			}
+
+		</script>
+
+	</body>
+</html>
