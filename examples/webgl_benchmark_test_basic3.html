@@ -320,7 +320,7 @@ body {
 
 		for ( var i = 0, il = geometryNum; i < il; i ++ ) {
 
-			var geometry = geometries[ 0 ];
+			var geometry = geometries[ i ];
 
 			bindBuffer( geometry, i );
 			gl.drawElements( gl.TRIANGLES, geometry.index.count, indexType, 0 );
