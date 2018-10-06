@@ -1,0 +1,138 @@
+﻿<html>
+<head>
+<style>
+body {
+	padding: 0;
+	margin: 0;
+	font-weight: bold;
+	overflow: hidden;
+}
+
+iframe {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	left: 0px;
+	opacity: 0.7;
+	z-index: 10;
+	border: none;
+}
+
+canvas {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	left: 0px;
+}
+</style>
+</head>
+<body>
+	<!--<iframe src="../docs/index.html"></iframe>-->
+	<iframe src="../test/benchmark/benchmarks.html"></iframe>
+
+	<script src="js/libs/stats.min.js"></script>
+	<script src="js/WebGL.js"></script>
+	<script src="../build/three.js"></script>
+	<script src="js/loaders/GLTFLoader.js"></script>
+
+	<canvas id="canvas"></canvas>
+
+	<script>
+
+		if ( WEBGL.isWebGLAvailable() === false ) {
+
+			document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+		}
+
+		var canvas = document.getElementById( 'canvas' );
+
+		var stats = new Stats();
+		document.body.appendChild( stats.dom );
+
+		var camera, scene, renderer, mesh, clock;
+
+		function init() {
+
+			var width = window.innerWidth;
+			var height = window.innerHeight;
+			var pixelRatio = window.devicePixelRatio;
+
+			clock = new THREE.Clock();
+
+			camera = new THREE.PerspectiveCamera( 70, width / height, 0.001, 2000 );
+			camera.position.z = 0.03;
+
+			scene = new THREE.Scene();
+
+			scene.add( new THREE.AmbientLight( 0x222222 ) );
+
+			var directionalLight = new THREE.DirectionalLight( 0xFFFFFF );
+			directionalLight.position.set( 0, 0, 1 );
+			scene.add( directionalLight );
+
+			var path = 'textures/cube/Park2/';
+			var format = '.jpg';
+			var urls = [
+				path + 'posx' + format, path + 'negx' + format,
+				path + 'posy' + format, path + 'negy' + format,
+				path + 'posz' + format, path + 'negz' + format
+			];
+
+			var envMap = new THREE.CubeTextureLoader().load( urls, undefined, undefined, console.log );
+			envMap.format = THREE.RGBFormat;
+
+			scene.background = envMap;
+
+			var loader = new THREE.GLTFLoader();
+
+			loader.load( 'models/gltf/BoomBox/glTF/BoomBox.gltf', function ( gltf ) {
+
+				mesh = gltf.scene;
+
+				gltf.scene.traverse( function ( object ) {
+
+					if ( object.material !== undefined ) {
+
+						object.material.envMap = envMap;
+						object.material.needsUpdate = true;
+
+					}
+
+				} );
+
+				scene.add( gltf.scene );
+
+				animate();
+
+			} );
+
+			renderer = new THREE.WebGLRenderer( { antialias: true, canvas: document.getElementById( 'canvas' ) } );
+			renderer.setPixelRatio( pixelRatio );
+			renderer.setSize( width, height, false );
+			renderer.gammaOutput = true;
+			renderer.physicallyCorrectLights = true;
+
+		}
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			stats.update();
+
+			var delta = clock.getDelta();
+
+			mesh.rotation.y += delta * 0.5;
+
+			renderer.render( scene, camera );
+
+		}
+
+		init();
+
+</script>
+</body>
+</html>

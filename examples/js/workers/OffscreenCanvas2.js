@@ -1,5 +1,7 @@
 self.importScripts( '../../../build/three.js' );
-self.importScripts( '../loaders/GLTFLoader2.js' );
+self.importScripts( '../loaders/GLTFLoader.js' );
+
+var window = self;
 
 THREE.TextureLoader.prototype.load = function ( url, onLoad, onProgress, onError ) {
 
@@ -140,6 +142,9 @@ function init( offscreen, width, height, pixelRatio ) {
 
 }
 
+var count = 0;
+var previousTime = performance.now();
+
 function animate() {
 
 	var delta = clock.getDelta();
@@ -147,6 +152,19 @@ function animate() {
 	mesh.rotation.y += delta * 0.5;
 
 	renderer.render( scene, camera );
+
+	if ( ++ count === 60 ) {
+
+		var time = performance.now();
+		var elapsedTime = time - previousTime;
+		var fps = 1000.0 * 60 / elapsedTime;
+
+		previousTime = time;
+		count = 0;
+
+		self.postMessage( { fps: fps } );
+
+	}
 
 	if ( self.requestAnimationFrame ) {
 

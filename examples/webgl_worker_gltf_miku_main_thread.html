@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - worker - offscreen canvas</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#000000;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px;
+				width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+			}
+
+			#message {
+				color: #ff0000;
+				font-size:14px;
+				display: none;
+			}
+
+			#message > a {
+				color: #ff0000;
+			}
+
+			a {
+				color: #ffffff;
+			}
+		</style>
+		<script src="js/libs/stats.min.js"></script>
+		<script src="js/WebGL.js"></script>
+		<script src="../build/three.js"></script>
+		<script src="js/loaders/GLTFLoader.js"></script>
+		<script src="js/libs/ammo.js"></script>
+		<script src="js/animation/CCDIKSolver.js"></script>
+		<script src="js/animation/MMDPhysics.js"></script>
+		<script src="js/animation/MMDAnimationHelper.js"></script>
+		<script src="js/effects/OutlineEffect.js"></script>
+	</head>
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener noreferrer">three.js</a> offscreen canvas<br/><br/>
+			<p id="message">Your browser does not support OffscreenCanvas. Check the browser support <a href="https://caniuse.com/#feat=offscreencanvas" target="_blank" rel="noopener noreferrer">here</a></p>
+		</div>
+
+		<canvas id="canvas" style="width: 100%; height: 100%"></canvas>
+	</body>
+	<script>
+
+		if ( WEBGL.isWebGLAvailable() === false ) {
+
+			document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+		}
+
+		var canvas = document.getElementById( 'canvas' );
+
+		var stats = new Stats();
+		document.body.appendChild( stats.dom );
+
+		var camera, scene, renderer, mesh, clock;
+		var effect, helper;
+
+		function init() {
+
+			var width = window.innerWidth;
+			var height = window.innerHeight;
+			var pixelRatio = window.devicePixelRatio;
+			var canvas = document.getElementById( 'canvas' );
+
+			clock = new THREE.Clock();
+
+			camera = new THREE.PerspectiveCamera( 45, width / height, 1, 2000 );
+			camera.position.z = 30;
+
+			scene = new THREE.Scene();
+
+			scene.add( new THREE.AmbientLight( 0x222222 ) );
+
+			var directionalLight = new THREE.DirectionalLight( 0xFFFFFF );
+			directionalLight.position.set( 0, 0, 1 );
+			scene.add( directionalLight );
+
+			var path = 'textures/cube/Park2/';
+			var format = '.jpg';
+			var urls = [
+				path + 'posx' + format, path + 'negx' + format,
+				path + 'posy' + format, path + 'negy' + format,
+				path + 'posz' + format, path + 'negz' + format
+			];
+
+			var envMap = new THREE.CubeTextureLoader().load( urls, undefined, undefined, console.log );
+			envMap.format = THREE.RGBFormat;
+
+			scene.background = envMap;
+
+			helper = new THREE.MMDAnimationHelper( { afterglow: 2.0 } );
+
+			var loader = new THREE.GLTFLoader();
+
+			loader.load( 'models/gltf/Miku/glTF-Binary/scene.glb', function ( gltf ) {
+
+				mesh = gltf.scene.children[ 0 ];
+				mesh.position.y = - 10;
+
+				gltf.scene.traverse( function ( object ) {
+
+					if ( object.material !== undefined ) {
+
+						object.material.envMap = envMap;
+						object.material.needsUpdate = true;
+
+					}
+
+				} );
+
+				var animation = gltf.animations[ 0 ];
+
+				helper.add( mesh, {
+					animation: animation,
+					physics: true
+				} );
+
+				scene.add( gltf.scene );
+
+				animate();
+
+			} );
+
+			renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas } );
+			renderer.setPixelRatio( pixelRatio );
+			renderer.setSize( width, height, false );
+			renderer.gammaOutput = true;
+			renderer.physicallyCorrectLights = true;
+
+			effect = new THREE.OutlineEffect( renderer );
+
+		}
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			stats.update();
+
+			helper.update( clock.getDelta() );
+			effect.render( scene, camera );
+
+		}
+
+		init();
+</script>
+</body>
+</html>

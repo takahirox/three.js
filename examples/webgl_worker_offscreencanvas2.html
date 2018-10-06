@@ -38,6 +38,7 @@
 				color: #ffffff;
 			}
 		</style>
+		<script src="js/libs/stats.min.js"></script>
 		<script src="js/WebGL.js"></script>
 	</head>
 	<body>
@@ -58,6 +59,21 @@
 
 		var canvas = document.getElementById( 'canvas' );
 
+		var stats = new Stats();
+		document.body.appendChild( stats.dom );
+
+		var container = document.createElement( 'div' );
+		container.style.position = 'fixed';
+		container.style.top = '0px';
+		container.style.right = '0px';
+		container.style.zIndex = '10000';
+		container.style.color = '#ffffff';
+		container.style.background = '#000000';
+		document.body.appendChild( container );
+
+		container.appendChild( document.createTextNode( 'Worker FPS: ' ) );
+		container.appendChild( document.createTextNode( '0' ) );
+
 		if ( canvas.transferControlToOffscreen !== undefined ) {
 
 			var offscreen = canvas.transferControlToOffscreen();
@@ -70,11 +86,36 @@
 				pixelRatio: window.devicePixelRatio
 			}, [ offscreen ] ); // transfer
 
+			worker.onmessage = function( event ) {
+
+				var fps = event.data.fps;
+				container.childNodes[ 1 ].textContent = fps.toFixed( 2 );
+
+			};
+
 		} else {
 
 			document.getElementById( 'message' ).style.display = 'block';
 
 		}
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			stats.update();
+
+			var n = 0;
+
+			for ( var i = 0; i < 0x8000000; i ++ ) {
+
+				n = n * 1;
+
+			}
+
+		}
+
+		animate();
 
 	</script>
 </html>

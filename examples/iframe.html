@@ -1,0 +1,100 @@
+﻿<html>
+<head>
+<style>
+body {
+	padding: 0;
+	margin: 0;
+	font-weight: bold;
+	overflow: hidden;
+}
+
+iframe {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	left: 0px;
+	opacity: 0.7;
+	z-index: 10;
+	border: none;
+}
+
+canvas {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	left: 0px;
+}
+</style>
+</head>
+<body>
+	<!--<iframe src="../docs/index.html"></iframe>-->
+	<iframe src="http://www.yahoo.co.jp"></iframe>
+
+	<script src="js/libs/stats.min.js"></script>
+	<script src="js/WebGL.js"></script>
+	<canvas id="canvas"></canvas>
+
+	<script>
+
+		if ( WEBGL.isWebGLAvailable() === false ) {
+
+			document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+		}
+
+		var canvas = document.getElementById( 'canvas' );
+
+		var stats = new Stats();
+		//document.body.appendChild( stats.dom );
+
+		var container = document.createElement( 'div' );
+		container.style.position = 'fixed';
+		container.style.top = '0px';
+		container.style.right = '0px';
+		container.style.zIndex = '10000';
+		container.style.color = '#ffffff';
+		container.style.background = '#000000';
+		document.body.appendChild( container );
+
+		container.appendChild( document.createTextNode( 'Worker FPS: ' ) );
+		container.appendChild( document.createTextNode( '0' ) );
+
+		if ( canvas.transferControlToOffscreen !== undefined ) {
+
+			var offscreen = canvas.transferControlToOffscreen();
+			var worker = new Worker( 'js/workers/OffscreenCanvas2.js' );
+
+			worker.postMessage( {
+				drawingSurface: offscreen,
+				width: window.innerWidth,
+				height: window.innerHeight,
+				pixelRatio: window.devicePixelRatio
+			}, [ offscreen ] ); // transfer
+
+			worker.onmessage = function( event ) {
+
+				var fps = event.data.fps;
+				container.childNodes[ 1 ].textContent = fps.toFixed( 2 );
+
+			};
+
+		} else {
+
+			document.getElementById( 'message' ).style.display = 'block';
+
+		}
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			stats.update();
+
+		}
+
+		animate();
+</script>
+</body>
+</html>
