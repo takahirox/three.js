@@ -1,0 +1,180 @@
+﻿<html>
+<head>
+</head>
+<body onload="run()">
+<script>
+var n = 1000; // primitives#
+var m = 10;   // attributes#
+var c = 10;   // attribute name length
+var g = n;    // distinct geometries#
+
+var query = location.href.split('?')[1] || '';
+var options = query.split('&');
+var hasGOption = false;
+for(var i = 0, il = options.length; i < il; i++) {
+	var option = options[i];
+	if(option === '') continue;
+	var tmp = option.split('=');
+	var key = tmp[0];
+	var value = tmp[1];
+	switch(key) {
+		case 'n':
+			n = parseInt(value);
+			break;
+		case 'm':
+			m = parseInt(value);
+			break;
+		case 'g':
+			g = parseInt(value);
+			hasGOption = true;
+			break;
+		default:
+			console.warn('Unknown option', key);
+			break;
+	}
+}
+
+g = hasGOption ? Math.min(g, n) : n;
+
+var attributes = [];
+var primitives1 = [];
+var primitives2 = [];
+var results1 = [];
+var results2 = [];
+
+for(var i = 0; i < m; i++) {
+	var s = '';
+	for(var j = 0; j < c; j++) {
+		s += String.fromCharCode(0x41 + (Math.random() * 26 | 0));
+	}
+	attributes[i] = s;
+}
+
+for(var i = 0; i < n; i++) {
+	var primitive = {attributes:{}};
+	for(var j = 0; j < m; j++) {
+		primitive.attributes[attributes[j]] = (i % g) + j + n * m;
+	}
+	primitives1[i] = Object.assign({}, primitive);
+	primitives2[i] = Object.assign({}, primitive);
+}
+
+function createKey(primitive) {
+	var attributes = primitive.attributes;
+	var str = ''
+	var keys = Object.keys(attributes).sort();
+	for(var i = 0, il = keys.length; i < il; i++) {
+		var key = keys[i];
+		str += key + ':' + attributes[key] + ',';
+	}
+	return str;
+}
+
+function objectEquals(a, b) {
+	if(Object.keys(a).length !== Object.keys(b).length) return false;
+	for(var key in a) {
+		if(a[key] !== b[key]) return false;
+	}
+	return true;
+}
+
+function hasCache(cache, primitive) {
+	var key = createKey(primitive);
+	var result = cache[key] !== undefined;
+	cache[key] = true;
+	return result;
+}
+
+function hasCache2(cache, primitive) {
+	var result = false;
+	for(var i = 0, il = cache.length; i < il; i++) {
+		if(objectEquals(cache[i].attributes, primitive.attributes)) {
+			result = true;
+			break;
+		}
+	}
+	cache.push(primitive);
+	return result;
+}
+
+function runTest(primitives, results, n) {
+	var cache = {};
+	for(var i = 0; i < n; i++) {
+		results[i] = hasCache(cache, primitives[i]);
+	}
+	return results;
+}
+
+function runTest2(primitives, results, n) {
+	var cache = [];
+	for(var i = 0; i < n; i++) {
+		results[i] = hasCache2(cache, primitives[i]);
+	}
+	return results;
+}
+
+function test() {
+	var startTime = performance.now();
+	runTest(primitives1, results1, n);
+	var endTime = performance.now();
+	return endTime - startTime;
+}
+
+function test2() {
+	var startTime = performance.now();
+	runTest2(primitives2, results2, n);
+	var endTime = performance.now();
+	return endTime - startTime;
+}
+
+function valid(results1, results2) {
+	if(results1.length !== results2.length) return false;
+	for(var i = 0, il = results1.length; i < il; i++) {
+		if(results1[i] !== results2[i]) return false;
+	}
+	return true;
+}
+
+function countDistinctGeometries(results) {
+	var num = 0;
+	for(var i = 0, il = results.length; i < il; i++) {
+		if(!results[i]) num++;
+	}
+	return num;
+}
+
+var count = -5;
+var totalHashElapsedTime = 0.0;
+var totalArrayElapsedTime = 0.0;
+
+function run() {
+	setTimeout(run, 1000);
+	count++;
+	var hashElapsedTime = test();
+	var arrayElapsedTime = test2();
+	document.getElementById('count').innerText = count;
+	document.getElementById('n').innerText = n;
+	document.getElementById('m').innerText = m;
+	document.getElementById('g').innerText = g;
+	if(count > 0) {
+		totalHashElapsedTime += hashElapsedTime;
+		totalArrayElapsedTime += arrayElapsedTime;
+		document.getElementById('hashPerformance').innerText = hashElapsedTime.toFixed(2);
+		document.getElementById('arrayPerformance').innerText = arrayElapsedTime.toFixed(2);
+		document.getElementById('averageHashPerformance').innerText = (totalHashElapsedTime / count).toFixed(2);
+		document.getElementById('averageArrayPerformance').innerText = (totalArrayElapsedTime / count).toFixed(2);
+	}
+	document.getElementById('geometryNum').innerText = countDistinctGeometries(results1);
+	if(!valid(results1, results2)) {
+		document.getElementById('invalid').innerText = 'invalid';
+	}
+}
+
+</script>
+<div>n: <span id="n"></span>, m: <span id="m"></span>, g: <span id="g"></span>, count: <span id="count"></span></div>
+<div>Hash: <span id="hashPerformance"></span> ms / <span id="averageHashPerformance"></span> ms</div>
+<div>Array: <span id="arrayPerformance"></span> ms / <span id="averageArrayPerformance"></span> ms</div>
+<div>Distinct geometry#: <span id="geometryNum"></span></div>
+<div><span id="invalid"></span></div>
+</body>
+</html>
