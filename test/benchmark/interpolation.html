@@ -1,0 +1,187 @@
+﻿<html>
+<head>
+</head>
+<body onload="init()">
+<script>
+var loop = 0x1000000;
+
+var query = location.href.split('?')[1] || '';
+var options = query.split('&');
+for(var i = 0, il = options.length; i < il; i++) {
+	var option = options[i];
+	if(option === '') continue;
+	var tmp = option.split('=');
+	var key = tmp[0];
+	var value = tmp[1];
+	switch(key) {
+		case 'loop':
+			loop = parseInt(value);
+			break;
+		default:
+			console.warn('Unknown option', key);
+			break;
+	}
+}
+</script>
+<script id="func1">
+function func1( t0, t1, t ) {
+
+	var td = t1 - t0;
+
+	var p = ( t - t0 ) / td;
+	var pp = p * p;
+	var ppp = pp * p;
+
+	var s0 = 2 * ppp - 3 * pp + 1;
+	var s1 = ppp - 2 * pp + p;
+	var s2 = - 2 * ppp + 3 * pp;
+	var s3 = ppp - pp;
+
+	return s0 + s1 + s2 + s3;
+
+}
+</script>
+<script id="func2">
+function func2( t0, t1, t ) {
+
+	var td = t1 - t0;
+
+	var p = ( t - t0 ) / td;
+	var pp = p * p;
+	var ppp = pp * p;
+
+	var s2 = - 2 * ppp + 3 * pp;
+	var s3 = ppp - pp;
+	var s0 = 1 - s2;
+	var s1 = s3 - pp + p;
+
+	return s0 + s1 + s2 + s3;
+
+}
+</script>
+<script>
+function run1(n) {
+	for(var i = 0; i < n; i++) {
+		func1(0, 1, 0.5);
+	}
+}
+
+function run2(n) {
+	for(var i = 0; i < n; i++) {
+		func2(0, 1, 0.5);
+	}
+}
+
+function runTest1() {
+	var startTime = performance.now();
+	run1(loop);
+	var endTime = performance.now();
+	return endTime - startTime;
+}
+
+function runTest2() {
+	var startTime = performance.now();
+	run2(loop);
+	var endTime = performance.now();
+	return endTime - startTime;
+}
+
+function updateTimes(elapsedTimes, elapsedTime) {
+	var times = elapsedTimes.times;
+	times.push(elapsedTime);
+	var num = times.length;
+	elapsedTimes.min = Math.min(elapsedTimes.min, elapsedTime);
+	elapsedTimes.max = Math.max(elapsedTimes.max, elapsedTime);
+	elapsedTimes.sum += elapsedTime;
+	elapsedTimes.average = elapsedTimes.sum / num;
+	var standardDeviation = 0.0;
+	for (var i = 0, il = num; i < il; i++) {
+		standardDeviation += Math.pow(times[i] - elapsedTimes.average, 2);
+	}
+	elapsedTimes.standardDeviation = Math.sqrt(standardDeviation / num);
+}
+
+var elapsedTimes1 = {
+	times: [],
+	sum: 0.0,
+	max: 0.0,
+	min: Number.MAX_SAFE_INTEGER,
+	average: 0.0,
+	standardDeviation: 0.0
+};
+var elapsedTimes2 = {
+	times: [],
+	sum: 0.0,
+	max: 0.0,
+	min: Number.MAX_SAFE_INTEGER,
+	average: 0.0,
+	standardDeviation: 0.0
+};
+
+var count = 0;
+var func1ElapsedTime;
+var func2ElapsedTime;
+function run() {
+	setTimeout(run, 100);
+	count++;
+	if((count % 3) === 1) {
+		func1ElapsedTime = runTest1();
+	} else if((count % 3) === 2) {
+		func2ElapsedTime = runTest2();
+	} else {
+		document.getElementById('count').innerText = count / 3 - 10;
+		if(count / 3 - 10 > 0) {
+			updateTimes(elapsedTimes1, func1ElapsedTime);
+			updateTimes(elapsedTimes2, func2ElapsedTime);
+			document.getElementById('func1ElapsedTime').innerText = func1ElapsedTime.toFixed(2);
+			document.getElementById('func1MaxElapsedTime').innerText = elapsedTimes1.max.toFixed(2);
+			document.getElementById('func1MinElapsedTime').innerText = elapsedTimes1.min.toFixed(2);
+			document.getElementById('func1AverageElapsedTime').innerText = elapsedTimes1.average.toFixed(2);
+			document.getElementById('func1StandardDeviationElapsedTime').innerText = elapsedTimes1.standardDeviation.toFixed(2);
+			document.getElementById('func2ElapsedTime').innerText = func2ElapsedTime.toFixed(2);
+			document.getElementById('func2MaxElapsedTime').innerText = elapsedTimes2.max.toFixed(2);
+			document.getElementById('func2MinElapsedTime').innerText = elapsedTimes2.min.toFixed(2);
+			document.getElementById('func2AverageElapsedTime').innerText = elapsedTimes2.average.toFixed(2);
+			document.getElementById('func2StandardDeviationElapsedTime').innerText = elapsedTimes2.standardDeviation.toFixed(2);
+		}
+	}
+}
+
+function init() {
+	document.getElementById('loop').innerText = loop;
+	document.getElementById('func1area').innerText = document.getElementById('func1').innerText;
+	document.getElementById('func2area').innerText = document.getElementById('func2').innerText;
+	run();
+}
+</script>
+<div>count: <span id="count"></span>, loop: <span id="loop"></span></div>
+<div>
+function : ElapsedTime / Max / Min / Average / Standard Deviation
+</div>
+<div>
+Func1:
+<span id="func1ElapsedTime"></span> ms /
+<span id="func1MaxElapsedTime"></span> ms /
+<span id="func1MinElapsedTime"></span> ms /
+<span id="func1AverageElapsedTime"></span> ms /
+<span id="func1StandardDeviationElapsedTime"></span>
+</div>
+<div>
+Func2:
+<span id="func2ElapsedTime"></span> ms /
+<span id="func2MaxElapsedTime"></span> ms /
+<span id="func2MinElapsedTime"></span> ms /
+<span id="func2AverageElapsedTime"></span> ms /
+<span id="func2StandardDeviationElapsedTime"></span>
+</div>
+<div><span id="invalid"></span></div>
+<div>
+Func1:<br />
+<textarea id="func1area" cols="40" rows="18"></textarea>
+</div>
+<div>
+Func2:<br />
+<textarea id="func2area" cols="40" rows="18"></textarea>
+</div>
+</body>
+</html>
