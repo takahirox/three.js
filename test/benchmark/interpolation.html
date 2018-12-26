@@ -1,4 +1,4 @@
-﻿<html>
+<html>
 <head>
 </head>
 <body onload="init()">
@@ -40,6 +40,19 @@ function func1( t0, t1, t ) {
 	return s0 + s1 + s2 + s3;
 
 }
+
+function run1(n) {
+	for(var i = 0; i < n; i++) {
+		func1(0, 1, 0.5);
+	}
+}
+
+function runTest1() {
+	var startTime = performance.now();
+	run1(loop);
+	var endTime = performance.now();
+	return endTime - startTime;
+}
 </script>
 <script id="func2">
 function func2( t0, t1, t ) {
@@ -58,25 +71,11 @@ function func2( t0, t1, t ) {
 	return s0 + s1 + s2 + s3;
 
 }
-</script>
-<script>
-function run1(n) {
-	for(var i = 0; i < n; i++) {
-		func1(0, 1, 0.5);
-	}
-}
 
 function run2(n) {
 	for(var i = 0; i < n; i++) {
 		func2(0, 1, 0.5);
 	}
-}
-
-function runTest1() {
-	var startTime = performance.now();
-	run1(loop);
-	var endTime = performance.now();
-	return endTime - startTime;
 }
 
 function runTest2() {
@@ -85,7 +84,8 @@ function runTest2() {
 	var endTime = performance.now();
 	return endTime - startTime;
 }
-
+</script>
+<script>
 function updateTimes(elapsedTimes, elapsedTime) {
 	var times = elapsedTimes.times;
 	times.push(elapsedTime);
@@ -149,8 +149,8 @@ function run() {
 
 function init() {
 	document.getElementById('loop').innerText = loop;
-	document.getElementById('func1area').innerText = document.getElementById('func1').innerText;
-	document.getElementById('func2area').innerText = document.getElementById('func2').innerText;
+	document.getElementById('func1area').value = document.getElementById('func1').innerText;
+	document.getElementById('func2area').value = document.getElementById('func2').innerText;
 	run();
 }
 </script>
@@ -177,11 +177,11 @@ Func2:
 <div><span id="invalid"></span></div>
 <div>
 Func1:<br />
-<textarea id="func1area" cols="40" rows="18"></textarea>
+<textarea id="func1area" cols="80" rows="18"></textarea>
 </div>
 <div>
 Func2:<br />
-<textarea id="func2area" cols="40" rows="18"></textarea>
+<textarea id="func2area" cols="80" rows="18"></textarea>
 </div>
 </body>
 </html>
