@@ -398,6 +398,7 @@ THREE.GLTFLoader = ( function () {
 
 		materialParams.color = new THREE.Color( 1.0, 1.0, 1.0 );
 		materialParams.opacity = 1.0;
+		materialParams.reflectivity = 0;
 
 		var metallicRoughness = material.pbrMetallicRoughness;
 
