@@ -192,6 +192,10 @@ THREE.GLTFLoader = ( function () {
 							extensions[ EXTENSIONS.MSFT_TEXTURE_DDS ] = new GLTFTextureDDSExtension( json );
 							break;
 
+						case EXTENSIONS.EXT_TEXTURE_WEBP:
+							extensions[ extensionName ] = new GLTFTextureWebPExtension();
+							break;
+
 						case EXTENSIONS.KHR_TEXTURE_TRANSFORM:
 							extensions[ EXTENSIONS.KHR_TEXTURE_TRANSFORM ] = new GLTFTextureTransformExtension( json );
 							break;
@@ -281,6 +285,7 @@ THREE.GLTFLoader = ( function () {
 	/*********************************/
 
 	var EXTENSIONS = {
+		EXT_TEXTURE_WEBP: 'EXT_texture_webp',
 		KHR_BINARY_GLTF: 'KHR_binary_glTF',
 		KHR_DRACO_MESH_COMPRESSION: 'KHR_draco_mesh_compression',
 		KHR_LIGHTS_PUNCTUAL: 'KHR_lights_punctual',
@@ -289,6 +294,19 @@ THREE.GLTFLoader = ( function () {
 		KHR_TEXTURE_TRANSFORM: 'KHR_texture_transform',
 		MSFT_TEXTURE_DDS: 'MSFT_texture_dds'
 	};
+
+	/**
+	 * WebP Texture Extension
+	 *
+	 * Specificationi
+	 * https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Vendor/EXT_texture_webp
+	 *
+	 */
+	function GLTFTextureWebPExtension() {
+
+		this.name = EXTENSIONS.EXT_TEXTURE_WEBP;
+
+	}
 
 	/**
 	 * DDS Texture Extension
@@ -2139,6 +2157,10 @@ THREE.GLTFLoader = ( function () {
 		if ( textureExtensions[ EXTENSIONS.MSFT_TEXTURE_DDS ] ) {
 
 			source = json.images[ textureExtensions[ EXTENSIONS.MSFT_TEXTURE_DDS ].source ];
+
+		} else if ( textureExtensions[ EXTENSIONS.EXT_TEXTURE_WEBP ] ) {
+
+			source = json.images[ textureExtensions[ EXTENSIONS.EXT_TEXTURE_WEBP ].source ];
 
 		} else {
 
