@@ -24423,8 +24423,8 @@
 
 			if ( multiview ) {
 
-				p_uniforms.setValue( _gl, 'modelViewMatrix', modelViewMatrix2 );
-				p_uniforms.setValue( _gl, 'normalMatrix', normalMatrix2 );
+				p_uniforms.setValue( _gl, 'modelViewMatrix2', modelViewMatrix2 );
+				p_uniforms.setValue( _gl, 'normalMatrix2', normalMatrix2 );
 
 			}
 
