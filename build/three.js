@@ -1,8 +1,8 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(global = global || self, factory(global.THREE = {}));
-}(this, function (exports) { 'use strict';
+	(factory((global.THREE = {})));
+}(this, (function (exports) { 'use strict';
 
 	// Polyfills
 
@@ -22093,6 +22093,12 @@
 
 		};
 
+		this.getDrawingBufferSize = function ( target ) {
+
+			return renderer.getDrawingBufferSize( target );
+
+		};
+
 		this.isPresenting = isPresenting;
 
 		// Animation Loop
@@ -22211,6 +22217,7 @@
 		function onSessionEnd() {
 
 			renderer.setFramebuffer( null );
+			renderer.setRenderTarget( renderer.getRenderTarget() );
 			animation.stop();
 
 		}
@@ -22322,6 +22329,30 @@
 			}
 
 			return camera;
+
+		};
+
+		this.getDrawingBufferSize = function ( target ) {
+
+			if ( target === undefined ) {
+
+				console.warn( 'WebXRManager: .getDrawingBufferSize() now requires a Vector2 as an argument.' );
+				target = new Vector2();
+
+			}
+
+			if ( this.isPresenting() ) {
+
+				var viewportLeft = cameraVR.cameras[ 0 ].viewport;
+				var viewportRight = cameraVR.cameras[ 1 ].viewport;
+				return target.set( viewportLeft.x, viewportLeft.y,
+					viewportLeft.width + viewportRight.width, viewportLeft.height );
+
+			} else {
+
+				return renderer.getDrawingBufferSize( target );
+
+			}
 
 		};
 
@@ -47567,6 +47598,27 @@
 
 	//
 
+	Object.defineProperties( WebGLRenderTargetCube.prototype, {
+
+		activeCubeFace: {
+			set: function ( /* value */ ) {
+
+				console.warn( 'THREE.WebGLRenderTargetCube: .activeCubeFace has been removed. It is now the second parameter of WebGLRenderer.setRenderTarget().' );
+
+			}
+		},
+		activeMipMapLevel: {
+			set: function ( /* value */ ) {
+
+				console.warn( 'THREE.WebGLRenderTargetCube: .activeMipMapLevel has been removed. It is now the third parameter of WebGLRenderer.setRenderTarget().' );
+
+			}
+		}
+
+	} );
+
+	//
+
 	Object.defineProperties( WebGLRenderTarget.prototype, {
 
 		wrapS: {
@@ -48104,7 +48156,6 @@
 	exports.CircleGeometry = CircleGeometry;
 	exports.CircleBufferGeometry = CircleBufferGeometry;
 	exports.BoxGeometry = BoxGeometry;
-	exports.CubeGeometry = BoxGeometry;
 	exports.BoxBufferGeometry = BoxBufferGeometry;
 	exports.ShadowMaterial = ShadowMaterial;
 	exports.SpriteMaterial = SpriteMaterial;
@@ -48287,6 +48338,7 @@
 	exports.RGBADepthPacking = RGBADepthPacking;
 	exports.TangentSpaceNormalMap = TangentSpaceNormalMap;
 	exports.ObjectSpaceNormalMap = ObjectSpaceNormalMap;
+	exports.CubeGeometry = BoxGeometry;
 	exports.Face4 = Face4;
 	exports.LineStrip = LineStrip;
 	exports.LinePieces = LinePieces;
@@ -48327,4 +48379,4 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-}));
+})));
