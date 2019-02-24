@@ -1,8 +1,8 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(global = global || self, factory(global.THREE = {}));
-}(this, function (exports) { 'use strict';
+	(factory((global.THREE = {})));
+}(this, (function (exports) { 'use strict';
 
 	// Polyfills
 
@@ -17172,10 +17172,14 @@
 
 				'uniform mat4 modelMatrix;',
 				'uniform mat4 modelViewMatrix;',
+				'uniform mat4 modelViewMatrix2;',
 				'uniform mat4 projectionMatrix;',
 				'uniform mat4 viewMatrix;',
+				'uniform mat4 viewMatrix2;',
 				'uniform mat3 normalMatrix;',
+				'uniform mat3 normalMatrix2;',
 				'uniform vec3 cameraPosition;',
+				'uniform vec3 cameraPosition2;',
 
 				'attribute vec3 position;',
 				'attribute vec3 normal;',
@@ -17288,6 +17292,7 @@
 
 				'uniform mat4 viewMatrix;',
 				'uniform vec3 cameraPosition;',
+				'uniform vec3 cameraPosition2;',
 
 				( parameters.toneMapping !== NoToneMapping ) ? '#define TONE_MAPPING' : '',
 				( parameters.toneMapping !== NoToneMapping ) ? ShaderChunk[ 'tonemapping_pars_fragment' ] : '', // this code is required here because it is used by the toneMapping() function defined below
@@ -21928,6 +21933,18 @@
 
 		};
 
+		this.multiviewAvailable = function () {
+
+			if ( ! this.isPresenting() ) return false;
+
+			if ( ! device.getViews ) return false;
+
+			var views = device.getViews();
+
+			return views.length > 0 && !! views[ 0 ].getAttributes().multiview;
+
+		};
+
 		this.setDevice = function ( value ) {
 
 			if ( value !== undefined ) device = value;
@@ -22628,6 +22645,10 @@
 
 		var utils;
 
+		var modelViewMatrix2 = new Matrix4();
+		var normalMatrix2 = new Matrix4();
+		var projectionMatrix2 = new Matrix4();
+
 		function initGLContext() {
 
 			extensions = new WebGLExtensions( _gl );
@@ -23088,13 +23109,13 @@
 
 		};
 
-		this.renderBufferDirect = function ( camera, fog, geometry, material, object, group ) {
+		this.renderBufferDirect = function ( camera, fog, geometry, material, object, group, multiview, camera2 ) {
 
 			var frontFaceCW = ( object.isMesh && object.normalMatrix.determinant() < 0 );
 
 			state.setMaterial( material, frontFaceCW );
 
-			var program = setProgram( camera, fog, material, object );
+			var program = setProgram( camera, fog, material, object, multiview );
 
 			var updateBuffers = false;
 
@@ -23736,6 +23757,8 @@
 
 		function renderObjects( renderList, scene, camera, overrideMaterial ) {
 
+			var multiview = extensions.get( 'WEBGL_multiview' ) !== null && vr.multiviewAvailable();
+
 			for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
 				var renderItem = renderList[ i ];
@@ -23745,7 +23768,15 @@
 				var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 				var group = renderItem.group;
 
-				if ( camera.isArrayCamera ) {
+				if ( multiview ) {
+
+					var view = vr.getDevice().getViews()[ 0 ];
+					var viewport = view.getViewport();
+					_gl.bindFramebuffer( 36160, view.framebuffer );
+					state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+					renderObject( object, scene, camera2, geometry, material, group, multiview, cameras[ 1 ] );
+
+				} else if ( camera.isArrayCamera ) {
 
 					_currentArrayCamera = camera;
 
@@ -23794,13 +23825,20 @@
 
 		}
 
-		function renderObject( object, scene, camera, geometry, material, group ) {
+		function renderObject( object, scene, camera, geometry, material, group, multiview, camera2 ) {
 
 			object.onBeforeRender( _this, scene, camera, geometry, material, group );
 			currentRenderState = renderStates.get( scene, _currentArrayCamera || camera );
 
 			object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 			object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
+
+			if ( multiview === true ) {
+
+				modelViewMatrix2.multiplyMatrices( camera2.matrixWorldInverse, object.matrixWorld );
+				normalMatrix2.getNormalMatrix( modelViewMatrix2 );
+
+			}
 
 			if ( object.isImmediateRenderObject ) {
 
@@ -23816,7 +23854,7 @@
 
 			} else {
 
-				_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group );
+				_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group, multiview, camera2 );
 
 			}
 
@@ -24011,7 +24049,7 @@
 
 		}
 
-		function setProgram( camera, fog, material, object ) {
+		function setProgram( camera, fog, material, object, multiview ) {
 
 			_usedTextureUnits = 0;
 
@@ -24105,6 +24143,8 @@
 
 				p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
+				if ( multiview ) p_uniforms.setValue( _gl, 'projectionMatrix2', camera2.projectionMatrix );
+
 				if ( capabilities.logarithmicDepthBuffer ) {
 
 					p_uniforms.setValue( _gl, 'logDepthBufFC',
@@ -24139,6 +24179,19 @@
 
 						uCamPos.setValue( _gl,
 							_vector3.setFromMatrixPosition( camera.matrixWorld ) );
+
+					}
+
+					if ( multiview ) {
+
+						var uCamPos = p_uniforms.map.cameraPosition2;
+
+						if ( uCamPos !== undefined ) {
+
+							uCamPos.setValue( _gl,
+								_vector3.setFromMatrixPosition( camera2.matrixWorld ) );
+
+						}
 
 					}
 
@@ -24352,6 +24405,13 @@
 			p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
 			p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
 			p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
+
+			if ( multiview ) {
+
+				p_uniforms.setValue( _gl, 'modelViewMatrix', modelViewMatrix2 );
+				p_uniforms.setValue( _gl, 'normalMatrix', normalMatrix2 );
+
+			}
 
 			return program;
 
@@ -47567,6 +47627,27 @@
 
 	//
 
+	Object.defineProperties( WebGLRenderTargetCube.prototype, {
+
+		activeCubeFace: {
+			set: function ( /* value */ ) {
+
+				console.warn( 'THREE.WebGLRenderTargetCube: .activeCubeFace has been removed. It is now the second parameter of WebGLRenderer.setRenderTarget().' );
+
+			}
+		},
+		activeMipMapLevel: {
+			set: function ( /* value */ ) {
+
+				console.warn( 'THREE.WebGLRenderTargetCube: .activeMipMapLevel has been removed. It is now the third parameter of WebGLRenderer.setRenderTarget().' );
+
+			}
+		}
+
+	} );
+
+	//
+
 	Object.defineProperties( WebGLRenderTarget.prototype, {
 
 		wrapS: {
@@ -48104,7 +48185,6 @@
 	exports.CircleGeometry = CircleGeometry;
 	exports.CircleBufferGeometry = CircleBufferGeometry;
 	exports.BoxGeometry = BoxGeometry;
-	exports.CubeGeometry = BoxGeometry;
 	exports.BoxBufferGeometry = BoxBufferGeometry;
 	exports.ShadowMaterial = ShadowMaterial;
 	exports.SpriteMaterial = SpriteMaterial;
@@ -48287,6 +48367,7 @@
 	exports.RGBADepthPacking = RGBADepthPacking;
 	exports.TangentSpaceNormalMap = TangentSpaceNormalMap;
 	exports.ObjectSpaceNormalMap = ObjectSpaceNormalMap;
+	exports.CubeGeometry = BoxGeometry;
 	exports.Face4 = Face4;
 	exports.LineStrip = LineStrip;
 	exports.LinePieces = LinePieces;
@@ -48327,4 +48408,4 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-}));
+})));
