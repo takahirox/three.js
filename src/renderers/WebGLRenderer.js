@@ -715,7 +715,7 @@ function WebGLRenderer( parameters ) {
 
 		state.setMaterial( material, frontFaceCW );
 
-		var program = setProgram( camera, fog, material, object, multiview );
+		var program = setProgram( camera, fog, material, object, multiview, camera2 );
 
 		var updateBuffers = false;
 
@@ -1653,7 +1653,7 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	function setProgram( camera, fog, material, object, multiview ) {
+	function setProgram( camera, fog, material, object, multiview, camera2 ) {
 
 		_usedTextureUnits = 0;
 
