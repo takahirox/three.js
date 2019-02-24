@@ -22346,7 +22346,7 @@
 				var viewportLeft = cameraVR.cameras[ 0 ].viewport;
 				var viewportRight = cameraVR.cameras[ 1 ].viewport;
 				return target.set( viewportLeft.x, viewportLeft.y,
-					viewportLeft.width + viewportRight.width, viewportLeft.height );
+					viewportLeft.z + viewportRight.z, viewportLeft.w );
 
 			} else {
 
