@@ -17347,7 +17347,7 @@
 			// GLSL 3.0 conversion
 			prefixVertex = [
 				'#version 300 es\n',
-				extensions.get( 'WEBGL_multiview' ) !== null ? 'extension GL_OVR_multiview : require' : '',
+				extensions.get( 'WEBGL_multiview' ) !== null ? '#extension GL_OVR_multiview : require' : '',
 				extensions.get( 'WEBGL_multiview' ) !== null ? 'layout(num_views=2)' : '',
 				'#define attribute in',
 				'#define varying out',
