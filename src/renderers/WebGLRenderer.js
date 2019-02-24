@@ -1369,11 +1369,15 @@ function WebGLRenderer( parameters ) {
 
 			if ( multiview ) {
 
+				_currentArrayCamera = camera;
+
+				var cameras = camera.cameras;
+
 				var view = vr.getDevice().getViews()[ 0 ];
 				var viewport = view.getViewport();
 				_gl.bindFramebuffer( _gl.FRAMEBUFFER, view.framebuffer );
 				state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
-				renderObject( object, scene, camera2, geometry, material, group, multiview, cameras[ 1 ] );
+				renderObject( object, scene, cameras[ 0 ], geometry, material, group, multiview, cameras[ 1 ] );
 
 			} else if ( camera.isArrayCamera ) {
 
