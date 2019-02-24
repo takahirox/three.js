@@ -3279,7 +3279,7 @@
 	 * @author tschw
 	 */
 
-	function Matrix3$1() {
+	function Matrix3() {
 
 		this.elements = [
 
@@ -3297,7 +3297,7 @@
 
 	}
 
-	Object.assign( Matrix3$1.prototype, {
+	Object.assign( Matrix3.prototype, {
 
 		isMatrix3: true,
 
@@ -3753,7 +3753,7 @@
 		this.rotation = 0;
 
 		this.matrixAutoUpdate = true;
-		this.matrix = new Matrix3$1();
+		this.matrix = new Matrix3();
 
 		this.generateMipmaps = true;
 		this.premultiplyAlpha = false;
@@ -5804,7 +5804,7 @@
 		applyMatrix4: function () {
 
 			var v1 = new Vector3();
-			var m1 = new Matrix3$1();
+			var m1 = new Matrix3();
 
 			return function applyMatrix4( matrix, optionalNormalMatrix ) {
 
@@ -7066,7 +7066,7 @@
 			opacity: { value: 1.0 },
 
 			map: { value: null },
-			uvTransform: { value: new Matrix3$1() },
+			uvTransform: { value: new Matrix3() },
 
 			alphaMap: { value: null },
 
@@ -7232,7 +7232,7 @@
 			size: { value: 1.0 },
 			scale: { value: 1.0 },
 			map: { value: null },
-			uvTransform: { value: new Matrix3$1() }
+			uvTransform: { value: new Matrix3() }
 
 		},
 
@@ -7243,7 +7243,7 @@
 			center: { value: new Vector2( 0.5, 0.5 ) },
 			rotation: { value: 0.0 },
 			map: { value: null },
-			uvTransform: { value: new Matrix3$1() }
+			uvTransform: { value: new Matrix3() }
 
 		}
 
@@ -7440,7 +7440,7 @@
 		background: {
 
 			uniforms: {
-				uvTransform: { value: new Matrix3$1() },
+				uvTransform: { value: new Matrix3() },
 				t2D: { value: null },
 			},
 
@@ -8250,7 +8250,7 @@
 				value: new Matrix4()
 			},
 			normalMatrix: {
-				value: new Matrix3$1()
+				value: new Matrix3()
 			}
 		} );
 
@@ -9123,7 +9123,7 @@
 
 		applyMatrix: function ( matrix ) {
 
-			var normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
+			var normalMatrix = new Matrix3().getNormalMatrix( matrix );
 
 			for ( var i = 0, il = this.vertices.length; i < il; i ++ ) {
 
@@ -9761,7 +9761,7 @@
 
 			if ( matrix !== undefined ) {
 
-				normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
+				normalMatrix = new Matrix3().getNormalMatrix( matrix );
 
 			}
 
@@ -11326,7 +11326,7 @@
 
 			if ( normal !== undefined ) {
 
-				var normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
+				var normalMatrix = new Matrix3().getNormalMatrix( matrix );
 
 				normalMatrix.applyToBufferAttribute( normal );
 				normal.needsUpdate = true;
@@ -11337,7 +11337,7 @@
 
 			if ( tangent !== undefined ) {
 
-				var normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
+				var normalMatrix = new Matrix3().getNormalMatrix( matrix );
 
 				// Tangent is vec4, but the '.w' component is a sign value (+1/-1).
 				normalMatrix.applyToBufferAttribute( tangent );
@@ -15119,7 +15119,7 @@
 			renderingShadows = false,
 
 			plane = new Plane(),
-			viewNormalMatrix = new Matrix3$1(),
+			viewNormalMatrix = new Matrix3(),
 
 			uniform = { value: null, needsUpdate: false };
 
@@ -17174,12 +17174,19 @@
 				'uniform mat4 modelViewMatrix;',
 				'uniform mat4 modelViewMatrix2;',
 				'uniform mat4 projectionMatrix;',
+				'uniform mat4 projectionMatrix2;',
 				'uniform mat4 viewMatrix;',
 				'uniform mat4 viewMatrix2;',
 				'uniform mat3 normalMatrix;',
 				'uniform mat3 normalMatrix2;',
 				'uniform vec3 cameraPosition;',
 				'uniform vec3 cameraPosition2;',
+
+				extensions.get( 'WEBGL_multiview' ) !== null ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
+				extensions.get( 'WEBGL_multiview' ) !== null ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
+				extensions.get( 'WEBGL_multiview' ) !== null ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
+				extensions.get( 'WEBGL_multiview' ) !== null ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
+				extensions.get( 'WEBGL_multiview' ) !== null ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
 
 				'attribute vec3 position;',
 				'attribute vec3 normal;',
@@ -24211,6 +24218,8 @@
 					material.skinning ) {
 
 					p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
+
+					if ( multiview ) p_uniforms.setValue( _gl, 'viewMatrix2', camera2.matrixWorldInverse );
 
 				}
 
@@ -37826,7 +37835,7 @@
 							break;
 
 						case 'm3':
-							material.uniforms[ name ].value = new Matrix3$1().fromArray( uniform.value );
+							material.uniforms[ name ].value = new Matrix3().fromArray( uniform.value );
 
 						case 'm4':
 							material.uniforms[ name ].value = new Matrix4().fromArray( uniform.value );
@@ -44586,7 +44595,7 @@
 
 		var v1 = new Vector3();
 		var v2 = new Vector3();
-		var normalMatrix = new Matrix3$1();
+		var normalMatrix = new Matrix3();
 
 		return function update() {
 
@@ -45418,7 +45427,7 @@
 
 		var v1 = new Vector3();
 		var v2 = new Vector3();
-		var normalMatrix = new Matrix3$1();
+		var normalMatrix = new Matrix3();
 
 		return function update() {
 
@@ -46600,7 +46609,7 @@
 
 	} );
 
-	Object.assign( Matrix3$1.prototype, {
+	Object.assign( Matrix3.prototype, {
 
 		flattenToArrayOffset: function ( array, offset ) {
 
@@ -48113,7 +48122,7 @@
 	exports.Sphere = Sphere;
 	exports.Ray = Ray;
 	exports.Matrix4 = Matrix4;
-	exports.Matrix3 = Matrix3$1;
+	exports.Matrix3 = Matrix3;
 	exports.Box3 = Box3;
 	exports.Box2 = Box2;
 	exports.Line3 = Line3;
