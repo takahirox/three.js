@@ -222,8 +222,7 @@ function WebXRManager( renderer ) {
 
 			var viewportLeft = cameraVR.cameras[ 0 ].viewport;
 			var viewportRight = cameraVR.cameras[ 1 ].viewport;
-			return target.set( viewportLeft.x, viewportLeft.y,
-				viewportLeft.z + viewportRight.z, viewportLeft.w );
+			return target.set( viewportLeft.z + viewportRight.z, viewportLeft.w );
 
 		} else {
 
