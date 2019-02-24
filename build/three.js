@@ -3279,7 +3279,7 @@
 	 * @author tschw
 	 */
 
-	function Matrix3() {
+	function Matrix3$1() {
 
 		this.elements = [
 
@@ -3297,7 +3297,7 @@
 
 	}
 
-	Object.assign( Matrix3.prototype, {
+	Object.assign( Matrix3$1.prototype, {
 
 		isMatrix3: true,
 
@@ -3753,7 +3753,7 @@
 		this.rotation = 0;
 
 		this.matrixAutoUpdate = true;
-		this.matrix = new Matrix3();
+		this.matrix = new Matrix3$1();
 
 		this.generateMipmaps = true;
 		this.premultiplyAlpha = false;
@@ -5804,7 +5804,7 @@
 		applyMatrix4: function () {
 
 			var v1 = new Vector3();
-			var m1 = new Matrix3();
+			var m1 = new Matrix3$1();
 
 			return function applyMatrix4( matrix, optionalNormalMatrix ) {
 
@@ -7066,7 +7066,7 @@
 			opacity: { value: 1.0 },
 
 			map: { value: null },
-			uvTransform: { value: new Matrix3() },
+			uvTransform: { value: new Matrix3$1() },
 
 			alphaMap: { value: null },
 
@@ -7232,7 +7232,7 @@
 			size: { value: 1.0 },
 			scale: { value: 1.0 },
 			map: { value: null },
-			uvTransform: { value: new Matrix3() }
+			uvTransform: { value: new Matrix3$1() }
 
 		},
 
@@ -7243,7 +7243,7 @@
 			center: { value: new Vector2( 0.5, 0.5 ) },
 			rotation: { value: 0.0 },
 			map: { value: null },
-			uvTransform: { value: new Matrix3() }
+			uvTransform: { value: new Matrix3$1() }
 
 		}
 
@@ -7440,7 +7440,7 @@
 		background: {
 
 			uniforms: {
-				uvTransform: { value: new Matrix3() },
+				uvTransform: { value: new Matrix3$1() },
 				t2D: { value: null },
 			},
 
@@ -8250,7 +8250,7 @@
 				value: new Matrix4()
 			},
 			normalMatrix: {
-				value: new Matrix3()
+				value: new Matrix3$1()
 			}
 		} );
 
@@ -9123,7 +9123,7 @@
 
 		applyMatrix: function ( matrix ) {
 
-			var normalMatrix = new Matrix3().getNormalMatrix( matrix );
+			var normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
 
 			for ( var i = 0, il = this.vertices.length; i < il; i ++ ) {
 
@@ -9761,7 +9761,7 @@
 
 			if ( matrix !== undefined ) {
 
-				normalMatrix = new Matrix3().getNormalMatrix( matrix );
+				normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
 
 			}
 
@@ -11326,7 +11326,7 @@
 
 			if ( normal !== undefined ) {
 
-				var normalMatrix = new Matrix3().getNormalMatrix( matrix );
+				var normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
 
 				normalMatrix.applyToBufferAttribute( normal );
 				normal.needsUpdate = true;
@@ -11337,7 +11337,7 @@
 
 			if ( tangent !== undefined ) {
 
-				var normalMatrix = new Matrix3().getNormalMatrix( matrix );
+				var normalMatrix = new Matrix3$1().getNormalMatrix( matrix );
 
 				// Tangent is vec4, but the '.w' component is a sign value (+1/-1).
 				normalMatrix.applyToBufferAttribute( tangent );
@@ -15119,7 +15119,7 @@
 			renderingShadows = false,
 
 			plane = new Plane(),
-			viewNormalMatrix = new Matrix3(),
+			viewNormalMatrix = new Matrix3$1(),
 
 			uniform = { value: null, needsUpdate: false };
 
@@ -22648,7 +22648,7 @@
 		var utils;
 
 		var modelViewMatrix2 = new Matrix4();
-		var normalMatrix2 = new Matrix4();
+		var normalMatrix2 = new Matrix3();
 		var projectionMatrix2 = new Matrix4();
 
 		function initGLContext() {
@@ -37826,7 +37826,7 @@
 							break;
 
 						case 'm3':
-							material.uniforms[ name ].value = new Matrix3().fromArray( uniform.value );
+							material.uniforms[ name ].value = new Matrix3$1().fromArray( uniform.value );
 
 						case 'm4':
 							material.uniforms[ name ].value = new Matrix4().fromArray( uniform.value );
@@ -44586,7 +44586,7 @@
 
 		var v1 = new Vector3();
 		var v2 = new Vector3();
-		var normalMatrix = new Matrix3();
+		var normalMatrix = new Matrix3$1();
 
 		return function update() {
 
@@ -45418,7 +45418,7 @@
 
 		var v1 = new Vector3();
 		var v2 = new Vector3();
-		var normalMatrix = new Matrix3();
+		var normalMatrix = new Matrix3$1();
 
 		return function update() {
 
@@ -46600,7 +46600,7 @@
 
 	} );
 
-	Object.assign( Matrix3.prototype, {
+	Object.assign( Matrix3$1.prototype, {
 
 		flattenToArrayOffset: function ( array, offset ) {
 
@@ -48113,7 +48113,7 @@
 	exports.Sphere = Sphere;
 	exports.Ray = Ray;
 	exports.Matrix4 = Matrix4;
-	exports.Matrix3 = Matrix3;
+	exports.Matrix3 = Matrix3$1;
 	exports.Box3 = Box3;
 	exports.Box2 = Box2;
 	exports.Line3 = Line3;
