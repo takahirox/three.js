@@ -13,6 +13,7 @@ import {
 import { _Math } from '../math/Math.js';
 import { DataTexture } from '../textures/DataTexture.js';
 import { Frustum } from '../math/Frustum.js';
+import { Matrix3 } from '../math/Matrix3.js';
 import { Matrix4 } from '../math/Matrix4.js';
 import { ShaderLib } from './shaders/ShaderLib.js';
 import { UniformsLib } from './shaders/UniformsLib.js';
@@ -1808,6 +1809,8 @@ function WebGLRenderer( parameters ) {
 				material.skinning ) {
 
 				p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
+
+				if ( multiview ) p_uniforms.setValue( _gl, 'viewMatrix2', camera2.matrixWorldInverse );
 
 			}
 
