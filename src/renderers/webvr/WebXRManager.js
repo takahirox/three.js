@@ -27,6 +27,8 @@ function WebXRManager( renderer ) {
 	var controllers = [];
 	var inputSources = [];
 
+	var currentSize = new Vector2(), currentPixelRatio;
+
 	function isPresenting() {
 
 		return session !== null && frameOfReference !== null;
@@ -93,6 +95,7 @@ function WebXRManager( renderer ) {
 
 	function onSessionEnd() {
 
+		renderer.setDrawingBufferSize( currentSize.width, currentSize.height, currentPixelRatio );
 		renderer.setFramebuffer( null );
 		renderer.setRenderTarget( renderer.getRenderTarget() );
 		animation.stop();
@@ -128,6 +131,11 @@ function WebXRManager( renderer ) {
 				frameOfReference = value;
 
 				renderer.setFramebuffer( session.baseLayer.framebuffer );
+
+				currentPixelRatio = renderer.getPixelRatio();
+				renderer.getSize( currentSize );
+
+				renderer.setDrawingBufferSize( session.baseLayer.framebufferWidth, session.baseLayer.framebufferHeight, 1 );
 
 				animation.setContext( session );
 				animation.start();
@@ -220,9 +228,7 @@ function WebXRManager( renderer ) {
 
 		if ( this.isPresenting() ) {
 
-			var viewportLeft = cameraVR.cameras[ 0 ].viewport;
-			var viewportRight = cameraVR.cameras[ 1 ].viewport;
-			return target.set( viewportLeft.z + viewportRight.z, viewportLeft.w );
+			return target.set( session.baseLayer.framebufferWidth, session.baseLayer.framebufferHeight );
 
 		} else {
 
