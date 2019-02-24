@@ -245,7 +245,7 @@ function WebGLRenderer( parameters ) {
 	var utils;
 
 	var modelViewMatrix2 = new Matrix4();
-	var normalMatrix2 = new Matrix4();
+	var normalMatrix2 = new Matrix3();
 	var projectionMatrix2 = new Matrix4();
 
 	function initGLContext() {
