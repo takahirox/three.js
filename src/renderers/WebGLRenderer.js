@@ -244,6 +244,10 @@ function WebGLRenderer( parameters ) {
 
 	var utils;
 
+	var modelViewMatrix2 = new Matrix4();
+	var normalMatrix2 = new Matrix4();
+	var projectionMatrix2 = new Matrix4();
+
 	function initGLContext() {
 
 		extensions = new WebGLExtensions( _gl );
@@ -704,13 +708,13 @@ function WebGLRenderer( parameters ) {
 
 	};
 
-	this.renderBufferDirect = function ( camera, fog, geometry, material, object, group ) {
+	this.renderBufferDirect = function ( camera, fog, geometry, material, object, group, multiview, camera2 ) {
 
 		var frontFaceCW = ( object.isMesh && object.normalMatrix.determinant() < 0 );
 
 		state.setMaterial( material, frontFaceCW );
 
-		var program = setProgram( camera, fog, material, object );
+		var program = setProgram( camera, fog, material, object, multiview );
 
 		var updateBuffers = false;
 
@@ -1352,6 +1356,8 @@ function WebGLRenderer( parameters ) {
 
 	function renderObjects( renderList, scene, camera, overrideMaterial ) {
 
+		var multiview = extensions.get( 'WEBGL_multiview' ) !== null && vr.multiviewAvailable();
+
 		for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
 			var renderItem = renderList[ i ];
@@ -1361,7 +1367,15 @@ function WebGLRenderer( parameters ) {
 			var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 			var group = renderItem.group;
 
-			if ( camera.isArrayCamera ) {
+			if ( multiview ) {
+
+				var view = vr.getDevice().getViews()[ 0 ];
+				var viewport = view.getViewport();
+				_gl.bindFramebuffer( _gl.FRAMEBUFFER, view.framebuffer );
+				state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+				renderObject( object, scene, camera2, geometry, material, group, multiview, cameras[ 1 ] );
+
+			} else if ( camera.isArrayCamera ) {
 
 				_currentArrayCamera = camera;
 
@@ -1410,13 +1424,20 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	function renderObject( object, scene, camera, geometry, material, group ) {
+	function renderObject( object, scene, camera, geometry, material, group, multiview, camera2 ) {
 
 		object.onBeforeRender( _this, scene, camera, geometry, material, group );
 		currentRenderState = renderStates.get( scene, _currentArrayCamera || camera );
 
 		object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 		object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
+
+		if ( multiview === true ) {
+
+			modelViewMatrix2.multiplyMatrices( camera2.matrixWorldInverse, object.matrixWorld );
+			normalMatrix2.getNormalMatrix( modelViewMatrix2 );
+
+		}
 
 		if ( object.isImmediateRenderObject ) {
 
@@ -1432,7 +1453,7 @@ function WebGLRenderer( parameters ) {
 
 		} else {
 
-			_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group );
+			_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group, multiview, camera2 );
 
 		}
 
@@ -1627,7 +1648,7 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	function setProgram( camera, fog, material, object ) {
+	function setProgram( camera, fog, material, object, multiview ) {
 
 		_usedTextureUnits = 0;
 
@@ -1721,6 +1742,8 @@ function WebGLRenderer( parameters ) {
 
 			p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
+			if ( multiview ) p_uniforms.setValue( _gl, 'projectionMatrix2', camera2.projectionMatrix );
+
 			if ( capabilities.logarithmicDepthBuffer ) {
 
 				p_uniforms.setValue( _gl, 'logDepthBufFC',
@@ -1755,6 +1778,19 @@ function WebGLRenderer( parameters ) {
 
 					uCamPos.setValue( _gl,
 						_vector3.setFromMatrixPosition( camera.matrixWorld ) );
+
+				}
+
+				if ( multiview ) {
+
+					var uCamPos = p_uniforms.map.cameraPosition2;
+
+					if ( uCamPos !== undefined ) {
+
+						uCamPos.setValue( _gl,
+							_vector3.setFromMatrixPosition( camera2.matrixWorld ) );
+
+					}
 
 				}
 
@@ -1968,6 +2004,13 @@ function WebGLRenderer( parameters ) {
 		p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
 		p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
 		p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
+
+		if ( multiview ) {
+
+			p_uniforms.setValue( _gl, 'modelViewMatrix', modelViewMatrix2 );
+			p_uniforms.setValue( _gl, 'normalMatrix', normalMatrix2 );
+
+		}
 
 		return program;
 
