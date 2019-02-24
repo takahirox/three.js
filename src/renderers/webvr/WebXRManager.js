@@ -3,6 +3,7 @@
  */
 
 import { Group } from '../../objects/Group.js';
+import { Vector2 } from '../../math/Vector2.js';
 import { Vector4 } from '../../math/Vector4.js';
 import { ArrayCamera } from '../../cameras/ArrayCamera.js';
 import { PerspectiveCamera } from '../../cameras/PerspectiveCamera.js';
@@ -204,6 +205,30 @@ function WebXRManager( renderer ) {
 		}
 
 		return camera;
+
+	};
+
+	this.getDrawingBufferSize = function ( target ) {
+
+		if ( target === undefined ) {
+
+			console.warn( 'WebXRManager: .getDrawingBufferSize() now requires a Vector2 as an argument.' );
+			target = new Vector2();
+
+		}
+
+		if ( this.isPresenting() ) {
+
+			var viewportLeft = cameraVR.cameras[ 0 ].viewport;
+			var viewportRight = cameraVR.cameras[ 1 ].viewport;
+			return target.set( viewportLeft.x, viewportLeft.y,
+				viewportLeft.width + viewportRight.width, viewportLeft.height );
+
+		} else {
+
+			return renderer.getDrawingBufferSize( target );
+
+		}
 
 	};
 

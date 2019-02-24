@@ -369,6 +369,12 @@ function WebVRManager( renderer ) {
 
 	};
 
+	this.getDrawingBufferSize = function ( target ) {
+
+		return renderer.getDrawingBufferSize( target );
+
+	};
+
 	this.isPresenting = isPresenting;
 
 	// Animation Loop
