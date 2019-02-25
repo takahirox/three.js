@@ -217,27 +217,6 @@ function WebXRManager( renderer ) {
 
 	};
 
-	this.getDrawingBufferSize = function ( target ) {
-
-		if ( target === undefined ) {
-
-			console.warn( 'WebXRManager: .getDrawingBufferSize() now requires a Vector2 as an argument.' );
-			target = new Vector2();
-
-		}
-
-		if ( this.isPresenting() ) {
-
-			return target.set( session.baseLayer.framebufferWidth, session.baseLayer.framebufferHeight );
-
-		} else {
-
-			return renderer.getDrawingBufferSize( target );
-
-		}
-
-	};
-
 	this.isPresenting = isPresenting;
 
 	// Animation Loop
