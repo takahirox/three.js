@@ -1,8 +1,8 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(global = global || self, factory(global.THREE = {}));
-}(this, function (exports) { 'use strict';
+	(factory((global.THREE = {})));
+}(this, (function (exports) { 'use strict';
 
 	// Polyfills
 
@@ -22144,6 +22144,8 @@
 		var controllers = [];
 		var inputSources = [];
 
+		var currentSize = new Vector2(), currentPixelRatio;
+
 		function isPresenting() {
 
 			return session !== null && frameOfReference !== null;
@@ -22210,7 +22212,9 @@
 
 		function onSessionEnd() {
 
+			renderer.setDrawingBufferSize( currentSize.width, currentSize.height, currentPixelRatio );
 			renderer.setFramebuffer( null );
+			renderer.setRenderTarget( renderer.getRenderTarget() );
 			animation.stop();
 
 		}
@@ -22244,6 +22248,11 @@
 					frameOfReference = value;
 
 					renderer.setFramebuffer( session.baseLayer.framebuffer );
+
+					currentPixelRatio = renderer.getPixelRatio();
+					renderer.getSize( currentSize );
+
+					renderer.setDrawingBufferSize( session.baseLayer.framebufferWidth, session.baseLayer.framebufferHeight, 1 );
 
 					animation.setContext( session );
 					animation.start();
@@ -47567,6 +47576,27 @@
 
 	//
 
+	Object.defineProperties( WebGLRenderTargetCube.prototype, {
+
+		activeCubeFace: {
+			set: function ( /* value */ ) {
+
+				console.warn( 'THREE.WebGLRenderTargetCube: .activeCubeFace has been removed. It is now the second parameter of WebGLRenderer.setRenderTarget().' );
+
+			}
+		},
+		activeMipMapLevel: {
+			set: function ( /* value */ ) {
+
+				console.warn( 'THREE.WebGLRenderTargetCube: .activeMipMapLevel has been removed. It is now the third parameter of WebGLRenderer.setRenderTarget().' );
+
+			}
+		}
+
+	} );
+
+	//
+
 	Object.defineProperties( WebGLRenderTarget.prototype, {
 
 		wrapS: {
@@ -48104,7 +48134,6 @@
 	exports.CircleGeometry = CircleGeometry;
 	exports.CircleBufferGeometry = CircleBufferGeometry;
 	exports.BoxGeometry = BoxGeometry;
-	exports.CubeGeometry = BoxGeometry;
 	exports.BoxBufferGeometry = BoxBufferGeometry;
 	exports.ShadowMaterial = ShadowMaterial;
 	exports.SpriteMaterial = SpriteMaterial;
@@ -48287,6 +48316,7 @@
 	exports.RGBADepthPacking = RGBADepthPacking;
 	exports.TangentSpaceNormalMap = TangentSpaceNormalMap;
 	exports.ObjectSpaceNormalMap = ObjectSpaceNormalMap;
+	exports.CubeGeometry = BoxGeometry;
 	exports.Face4 = Face4;
 	exports.LineStrip = LineStrip;
 	exports.LinePieces = LinePieces;
@@ -48327,4 +48357,4 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-}));
+})));
