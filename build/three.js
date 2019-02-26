@@ -21796,6 +21796,30 @@
 		cameraVR.layers.enable( 1 );
 		cameraVR.layers.enable( 2 );
 
+		// multiview
+
+		var multiviewAvailable = null;
+
+		function checkMultiviewAvailability() {
+
+			if ( multiviewAvailable !== null ) return multiviewAvailable;
+
+			if ( ! isPresenting() ) return false;
+
+			if ( ! device.getViews ) return false;
+
+			var views = device.getViews();
+
+			return !! views && views.length === 1 && !! views[ 0 ].getAttributes().multiview;
+
+		}
+
+		function getMultiviewFramebuffer() {
+
+			return device.getViews()[ 0 ].framebuffer;
+
+		}
+
 		//
 
 		function isPresenting() {
@@ -21819,6 +21843,19 @@
 
 				renderer.setDrawingBufferSize( renderWidth * 2, renderHeight, 1 );
 
+				if ( multiviewAvailability === null ) {
+
+					multiviewAvailability = checkMultiviewAvailability();
+
+				}
+
+				if ( multiviewAvailability === true ) {
+
+					renderer.setFramebuffer( getMultiviewFramebuffer() );
+					renderer.setRenderTarget( renderer.getRenderTarget() );
+
+				}
+
 				animation.start();
 
 			} else {
@@ -21826,6 +21863,13 @@
 				if ( scope.enabled ) {
 
 					renderer.setDrawingBufferSize( currentSize.width, currentSize.height, currentPixelRatio );
+
+					if ( multiviewAvailability === true ) {
+
+						renderer.setFramebuffer( null );
+						renderer.setRenderTarget( renderer.getRenderTarget() );
+
+					}
 
 				}
 
@@ -22726,7 +22770,7 @@
 
 		if ( _multiview && ! capabilities.multiview ) {
 
-			console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview support browser for multiview.' );
+			console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview extension support browser for multiview.' );
 			_multiview = false;
 
 		}
@@ -23804,8 +23848,6 @@
 
 						var view = vr.getDevice().getViews()[ 0 ];
 						var viewport = view.getViewport();
-
-						_gl.bindFramebuffer( 36160, view.framebuffer );
 
 						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
 						currentRenderState.setupLights( multiview.camera );
