@@ -55,11 +55,13 @@ function WebVRManager( renderer ) {
 
 	// multiview
 
-	var multiviewAvailable = null;
+	this.multiview = false;
+
+	var multiviewAvailability = null;
 
 	function checkMultiviewAvailability() {
 
-		if ( multiviewAvailable !== null ) return multiviewAvailable;
+		if ( multiviewAvailability !== null ) return multiviewAvailability;
 
 		if ( ! isPresenting() ) return false;
 
@@ -104,12 +106,22 @@ function WebVRManager( renderer ) {
 
 				multiviewAvailability = checkMultiviewAvailability();
 
+
 			}
 
 			if ( multiviewAvailability === true ) {
 
 				renderer.setFramebuffer( getMultiviewFramebuffer() );
 				renderer.setRenderTarget( renderer.getRenderTarget() );
+
+			} else {
+
+				if ( scope.multiview ) {
+
+					console.warn( 'WebVRManager: No multiview support device.' );
+					scope.multiview = false;
+
+				}
 
 			}
 

@@ -393,11 +393,11 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 			'uniform vec3 cameraPosition;',
 			'uniform vec3 cameraPosition2;',
 
-			renderer.multiview.enabled ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
-			renderer.multiview.enabled ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
-			renderer.multiview.enabled ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
-			renderer.multiview.enabled ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
-			renderer.multiview.enabled ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
+			renderer.vr.multiview ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
+			renderer.vr.multiview ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
+			renderer.vr.multiview ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
+			renderer.vr.multiview ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
+			renderer.vr.multiview ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
 
 			'attribute vec3 position;',
 			'attribute vec3 normal;',
@@ -565,9 +565,9 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		// GLSL 3.0 conversion
 		prefixVertex = [
 			'#version 300 es\n',
-			renderer.multiview.enabled ? '#extension GL_OVR_multiview : require' : '',
+			renderer.vr.multiview ? '#extension GL_OVR_multiview : require' : '',
 			'#define NUM_OF_VIEWS 2',
-			renderer.multiview.enabled ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
+			renderer.vr.multiview ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
 			'#define attribute in',
 			'#define varying out',
 			'#define texture2D texture'

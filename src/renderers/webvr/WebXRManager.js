@@ -46,6 +46,10 @@ function WebXRManager( renderer ) {
 	cameraVR.layers.enable( 1 );
 	cameraVR.layers.enable( 2 );
 
+	// VR multiview. Not supported yet.
+
+	this.multiview = false;
+
 	//
 
 	this.enabled = false;

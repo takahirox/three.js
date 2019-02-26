@@ -68,8 +68,7 @@ function WebGLRenderer( parameters ) {
 		_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 		_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 		_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
-		_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
+		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
 
 	var currentRenderList = null;
 	var currentRenderState = null;
@@ -320,19 +319,9 @@ function WebGLRenderer( parameters ) {
 
 	this.shadowMap = shadowMap;
 
-	// VR multiview
-
-	if ( _multiview && ! capabilities.multiview ) {
-
-		console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview extension support browser for multiview.' );
-		_multiview = false;
-
-	}
-
-	// For right eye in multiview
+	// For right eye in VR multiview
 
 	var multiview = {
-		enabled: _multiview,
 		available: false,
 		modelViewMatrix: new Matrix4(),
 		normalMatrix: new Matrix3(),
@@ -1391,7 +1380,14 @@ function WebGLRenderer( parameters ) {
 
 				var cameras = camera.cameras;
 
-				if ( multiview.enabled ) {
+				if ( vr.multiview && ! capabilities.multiview ) {
+
+					console.warn( 'WebGLRenderer: Use WebGL 2.0 and WEBGL_multiview extension support browser for VR multiview.' );
+					vr.multiview = false;
+
+				}
+
+				if ( vr.multiview ) {
 
 					multiview.available = true;
 
