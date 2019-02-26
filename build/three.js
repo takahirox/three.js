@@ -17186,11 +17186,11 @@
 				'uniform vec3 cameraPosition;',
 				'uniform vec3 cameraPosition2;',
 
-				renderer.multiview.enabled ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
-				renderer.multiview.enabled ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
-				renderer.multiview.enabled ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
-				renderer.multiview.enabled ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
-				renderer.multiview.enabled ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
+				renderer.vr.multiview ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
+				renderer.vr.multiview ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
+				renderer.vr.multiview ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
+				renderer.vr.multiview ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
+				renderer.vr.multiview ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
 
 				'attribute vec3 position;',
 				'attribute vec3 normal;',
@@ -17358,9 +17358,9 @@
 			// GLSL 3.0 conversion
 			prefixVertex = [
 				'#version 300 es\n',
-				renderer.multiview.enabled ? '#extension GL_OVR_multiview : require' : '',
+				renderer.vr.multiview ? '#extension GL_OVR_multiview : require' : '',
 				'#define NUM_OF_VIEWS 2',
-				renderer.multiview.enabled ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
+				renderer.vr.multiview ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
 				'#define attribute in',
 				'#define varying out',
 				'#define texture2D texture'
@@ -21798,11 +21798,13 @@
 
 		// multiview
 
-		var multiviewAvailable = null;
+		this.multiview = false;
+
+		var multiviewAvailability = null;
 
 		function checkMultiviewAvailability() {
 
-			if ( multiviewAvailable !== null ) return multiviewAvailable;
+			if ( multiviewAvailability !== null ) return multiviewAvailability;
 
 			if ( ! isPresenting() ) return false;
 
@@ -21847,12 +21849,22 @@
 
 					multiviewAvailability = checkMultiviewAvailability();
 
+
 				}
 
 				if ( multiviewAvailability === true ) {
 
 					renderer.setFramebuffer( getMultiviewFramebuffer() );
 					renderer.setRenderTarget( renderer.getRenderTarget() );
+
+				} else {
+
+					if ( scope.multiview ) {
+
+						console.warn( 'WebVRManager: No multiview support device.' );
+						scope.multiview = false;
+
+					}
 
 				}
 
@@ -22227,6 +22239,10 @@
 		cameraVR.layers.enable( 1 );
 		cameraVR.layers.enable( 2 );
 
+		// VR multiview. Not supported yet.
+
+		this.multiview = false;
+
 		//
 
 		this.enabled = false;
@@ -22514,8 +22530,7 @@
 			_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 			_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 			_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-			_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
-			_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
+			_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
 
 		var currentRenderList = null;
 		var currentRenderState = null;
@@ -22766,19 +22781,9 @@
 
 		this.shadowMap = shadowMap;
 
-		// VR multiview
-
-		if ( _multiview && ! capabilities.multiview ) {
-
-			console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview extension support browser for multiview.' );
-			_multiview = false;
-
-		}
-
-		// For right eye in multiview
+		// For right eye in VR multiview
 
 		var multiview = {
-			enabled: _multiview,
 			available: false,
 			modelViewMatrix: new Matrix4(),
 			normalMatrix: new Matrix3(),
@@ -23837,7 +23842,14 @@
 
 					var cameras = camera.cameras;
 
-					if ( multiview.enabled ) {
+					if ( vr.multiview && ! capabilities.multiview ) {
+
+						console.warn( 'WebGLRenderer: Use WebGL 2.0 and WEBGL_multiview extension support browser for VR multiview.' );
+						vr.multiview = false;
+
+					}
+
+					if ( vr.multiview ) {
 
 						multiview.available = true;
 
