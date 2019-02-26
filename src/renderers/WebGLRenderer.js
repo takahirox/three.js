@@ -329,8 +329,6 @@ function WebGLRenderer( parameters ) {
 		camera: null
 	};
 
-	this.multiview = multiview; // To pass multiview.enabled to WebGLProgram. Any better solutions?
-
 	// API
 
 	this.getContext = function () {
