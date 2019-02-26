@@ -47,6 +47,12 @@
 				init( available );
 				animate();
 
+			} ).catch( function ( error ) {
+
+				console.error( error );
+				init( false );
+				animate();
+
 			} );
 
 			function init( multiview ) {
