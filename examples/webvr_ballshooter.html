@@ -41,10 +41,15 @@
 
 			var clock = new THREE.Clock();
 
-			init();
-			animate();
+			WEBVR.checkMultiviewAvailability()
+				.then( function ( available ) {
 
-			function init() {
+				init( available );
+				animate();
+
+			} );
+
+			function init( multiview ) {
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
@@ -97,7 +102,7 @@
 				var canvas = document.createElement( 'canvas' );
 				var context = canvas.getContext( 'webgl2' );
 
-				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context } );
+				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context, multiview: multiview } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
