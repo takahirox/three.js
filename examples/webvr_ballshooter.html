@@ -41,10 +41,15 @@
 
 			var clock = new THREE.Clock();
 
-			init();
-			animate();
+			WEBVR.checkMultiviewDeviceAvailability().then( function ( available ) {
 
-			function init() {
+				if ( available ) console.log( 'Trying to use Multiview' );
+				init( available );
+				animate();
+
+			} );
+
+			function init( multiview ) {
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
@@ -101,7 +106,7 @@
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
-				renderer.vr.multiview = true;
+				renderer.vr.multiview = multiview;
 				container.appendChild( renderer.domElement );
 
 				//

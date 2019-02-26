@@ -215,6 +215,26 @@ var WEBVR = {
 
 	},
 
+	checkMultiviewDeviceAvailability: function () {
+
+		if ( 'xr' in navigator || // Not WebXR support yet
+			! ( 'getVRDisplays' in navigator ) ) {
+
+			return Promise.resolve( false );
+
+		}
+
+		return navigator.getVRDisplays().then( function ( displays ) {
+
+			// Easy detection. Allowing only Oculus Headset.
+
+			return displays.length > 0 &&
+				displays[ 0 ].displayName.indexOf( 'Oculus' ) >= 0;
+
+		} );
+
+	},
+
 	// DEPRECATED
 
 	checkAvailability: function () {
