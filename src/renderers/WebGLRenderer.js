@@ -324,7 +324,7 @@ function WebGLRenderer( parameters ) {
 
 	if ( _multiview && ! capabilities.multiview ) {
 
-		console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview support browser for multiview.' );
+		console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview extension support browser for multiview.' );
 		_multiview = false;
 
 	}
@@ -1402,8 +1402,6 @@ function WebGLRenderer( parameters ) {
 
 					var view = vr.getDevice().getViews()[ 0 ];
 					var viewport = view.getViewport();
-
-					_gl.bindFramebuffer( _gl.FRAMEBUFFER, view.framebuffer );
 
 					state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
 					currentRenderState.setupLights( multiview.camera );
