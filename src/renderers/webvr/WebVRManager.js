@@ -204,18 +204,6 @@ function WebVRManager( renderer ) {
 
 	};
 
-	this.multiviewAvailable = function () {
-
-		if ( ! this.isPresenting() ) return false;
-
-		if ( ! device.getViews ) return false;
-
-		var views = device.getViews();
-
-		return views.length > 0 && !! views[ 0 ].getAttributes().multiview;
-
-	};
-
 	this.setDevice = function ( value ) {
 
 		if ( value !== undefined ) device = value;
