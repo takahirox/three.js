@@ -68,7 +68,8 @@ function WebGLRenderer( parameters ) {
 		_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 		_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 		_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
+		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
+		_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
 
 	var currentRenderList = null;
 	var currentRenderState = null;
@@ -245,10 +246,6 @@ function WebGLRenderer( parameters ) {
 
 	var utils;
 
-	var modelViewMatrix2 = new Matrix4();
-	var normalMatrix2 = new Matrix3();
-	var projectionMatrix2 = new Matrix4();
-
 	function initGLContext() {
 
 		extensions = new WebGLExtensions( _gl );
@@ -322,6 +319,28 @@ function WebGLRenderer( parameters ) {
 	var shadowMap = new WebGLShadowMap( _this, objects, capabilities.maxTextureSize );
 
 	this.shadowMap = shadowMap;
+
+	// VR multiview
+
+	if ( _multiview && ! capabilities.multiview ) {
+
+		console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview support browser for multiview.' );
+		_multiview = false;
+
+	}
+
+	// For right eye in multiview
+
+	var multiview = {
+		enabled: _multiview,
+		available: false,
+		modelViewMatrix: new Matrix4(),
+		normalMatrix: new Matrix3(),
+		projectionMatrix: new Matrix4(),
+		camera: null
+	};
+
+	this.multiview = multiview; // To pass multiview.enabled to WebGLProgram. Any better solutions?
 
 	// API
 
@@ -709,13 +728,13 @@ function WebGLRenderer( parameters ) {
 
 	};
 
-	this.renderBufferDirect = function ( camera, fog, geometry, material, object, group, multiview, camera2 ) {
+	this.renderBufferDirect = function ( camera, fog, geometry, material, object, group ) {
 
 		var frontFaceCW = ( object.isMesh && object.normalMatrix.determinant() < 0 );
 
 		state.setMaterial( material, frontFaceCW );
 
-		var program = setProgram( camera, fog, material, object, multiview, camera2 );
+		var program = setProgram( camera, fog, material, object );
 
 		var updateBuffers = false;
 
@@ -1357,8 +1376,6 @@ function WebGLRenderer( parameters ) {
 
 	function renderObjects( renderList, scene, camera, overrideMaterial ) {
 
-		var multiview = extensions.get( 'WEBGL_multiview' ) !== null && vr.multiviewAvailable();
-
 		for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
 			var renderItem = renderList[ i ];
@@ -1368,23 +1385,36 @@ function WebGLRenderer( parameters ) {
 			var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 			var group = renderItem.group;
 
-			if ( multiview ) {
+			if ( camera.isArrayCamera ) {
 
 				_currentArrayCamera = camera;
 
 				var cameras = camera.cameras;
 
-				var view = vr.getDevice().getViews()[ 0 ];
-				var viewport = view.getViewport();
-				_gl.bindFramebuffer( _gl.FRAMEBUFFER, view.framebuffer );
-				state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
-				renderObject( object, scene, cameras[ 0 ], geometry, material, group, multiview, cameras[ 1 ] );
+				if ( multiview.enabled ) {
 
-			} else if ( camera.isArrayCamera ) {
+					multiview.available = true;
 
-				_currentArrayCamera = camera;
+					_currentArrayCamera = camera;
 
-				var cameras = camera.cameras;
+					var cameras = camera.cameras;
+					multiview.camera = cameras[ 1 ];
+
+					var view = vr.getDevice().getViews()[ 0 ];
+					var viewport = view.getViewport();
+
+					_gl.bindFramebuffer( _gl.FRAMEBUFFER, view.framebuffer );
+
+					state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+					currentRenderState.setupLights( multiview.camera );
+					renderObject( object, scene, cameras[ 0 ], geometry, material, group );
+
+					multiview.available = false;
+					multiview.camera = null
+
+					continue;
+
+				}
 
 				for ( var j = 0, jl = cameras.length; j < jl; j ++ ) {
 
@@ -1429,7 +1459,7 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	function renderObject( object, scene, camera, geometry, material, group, multiview, camera2 ) {
+	function renderObject( object, scene, camera, geometry, material, group ) {
 
 		object.onBeforeRender( _this, scene, camera, geometry, material, group );
 		currentRenderState = renderStates.get( scene, _currentArrayCamera || camera );
@@ -1437,10 +1467,10 @@ function WebGLRenderer( parameters ) {
 		object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 		object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
 
-		if ( multiview === true ) {
+		if ( multiview.available ) {
 
-			modelViewMatrix2.multiplyMatrices( camera2.matrixWorldInverse, object.matrixWorld );
-			normalMatrix2.getNormalMatrix( modelViewMatrix2 );
+			multiview.modelViewMatrix.multiplyMatrices( multiview.camera.matrixWorldInverse, object.matrixWorld );
+			multiview.normalMatrix.getNormalMatrix( multiview.modelViewMatrix );
 
 		}
 
@@ -1458,7 +1488,7 @@ function WebGLRenderer( parameters ) {
 
 		} else {
 
-			_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group, multiview, camera2 );
+			_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group );
 
 		}
 
@@ -1653,7 +1683,7 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	function setProgram( camera, fog, material, object, multiview, camera2 ) {
+	function setProgram( camera, fog, material, object ) {
 
 		_usedTextureUnits = 0;
 
@@ -1747,7 +1777,7 @@ function WebGLRenderer( parameters ) {
 
 			p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
-			if ( multiview ) p_uniforms.setValue( _gl, 'projectionMatrix2', camera2.projectionMatrix );
+			if ( multiview.available ) p_uniforms.setValue( _gl, 'projectionMatrix2', multiview.camera.projectionMatrix );
 
 			if ( capabilities.logarithmicDepthBuffer ) {
 
@@ -1786,14 +1816,14 @@ function WebGLRenderer( parameters ) {
 
 				}
 
-				if ( multiview ) {
+				if ( multiview.available ) {
 
 					var uCamPos = p_uniforms.map.cameraPosition2;
 
 					if ( uCamPos !== undefined ) {
 
 						uCamPos.setValue( _gl,
-							_vector3.setFromMatrixPosition( camera2.matrixWorld ) );
+							_vector3.setFromMatrixPosition( multiview.camera.matrixWorld ) );
 
 					}
 
@@ -1810,7 +1840,7 @@ function WebGLRenderer( parameters ) {
 
 				p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
 
-				if ( multiview ) p_uniforms.setValue( _gl, 'viewMatrix2', camera2.matrixWorldInverse );
+				if ( multiview.available ) p_uniforms.setValue( _gl, 'viewMatrix2', multiview.camera.matrixWorldInverse );
 
 			}
 
@@ -2012,10 +2042,10 @@ function WebGLRenderer( parameters ) {
 		p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
 		p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
 
-		if ( multiview ) {
+		if ( multiview.available ) {
 
-			p_uniforms.setValue( _gl, 'modelViewMatrix2', modelViewMatrix2 );
-			p_uniforms.setValue( _gl, 'normalMatrix2', normalMatrix2 );
+			p_uniforms.setValue( _gl, 'modelViewMatrix2', multiview.modelViewMatrix );
+			p_uniforms.setValue( _gl, 'normalMatrix2', multiview.normalMatrix );
 
 		}
 
