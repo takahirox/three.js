@@ -215,6 +215,72 @@ var WEBVR = {
 
 	},
 
+	checkMultiviewAvailability: function () {
+
+		function messageForDebug( available ) {
+
+			if ( available ) {
+
+				console.log( 'multiview support device.' );
+
+			} else {
+
+				console.log( 'Non multiview support device.' );
+
+			}
+
+		}
+
+		return new Promise( function ( resolve, reject ) {
+
+			if ( 'xr' in navigator ) {  // No WebXR support yet
+
+				messageForDebug( false );
+				resolve( false );
+				return;
+
+			}
+
+			if ( ! ( 'getVRDisplays' in navigator ) ) {
+
+				messageForDebug( false );
+				resolve( false );
+				return;
+
+			}
+
+			navigator.getVRDisplays()
+				.then( function ( displays ) {
+
+					if ( displays.length === 0 ) {
+
+						messageForDebug( false );
+						resolve( false );
+						return;
+
+					}
+
+					var display = displays[ 0 ];
+
+					if ( display.getViews === undefined ) {
+
+						messageForDebug( false );
+						resolve( false );
+						return;
+
+					}
+
+					var views = display.getViews();
+					var available = views.length === 1 && !! views[ 0 ].getAttributes().multiview;
+					messageForDebug( available );
+					resolve( available );
+
+				} ).catch( reject );
+
+		} );
+
+	},
+
 	// DEPRECATED
 
 	checkAvailability: function () {
