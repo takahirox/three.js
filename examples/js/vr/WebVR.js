@@ -249,29 +249,40 @@ var WEBVR = {
 
 			}
 
+			var available = false;
+			var display = null;
+			var isPresenting = false;
+
 			navigator.getVRDisplays()
 				.then( function ( displays ) {
 
 					if ( displays.length === 0 ) {
 
-						messageForDebug( false );
-						resolve( false );
-						return;
+						available = false;
+						return Promise.resolve();
 
 					}
 
-					var display = displays[ 0 ];
+					display = displays[ 0 ];
+					isPresenting = display.isPresenting;
 
-					if ( display.getViews === undefined ) {
+					return isPresenting
+						? Promise.resolve()
+						: display.requestPresent( [ { attributes: { multiview: true } } ] );
 
-						messageForDebug( false );
-						resolve( false );
-						return;
+				} ).then( function () {
+
+					if ( display && display.getViews ) {
+
+						var views = display.getViews();
+						available = views && views.length === 1 && !! views[ 0 ].getAttributes().multiview;
 
 					}
 
-					var views = display.getViews();
-					var available = views.length === 1 && !! views[ 0 ].getAttributes().multiview;
+					return ! display || isPresenting ? Promise.resolve() : display.exitPresent();
+
+				} ).then( function ( available ) {
+
 					messageForDebug( available );
 					resolve( available );
 
