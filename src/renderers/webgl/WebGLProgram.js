@@ -393,11 +393,11 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 			'uniform vec3 cameraPosition;',
 			'uniform vec3 cameraPosition2;',
 
-			extensions.get( 'WEBGL_multiview' ) !== null ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
-			extensions.get( 'WEBGL_multiview' ) !== null ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
-			extensions.get( 'WEBGL_multiview' ) !== null ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
-			extensions.get( 'WEBGL_multiview' ) !== null ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
-			extensions.get( 'WEBGL_multiview' ) !== null ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
+			renderer.multiview.enabled ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
+			renderer.multiview.enabled ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
+			renderer.multiview.enabled ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
+			renderer.multiview.enabled ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
+			renderer.multiview.enabled ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
 
 			'attribute vec3 position;',
 			'attribute vec3 normal;',
@@ -565,8 +565,9 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		// GLSL 3.0 conversion
 		prefixVertex = [
 			'#version 300 es\n',
-			extensions.get( 'WEBGL_multiview' ) !== null ? '#extension GL_OVR_multiview : require' : '',
-			extensions.get( 'WEBGL_multiview' ) !== null ? 'layout(num_views=2) in;' : '',
+			renderer.multiview.enabled ? '#extension GL_OVR_multiview : require' : '',
+			'#define NUM_OF_VIEWS 2',
+			renderer.multiview.enabled ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
 			'#define attribute in',
 			'#define varying out',
 			'#define texture2D texture'
