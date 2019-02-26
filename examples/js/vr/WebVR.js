@@ -233,15 +233,8 @@ var WEBVR = {
 
 		return new Promise( function ( resolve, reject ) {
 
-			if ( 'xr' in navigator ) {  // No WebXR support yet
-
-				messageForDebug( false );
-				resolve( false );
-				return;
-
-			}
-
-			if ( ! ( 'getVRDisplays' in navigator ) ) {
+			if ( 'xr' in navigator ||  // No WebXR support yet
+				! ( 'getVRDisplays' in navigator ) ) {
 
 				messageForDebug( false );
 				resolve( false );
