@@ -15075,6 +15075,8 @@
 
 		var maxSamples = isWebGL2 ? gl.getParameter( 36183 ) : 0;
 
+		var multiview = isWebGL2 && !! extensions.get( 'WEBGL_multiview' );
+
 		return {
 
 			isWebGL2: isWebGL2,
@@ -15099,7 +15101,9 @@
 			floatFragmentTextures: floatFragmentTextures,
 			floatVertexTextures: floatVertexTextures,
 
-			maxSamples: maxSamples
+			maxSamples: maxSamples,
+
+			multiview: multiview
 
 		};
 
@@ -17182,11 +17186,11 @@
 				'uniform vec3 cameraPosition;',
 				'uniform vec3 cameraPosition2;',
 
-				extensions.get( 'WEBGL_multiview' ) !== null ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
-				extensions.get( 'WEBGL_multiview' ) !== null ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
-				extensions.get( 'WEBGL_multiview' ) !== null ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
-				extensions.get( 'WEBGL_multiview' ) !== null ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
-				extensions.get( 'WEBGL_multiview' ) !== null ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
+				renderer.multiview.enabled ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
+				renderer.multiview.enabled ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
+				renderer.multiview.enabled ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
+				renderer.multiview.enabled ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
+				renderer.multiview.enabled ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
 
 				'attribute vec3 position;',
 				'attribute vec3 normal;',
@@ -17354,8 +17358,9 @@
 			// GLSL 3.0 conversion
 			prefixVertex = [
 				'#version 300 es\n',
-				extensions.get( 'WEBGL_multiview' ) !== null ? '#extension GL_OVR_multiview : require' : '',
-				extensions.get( 'WEBGL_multiview' ) !== null ? 'layout(num_views=2) in;' : '',
+				renderer.multiview.enabled ? '#extension GL_OVR_multiview : require' : '',
+				'#define NUM_OF_VIEWS 2',
+				renderer.multiview.enabled ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
 				'#define attribute in',
 				'#define varying out',
 				'#define texture2D texture'
@@ -21942,18 +21947,6 @@
 
 		};
 
-		this.multiviewAvailable = function () {
-
-			if ( ! this.isPresenting() ) return false;
-
-			if ( ! device.getViews ) return false;
-
-			var views = device.getViews();
-
-			return views.length > 0 && !! views[ 0 ].getAttributes().multiview;
-
-		};
-
 		this.setDevice = function ( value ) {
 
 			if ( value !== undefined ) device = value;
@@ -22477,7 +22470,8 @@
 			_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 			_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 			_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-			_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
+			_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
+			_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
 
 		var currentRenderList = null;
 		var currentRenderState = null;
@@ -22654,10 +22648,6 @@
 
 		var utils;
 
-		var modelViewMatrix2 = new Matrix4();
-		var normalMatrix2 = new Matrix3();
-		var projectionMatrix2 = new Matrix4();
-
 		function initGLContext() {
 
 			extensions = new WebGLExtensions( _gl );
@@ -22731,6 +22721,28 @@
 		var shadowMap = new WebGLShadowMap( _this, objects, capabilities.maxTextureSize );
 
 		this.shadowMap = shadowMap;
+
+		// VR multiview
+
+		if ( _multiview && ! capabilities.multiview ) {
+
+			console.warn( 'WebGLRenderer: Use WebGL 2.0 and WebGL_multiview support browser for multiview.' );
+			_multiview = false;
+
+		}
+
+		// For right eye in multiview
+
+		var multiview = {
+			enabled: _multiview,
+			available: false,
+			modelViewMatrix: new Matrix4(),
+			normalMatrix: new Matrix3(),
+			projectionMatrix: new Matrix4(),
+			camera: null
+		};
+
+		this.multiview = multiview; // To pass multiview.enabled to WebGLProgram. Any better solutions?
 
 		// API
 
@@ -23118,13 +23130,13 @@
 
 		};
 
-		this.renderBufferDirect = function ( camera, fog, geometry, material, object, group, multiview, camera2 ) {
+		this.renderBufferDirect = function ( camera, fog, geometry, material, object, group ) {
 
 			var frontFaceCW = ( object.isMesh && object.normalMatrix.determinant() < 0 );
 
 			state.setMaterial( material, frontFaceCW );
 
-			var program = setProgram( camera, fog, material, object, multiview, camera2 );
+			var program = setProgram( camera, fog, material, object );
 
 			var updateBuffers = false;
 
@@ -23766,8 +23778,6 @@
 
 		function renderObjects( renderList, scene, camera, overrideMaterial ) {
 
-			var multiview = extensions.get( 'WEBGL_multiview' ) !== null && vr.multiviewAvailable();
-
 			for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
 				var renderItem = renderList[ i ];
@@ -23777,23 +23787,36 @@
 				var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 				var group = renderItem.group;
 
-				if ( multiview ) {
+				if ( camera.isArrayCamera ) {
 
 					_currentArrayCamera = camera;
 
 					var cameras = camera.cameras;
 
-					var view = vr.getDevice().getViews()[ 0 ];
-					var viewport = view.getViewport();
-					_gl.bindFramebuffer( 36160, view.framebuffer );
-					state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
-					renderObject( object, scene, cameras[ 0 ], geometry, material, group, multiview, cameras[ 1 ] );
+					if ( multiview.enabled ) {
 
-				} else if ( camera.isArrayCamera ) {
+						multiview.available = true;
 
-					_currentArrayCamera = camera;
+						_currentArrayCamera = camera;
 
-					var cameras = camera.cameras;
+						var cameras = camera.cameras;
+						multiview.camera = cameras[ 1 ];
+
+						var view = vr.getDevice().getViews()[ 0 ];
+						var viewport = view.getViewport();
+
+						_gl.bindFramebuffer( 36160, view.framebuffer );
+
+						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+						currentRenderState.setupLights( multiview.camera );
+						renderObject( object, scene, cameras[ 0 ], geometry, material, group );
+
+						multiview.available = false;
+						multiview.camera = null;
+
+						continue;
+
+					}
 
 					for ( var j = 0, jl = cameras.length; j < jl; j ++ ) {
 
@@ -23838,7 +23861,7 @@
 
 		}
 
-		function renderObject( object, scene, camera, geometry, material, group, multiview, camera2 ) {
+		function renderObject( object, scene, camera, geometry, material, group ) {
 
 			object.onBeforeRender( _this, scene, camera, geometry, material, group );
 			currentRenderState = renderStates.get( scene, _currentArrayCamera || camera );
@@ -23846,10 +23869,10 @@
 			object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 			object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
 
-			if ( multiview === true ) {
+			if ( multiview.available ) {
 
-				modelViewMatrix2.multiplyMatrices( camera2.matrixWorldInverse, object.matrixWorld );
-				normalMatrix2.getNormalMatrix( modelViewMatrix2 );
+				multiview.modelViewMatrix.multiplyMatrices( multiview.camera.matrixWorldInverse, object.matrixWorld );
+				multiview.normalMatrix.getNormalMatrix( multiview.modelViewMatrix );
 
 			}
 
@@ -23867,7 +23890,7 @@
 
 			} else {
 
-				_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group, multiview, camera2 );
+				_this.renderBufferDirect( camera, scene.fog, geometry, material, object, group );
 
 			}
 
@@ -24062,7 +24085,7 @@
 
 		}
 
-		function setProgram( camera, fog, material, object, multiview, camera2 ) {
+		function setProgram( camera, fog, material, object ) {
 
 			_usedTextureUnits = 0;
 
@@ -24156,7 +24179,7 @@
 
 				p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
-				if ( multiview ) p_uniforms.setValue( _gl, 'projectionMatrix2', camera2.projectionMatrix );
+				if ( multiview.available ) p_uniforms.setValue( _gl, 'projectionMatrix2', multiview.camera.projectionMatrix );
 
 				if ( capabilities.logarithmicDepthBuffer ) {
 
@@ -24195,14 +24218,14 @@
 
 					}
 
-					if ( multiview ) {
+					if ( multiview.available ) {
 
 						var uCamPos = p_uniforms.map.cameraPosition2;
 
 						if ( uCamPos !== undefined ) {
 
 							uCamPos.setValue( _gl,
-								_vector3.setFromMatrixPosition( camera2.matrixWorld ) );
+								_vector3.setFromMatrixPosition( multiview.camera.matrixWorld ) );
 
 						}
 
@@ -24219,7 +24242,7 @@
 
 					p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
 
-					if ( multiview ) p_uniforms.setValue( _gl, 'viewMatrix2', camera2.matrixWorldInverse );
+					if ( multiview.available ) p_uniforms.setValue( _gl, 'viewMatrix2', multiview.camera.matrixWorldInverse );
 
 				}
 
@@ -24421,10 +24444,10 @@
 			p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
 			p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
 
-			if ( multiview ) {
+			if ( multiview.available ) {
 
-				p_uniforms.setValue( _gl, 'modelViewMatrix2', modelViewMatrix2 );
-				p_uniforms.setValue( _gl, 'normalMatrix2', normalMatrix2 );
+				p_uniforms.setValue( _gl, 'modelViewMatrix2', multiview.modelViewMatrix );
+				p_uniforms.setValue( _gl, 'normalMatrix2', multiview.normalMatrix );
 
 			}
 
