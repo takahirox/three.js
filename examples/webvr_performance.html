@@ -39,6 +39,7 @@
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xffffff );
+				scene.matrixAutoUpdate = false;
 
 				var material = new THREE.MeshNormalMaterial();
 
@@ -69,11 +70,10 @@
 				var canvas = document.createElement( 'canvas' );
 				var context = canvas.getContext( 'webgl2' );
 
-				renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context } );
+				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
-				renderer.vr.multiview = multiview;
 				//renderer.sortObjects = false;
 
 				container.appendChild( renderer.domElement );
