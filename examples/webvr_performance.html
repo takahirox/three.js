@@ -48,13 +48,13 @@
 
 					geometry.computeVertexNormals();
 
-					for ( var i = 0; i < 7700; i ++ ) {
+					for ( var i = 0; i < 1000; i ++ ) {
 
 						var mesh = new THREE.Mesh( geometry, material );
 
-						mesh.position.x = Math.random() * 10000 - 5000;
-						mesh.position.y = Math.random() * 10000 - 5000;
-						mesh.position.z = Math.random() * 10000 - 5000;
+						mesh.position.x = Math.random() * 2000 - 1000;
+						mesh.position.y = Math.random() * 2000 - 1000;
+						mesh.position.z = - 4000;
 						mesh.rotation.x = Math.random() * 2 * Math.PI;
 						mesh.rotation.y = Math.random() * 2 * Math.PI;
 						mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 50 + 100;
