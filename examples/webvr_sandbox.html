@@ -28,10 +28,15 @@
 
 			var reflector;
 
-			init();
-			animate();
+			WEBVR.checkMultiviewDeviceAvailability().then( function ( available ) {
 
-			function init() {
+				if ( available ) console.log( 'Trying to use Multiview' );
+				init( available );
+				animate();
+
+			} );
+
+			function init( multiview ) {
 
 				var background = new THREE.CubeTextureLoader()
 					.setPath( 'textures/cube/MilkyWay/' )
@@ -120,12 +125,16 @@
 
 				//
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				var canvas = document.createElement( 'canvas' );
+				var context = canvas.getContext( 'webgl2' );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context } );
 				renderer.autoClear = false;
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.shadowMap.enabled = true;
 				renderer.vr.enabled = true;
+				renderer.vr.multiview = multiview;
 				document.body.appendChild( renderer.domElement );
 
 				document.body.appendChild( WEBVR.createButton( renderer ) );
