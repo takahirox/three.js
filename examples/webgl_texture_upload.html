@@ -38,7 +38,7 @@
 					texture.image = image;
 
 					// JPEGs can't have an alpha channel, so memory
-					var isJPEG = url.search( /\.jpe?g$/i ) > 0 || url
+					var isJPEG = url.search( /\.jpe?g$/i ) > 0 || url.search( /^data\:image\/jpeg/ ) === 0;
 
 					texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat
 					texture.needsUpdate = true;
