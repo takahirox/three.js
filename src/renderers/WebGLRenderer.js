@@ -1397,7 +1397,7 @@ function WebGLRenderer( parameters ) {
 					if ( 'viewport' in cameras[ 0 ] ) { // WebXR
 
 						var viewport = cameras[ 0 ].viewport;
-						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.z * 2, viewport.w ) );
+						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.z, viewport.w ) );
 
 					} else {
 
