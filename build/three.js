@@ -23861,7 +23861,7 @@
 						if ( 'viewport' in cameras[ 0 ] ) { // WebXR
 
 							var viewport = cameras[ 0 ];
-							state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+							state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width * 2, viewport.height ) );
 
 						} else {
 
