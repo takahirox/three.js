@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - geometry - cube</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				margin: 0px;
+				background-color: #000000;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="../build/three.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+		var useImageBitmap = location.href.split( '?' )[ 1 ] === 'imagebitmap';
+
+		if ( useImageBitmap ) {
+
+			// Override for handling ImageBitmap on FireFox
+
+			THREE.TextureLoader.prototype.load = function ( url, onLoad, onProgress, onError ) {
+
+				var texture = new THREE.Texture();
+
+				var loader = new THREE.ImageBitmapLoader( this.manager );
+				loader.setCrossOrigin( this.crossOrigin );
+				loader.setPath( this.path );
+
+				loader.load( url, function ( image ) {
+
+					texture.image = image;
+
+					texture.format = THREE.RGBAFormat
+					texture.needsUpdate = true;
+
+					if ( onLoad !== undefined ) {
+
+						onLoad( texture );
+
+					}
+
+				}, onProgress, onError );
+
+				return texture;
+
+			};
+
+			THREE.ImageBitmapLoader.prototype.load = function ( url, onLoad, onProgress, onError ) {
+
+				if ( url === undefined ) url = '';
+
+				if ( this.path !== undefined ) url = this.path + url;
+
+				url = this.manager.resolveURL( url );
+
+				var scope = this;
+
+				var cached = THREE.Cache.get( url );
+
+				if ( cached !== undefined ) {
+
+					scope.manager.itemStart( url );
+
+					setTimeout( function () {
+
+						if ( onLoad ) onLoad( cached );
+
+						scope.manager.itemEnd( url );
+
+					}, 0 );
+
+					return cached;
+
+				}
+
+				fetch( url ).then( function ( res ) {
+
+					return res.blob();
+
+				} ).then( function ( blob ) {
+
+					return createImageBitmap( blob );
+
+				} ).then( function ( imageBitmap ) {
+
+					THREE.Cache.add( url, imageBitmap );
+
+					if ( onLoad ) onLoad( imageBitmap );
+
+					scope.manager.itemEnd( url );
+
+				} ).catch( function ( e ) {
+
+					if ( onError ) onError( e );
+
+					scope.manager.itemEnd( url );
+					scope.manager.itemError( url );
+
+				} );
+
+			};
+
+		}
+		</script>
+
+		<script>
+
+			var camera, scene, renderer, mesh;
+			var stats;
+			var container;
+
+			var isTextureLoading = false;
+			var isTextureLoaded = false;
+			var isTextureUploading = false;
+			var textureIndex = 0;
+			var textureLoader = new THREE.TextureLoader();
+
+			var startTime;
+
+			// 0: JPG, 1: PNG
+
+			var totalElapsedTimes = [ 0.0, 0.0 ];
+			var minElapsedTimes = [ 0.0, 0.0 ];
+			var maxElapsedTimes = [ 0.0, 0.0 ];
+			var sampleCounts = [ - 2, - 2 ];
+
+			var textures = [
+				'textures/5_night_8k.jpg',  // 8192x4096 4.4MB JPG file
+				'models/gltf/BoomBox/glTF/BoomBox_occlusionRoughnessMetallic.png' // 2048x2048 4.5MB PNG file
+			];
+
+			var frameCount = 0;
+			var sampleCount = 0;
+
+			init();
+			animate();
+
+			function init() {
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.z = 400;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				var geometry = new THREE.BoxBufferGeometry( 200, 200, 200 );
+				var material = new THREE.MeshBasicMaterial( { map: new THREE.Texture( new Image() ) } );
+
+				mesh = new THREE.Mesh( geometry, material );
+				scene.add( mesh );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				stats = new Stats();
+				document.body.appendChild( stats.dom );
+
+				container = document.createElement( 'div' );
+				container.style.position = 'fixed';
+				container.style.top = '0px';
+				container.style.right = '0px';
+				container.style.zIndex = '10000';
+				document.body.appendChild( container );
+
+				// Stats numbers
+
+				container.appendChild( document.createTextNode( useImageBitmap ? 'ImageBitmap' : 'Image' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( 'Texture uploading time [ms]' ) );
+				container.appendChild( document.createElement( 'br' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( 'image / min / max / avg / count' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( '8192x4096 JPG 4.4MB ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '-2' ) );
+				container.appendChild( document.createElement( 'br' ) );
+
+				container.appendChild( document.createTextNode( '2048x2048 PNG 4.5MB ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '0' ) );
+				container.appendChild( document.createTextNode( ' / ' ) );
+				container.appendChild( document.createTextNode( '-2' ) );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function updateTexture() {
+
+				textureLoader.load( textures[ textureIndex ++ ], function ( texture ) {
+
+					texture.flipY = false;
+
+					mesh.material.map = texture;
+
+					isTextureLoading = false;
+					isTextureLoaded = true;
+
+				} );
+
+				if ( textureIndex >= textures.length ) {
+
+					textureIndex = 0;
+
+				}
+
+				isTextureLoading = true;
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				mesh.rotation.x += 0.005;
+				mesh.rotation.y += 0.01;
+
+				if ( isTextureLoaded ) {
+
+					startTime = performance.now();
+
+					isTextureLoaded = false;
+					isTextureUploading = true;
+
+				} else if ( isTextureUploading ) {
+
+					var endTime = performance.now();
+					var elapsedTime = endTime - startTime;
+
+					container.childNodes[ 4 ].textContent = elapsedTime.toFixed( 2 );
+
+					var index = ( sampleCount ++ ) % 2;
+					var baseNodeIndex = index === 0 ? 9 : 18;
+
+					sampleCounts[ index ] ++;
+
+					if ( sampleCounts[ index ] > 0 ) {
+
+						totalElapsedTimes[ index ] += elapsedTime;
+						minElapsedTimes[ index ] = minElapsedTimes[ index ] === 0.0 ? elapsedTime : Math.min( minElapsedTimes[ index ], elapsedTime );
+						maxElapsedTimes[ index ] = Math.max( maxElapsedTimes[ index ], elapsedTime );
+
+						container.childNodes[ baseNodeIndex ].textContent = minElapsedTimes[ index ].toFixed( 2 );
+						container.childNodes[ baseNodeIndex + 2 ].textContent = maxElapsedTimes[ index ].toFixed( 2 );
+						container.childNodes[ baseNodeIndex + 4 ].textContent = ( totalElapsedTimes[ index ] / sampleCounts[ index ] ).toFixed( 2 );
+
+					}
+
+					container.childNodes[ baseNodeIndex + 6 ].textContent = sampleCounts[ index ];
+
+					isTextureUploading = false;
+
+				}
+
+				renderer.render( scene, camera );
+
+				if ( isTextureLoading === false && ( ++ frameCount % 300 ) === 0 ) {
+
+					updateTexture();
+
+				}
+
+				stats.update();
+
+			}
+
+		</script>
+
+	</body>
+</html>
