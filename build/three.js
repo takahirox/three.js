@@ -22290,6 +22290,7 @@
 		function onSessionEnd() {
 
 			renderer.setFramebuffer( null );
+			renderer.setRenderTarget( renderer.getRenderTarget() );
 			animation.stop();
 
 		}
@@ -22317,12 +22318,13 @@
 				session.addEventListener( 'selectend', onSessionEvent );
 				session.addEventListener( 'end', onSessionEnd );
 
-				session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor } );
+				session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor, multiview: true } );
 				session.requestFrameOfReference( frameOfReferenceType ).then( function ( value ) {
 
 					frameOfReference = value;
 
 					renderer.setFramebuffer( session.baseLayer.framebuffer );
+					renderer.setRenderTarget( renderer.getRenderTarget() );
 
 					animation.setContext( session );
 					animation.start();
@@ -23856,10 +23858,20 @@
 						var cameras = camera.cameras;
 						multiview.camera = cameras[ 1 ];
 
-						var view = vr.getDevice().getViews()[ 0 ];
-						var viewport = view.getViewport();
+						if ( 'viewport' in cameras[ 0 ] ) { // WebXR
 
-						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+							var viewport = cameras[ 0 ];
+							state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+
+						} else {
+
+							var view = vr.getDevice().getViews()[ 0 ];
+							var viewport = view.getViewport();
+
+							state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+
+						}
+
 						currentRenderState.setupLights( multiview.camera );
 						renderObject( object, scene, cameras[ 0 ], geometry, material, group );
 

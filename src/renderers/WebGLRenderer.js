@@ -1394,10 +1394,20 @@ function WebGLRenderer( parameters ) {
 					var cameras = camera.cameras;
 					multiview.camera = cameras[ 1 ];
 
-					var view = vr.getDevice().getViews()[ 0 ];
-					var viewport = view.getViewport();
+					if ( 'viewport' in cameras[ 0 ] ) { // WebXR
 
-					state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+						var viewport = cameras[ 0 ];
+						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+
+					} else {
+
+						var view = vr.getDevice().getViews()[ 0 ];
+						var viewport = view.getViewport();
+
+						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+
+					}
+
 					currentRenderState.setupLights( multiview.camera );
 					renderObject( object, scene, cameras[ 0 ], geometry, material, group );
 

@@ -97,6 +97,7 @@ function WebXRManager( renderer ) {
 	function onSessionEnd() {
 
 		renderer.setFramebuffer( null );
+		renderer.setRenderTarget( renderer.getRenderTarget() );
 		animation.stop();
 
 	}
@@ -124,12 +125,13 @@ function WebXRManager( renderer ) {
 			session.addEventListener( 'selectend', onSessionEvent );
 			session.addEventListener( 'end', onSessionEnd );
 
-			session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor } );
+			session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor, multiview: true } );
 			session.requestFrameOfReference( frameOfReferenceType ).then( function ( value ) {
 
 				frameOfReference = value;
 
 				renderer.setFramebuffer( session.baseLayer.framebuffer );
+				renderer.setRenderTarget( renderer.getRenderTarget() );
 
 				animation.setContext( session );
 				animation.start();

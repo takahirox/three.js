@@ -217,8 +217,13 @@ var WEBVR = {
 
 	checkMultiviewDeviceAvailability: function () {
 
-		if ( 'xr' in navigator || // Not WebXR support yet
-			! ( 'getVRDisplays' in navigator ) ) {
+		if ( 'xr' in navigator ) {
+
+			return Promise.resolve( true );
+
+		}
+
+		if ( ! ( 'getVRDisplays' in navigator ) ) {
 
 			return Promise.resolve( false );
 
