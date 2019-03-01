@@ -383,21 +383,26 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 			'uniform mat4 modelMatrix;',
 			'uniform mat4 modelViewMatrix;',
-			'uniform mat4 modelViewMatrix2;',
 			'uniform mat4 projectionMatrix;',
-			'uniform mat4 projectionMatrix2;',
 			'uniform mat4 viewMatrix;',
-			'uniform mat4 viewMatrix2;',
 			'uniform mat3 normalMatrix;',
-			'uniform mat3 normalMatrix2;',
 			'uniform vec3 cameraPosition;',
-			'uniform vec3 cameraPosition2;',
 
-			renderer.vr.multiview ? '#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)' : '',
-			renderer.vr.multiview ? '#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)' : '',
-			renderer.vr.multiview ? '#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)' : '',
-			renderer.vr.multiview ? '#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)' : '',
-			renderer.vr.multiview ? '#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)' : '',
+			renderer.vr.multiview ? [ // For VR multiview
+
+				'uniform mat4 modelViewMatrix2;',
+				'uniform mat4 projectionMatrix2;',
+				'uniform mat4 viewMatrix2;',
+				'uniform mat3 normalMatrix2;',
+				'uniform vec3 cameraPosition2;',
+
+				'#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)',
+				'#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)',
+				'#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)',
+				'#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)',
+				'#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)'
+
+			].join( '\n' ) : '',
 
 			'attribute vec3 position;',
 			'attribute vec3 normal;',
@@ -565,9 +570,14 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		// GLSL 3.0 conversion
 		prefixVertex = [
 			'#version 300 es\n',
-			renderer.vr.multiview ? '#extension GL_OVR_multiview : require' : '',
-			'#define NUM_OF_VIEWS 2',
-			renderer.vr.multiview ? 'layout(num_views=NUM_OF_VIEWS) in;' : '',
+
+			renderer.vr.multiview ? [ // For VR multiview
+
+				'#extension GL_OVR_multiview : require',
+				'layout(num_views = 2) in;'
+
+			].join( '\n' ) : '',
+
 			'#define attribute in',
 			'#define varying out',
 			'#define texture2D texture'

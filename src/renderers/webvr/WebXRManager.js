@@ -46,7 +46,7 @@ function WebXRManager( renderer ) {
 	cameraVR.layers.enable( 1 );
 	cameraVR.layers.enable( 2 );
 
-	// VR multiview. Not supported yet.
+	// Multiview with opaque framebuffer approach
 
 	this.multiview = false;
 
@@ -125,7 +125,7 @@ function WebXRManager( renderer ) {
 			session.addEventListener( 'selectend', onSessionEvent );
 			session.addEventListener( 'end', onSessionEnd );
 
-			session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor, multiview: true } );
+			session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor, multiview: this.multiview } );
 			session.requestFrameOfReference( frameOfReferenceType ).then( function ( value ) {
 
 				frameOfReference = value;

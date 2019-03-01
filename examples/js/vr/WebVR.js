@@ -30,7 +30,7 @@ var WEBVR = {
 
 			button.onclick = function () {
 
-				var attributes = { multiview: true };
+				var attributes = { multiview: renderer.vr.multiview };
 				device.isPresenting ? device.exitPresent() : device.requestPresent( [ { source: renderer.domElement, attributes: attributes } ] );
 
 			};
@@ -212,31 +212,6 @@ var WEBVR = {
 			return message;
 
 		}
-
-	},
-
-	checkMultiviewDeviceAvailability: function () {
-
-		if ( 'xr' in navigator ) {
-
-			return Promise.resolve( true );
-
-		}
-
-		if ( ! ( 'getVRDisplays' in navigator ) ) {
-
-			return Promise.resolve( false );
-
-		}
-
-		return navigator.getVRDisplays().then( function ( displays ) {
-
-			// Easy detection. Allowing only Oculus Headset.
-
-			return displays.length > 0 &&
-				displays[ 0 ].displayName.indexOf( 'Oculus' ) >= 0;
-
-		} );
 
 	},
 

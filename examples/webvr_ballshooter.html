@@ -41,15 +41,10 @@
 
 			var clock = new THREE.Clock();
 
-			WEBVR.checkMultiviewDeviceAvailability().then( function ( available ) {
+			init();
+			animate();
 
-				if ( available ) console.log( 'Trying to use Multiview' );
-				init( available );
-				animate();
-
-			} );
-
-			function init( multiview ) {
+			function init() {
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
@@ -99,14 +94,27 @@
 
 				//
 
+				var rendererParameters = { antialias: true };
+
+				var useMultiview = false
 				var canvas = document.createElement( 'canvas' );
 				var context = canvas.getContext( 'webgl2' );
+				useMultiview = !! context &&  !! context.getExtension( 'WEBGL_multiview' ) || !! context.getExtension( 'OVR_multiview' );
 
-				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context } );
+				if ( useMultiview ) {
+
+					rendererParameters.canvas = canvas;
+					rendererParameters.context = context;
+
+					console.log( 'Using VR Multiview' );
+
+				}
+
+				renderer = new THREE.WebGLRenderer( rendererParameters );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
-				renderer.vr.multiview = multiview;
+				renderer.vr.multiview = useMultiview;
 				container.appendChild( renderer.domElement );
 
 				//

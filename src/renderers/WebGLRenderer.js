@@ -322,7 +322,7 @@ function WebGLRenderer( parameters ) {
 	// For right eye in VR multiview
 
 	var multiview = {
-		available: false,
+		inProgress: false,
 		modelViewMatrix: new Matrix4(),
 		normalMatrix: new Matrix3(),
 		projectionMatrix: new Matrix4(),
@@ -1378,32 +1378,28 @@ function WebGLRenderer( parameters ) {
 
 				var cameras = camera.cameras;
 
+				// Multiview with opaque framebuffer approach
+
 				if ( vr.multiview && ! capabilities.multiview ) {
 
-					console.warn( 'WebGLRenderer: Use WebGL 2.0 and WEBGL_multiview extension support browser for VR multiview.' );
+					console.warn( 'WebGLRenderer: Use WebGL 2.0 and WEBGL/OVR_multiview extension support browser for VR multiview with opaque framebuffer approach.' );
 					vr.multiview = false;
 
 				}
 
 				if ( vr.multiview ) {
 
-					multiview.available = true;
-
-					_currentArrayCamera = camera;
-
-					var cameras = camera.cameras;
 					multiview.camera = cameras[ 1 ];
+
+					multiview.inProgress = true;
 
 					if ( 'viewport' in cameras[ 0 ] ) { // WebXR
 
-						var viewport = cameras[ 0 ].viewport;
-						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.z, viewport.w ) );
+						state.viewport( _currentViewport.copy( cameras[ 0 ].viewport ) );
 
 					} else {
 
-						var view = vr.getDevice().getViews()[ 0 ];
-						var viewport = view.getViewport();
-
+						var viewport = vr.getDevice().getViews()[ 0 ].getViewport();
 						state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
 
 					}
@@ -1411,12 +1407,14 @@ function WebGLRenderer( parameters ) {
 					currentRenderState.setupLights( multiview.camera );
 					renderObject( object, scene, cameras[ 0 ], geometry, material, group );
 
-					multiview.available = false;
+					multiview.inProgress = false;
 					multiview.camera = null
 
 					continue;
 
 				}
+
+				//
 
 				for ( var j = 0, jl = cameras.length; j < jl; j ++ ) {
 
@@ -1469,7 +1467,7 @@ function WebGLRenderer( parameters ) {
 		object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 		object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
 
-		if ( multiview.available ) {
+		if ( multiview.inProgress ) {
 
 			multiview.modelViewMatrix.multiplyMatrices( multiview.camera.matrixWorldInverse, object.matrixWorld );
 			multiview.normalMatrix.getNormalMatrix( multiview.modelViewMatrix );
@@ -1779,7 +1777,7 @@ function WebGLRenderer( parameters ) {
 
 			p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
-			if ( multiview.available ) p_uniforms.setValue( _gl, 'projectionMatrix2', multiview.camera.projectionMatrix );
+			if ( multiview.inProgress ) p_uniforms.setValue( _gl, 'projectionMatrix2', multiview.camera.projectionMatrix );
 
 			if ( capabilities.logarithmicDepthBuffer ) {
 
@@ -1818,14 +1816,13 @@ function WebGLRenderer( parameters ) {
 
 				}
 
-				if ( multiview.available ) {
+				if ( multiview.inProgress ) {
 
 					var uCamPos = p_uniforms.map.cameraPosition2;
 
 					if ( uCamPos !== undefined ) {
 
-						uCamPos.setValue( _gl,
-							_vector3.setFromMatrixPosition( multiview.camera.matrixWorld ) );
+						uCamPos.setValue( _gl, _vector3.setFromMatrixPosition( multiview.camera.matrixWorld ) );
 
 					}
 
@@ -1842,7 +1839,7 @@ function WebGLRenderer( parameters ) {
 
 				p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
 
-				if ( multiview.available ) p_uniforms.setValue( _gl, 'viewMatrix2', multiview.camera.matrixWorldInverse );
+				if ( multiview.inProgress ) p_uniforms.setValue( _gl, 'viewMatrix2', multiview.camera.matrixWorldInverse );
 
 			}
 
@@ -2044,7 +2041,7 @@ function WebGLRenderer( parameters ) {
 		p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
 		p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
 
-		if ( multiview.available ) {
+		if ( multiview.inProgress ) {
 
 			p_uniforms.setValue( _gl, 'modelViewMatrix2', multiview.modelViewMatrix );
 			p_uniforms.setValue( _gl, 'normalMatrix2', multiview.normalMatrix );
