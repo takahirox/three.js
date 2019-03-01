@@ -1,8 +1,8 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(global = global || self, factory(global.THREE = {}));
-}(this, function (exports) { 'use strict';
+	(factory((global.THREE = {})));
+}(this, (function (exports) { 'use strict';
 
 	// Polyfills
 
@@ -15075,6 +15075,8 @@
 
 		var maxSamples = isWebGL2 ? gl.getParameter( 36183 ) : 0;
 
+		var multiview = isWebGL2 && ( !! extensions.get( 'WEBGL_multiview' ) || !! extensions.get( 'OVR_multiview' ) );
+
 		return {
 
 			isWebGL2: isWebGL2,
@@ -15099,7 +15101,9 @@
 			floatFragmentTextures: floatFragmentTextures,
 			floatVertexTextures: floatVertexTextures,
 
-			maxSamples: maxSamples
+			maxSamples: maxSamples,
+
+			multiview: multiview
 
 		};
 
@@ -17177,6 +17181,22 @@
 				'uniform mat3 normalMatrix;',
 				'uniform vec3 cameraPosition;',
 
+				renderer.vr.multiview ? [ // For VR multiview
+
+					'uniform mat4 modelViewMatrix2;',
+					'uniform mat4 projectionMatrix2;',
+					'uniform mat4 viewMatrix2;',
+					'uniform mat3 normalMatrix2;',
+					'uniform vec3 cameraPosition2;',
+
+					'#define modelViewMatrix (gl_ViewID_OVR==0u?modelViewMatrix:modelViewMatrix2)',
+					'#define projectionMatrix (gl_ViewID_OVR==0u?projectionMatrix:projectionMatrix2)',
+					'#define viewMatrix (gl_ViewID_OVR==0u?viewMatrix:viewMatrix2)',
+					'#define normalMatrix (gl_ViewID_OVR==0u?normalMatrix:normalMatrix2)',
+					'#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)'
+
+				].join( '\n' ) : '',
+
 				'attribute vec3 position;',
 				'attribute vec3 normal;',
 				'attribute vec2 uv;',
@@ -17289,6 +17309,14 @@
 				'uniform mat4 viewMatrix;',
 				'uniform vec3 cameraPosition;',
 
+				renderer.vr.multiview ? [ // For VR multiview
+
+					'uniform vec3 cameraPosition2;',
+
+					'#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)'
+
+				].join( '\n' ) : '',
+
 				( parameters.toneMapping !== NoToneMapping ) ? '#define TONE_MAPPING' : '',
 				( parameters.toneMapping !== NoToneMapping ) ? ShaderChunk[ 'tonemapping_pars_fragment' ] : '', // this code is required here because it is used by the toneMapping() function defined below
 				( parameters.toneMapping !== NoToneMapping ) ? getToneMappingFunction( 'toneMapping', parameters.toneMapping ) : '',
@@ -17342,6 +17370,14 @@
 			// GLSL 3.0 conversion
 			prefixVertex = [
 				'#version 300 es\n',
+
+				renderer.vr.multiview ? [ // For VR multiview
+
+					'#extension GL_OVR_multiview : require',
+					'layout(num_views = 2) in;'
+
+				].join( '\n' ) : '',
+
 				'#define attribute in',
 				'#define varying out',
 				'#define texture2D texture'
@@ -21777,6 +21813,21 @@
 		cameraVR.layers.enable( 1 );
 		cameraVR.layers.enable( 2 );
 
+		// Multiview with opaque framebuffer approach
+
+		this.multiview = false;
+
+		var multiviewAvailability = null;
+
+		function checkMultiviewAvailability() {
+
+			if ( ! device.getViews ) return false;
+
+			var views = device.getViews();
+			return !! views && views.length === 1 && !! views[ 0 ].getAttributes().multiview;
+
+		}
+
 		//
 
 		function isPresenting() {
@@ -21800,6 +21851,15 @@
 
 				renderer.setDrawingBufferSize( renderWidth * 2, renderHeight, 1 );
 
+				multiviewAvailability = checkMultiviewAvailability();
+
+				if ( multiviewAvailability ) {
+
+					renderer.setFramebuffer( device.getViews()[ 0 ].framebuffer );
+					renderer.setRenderTarget( renderer.getRenderTarget() );
+
+				}
+
 				animation.start();
 
 			} else {
@@ -21807,6 +21867,13 @@
 				if ( scope.enabled ) {
 
 					renderer.setDrawingBufferSize( currentSize.width, currentSize.height, currentPixelRatio );
+
+					if ( multiviewAvailability ) {
+
+						renderer.setFramebuffer( null );
+						renderer.setRenderTarget( renderer.getRenderTarget() );
+
+					}
 
 				}
 
@@ -22164,6 +22231,10 @@
 		cameraVR.layers.enable( 1 );
 		cameraVR.layers.enable( 2 );
 
+		// Multiview with opaque framebuffer approach
+
+		this.multiview = false;
+
 		//
 
 		this.enabled = false;
@@ -22239,12 +22310,13 @@
 				session.addEventListener( 'selectend', onSessionEvent );
 				session.addEventListener( 'end', onSessionEnd );
 
-				session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor } );
+				session.baseLayer = new XRWebGLLayer( session, gl, { framebufferScaleFactor: framebufferScaleFactor, multiview: this.multiview } );
 				session.requestFrameOfReference( frameOfReferenceType ).then( function ( value ) {
 
 					frameOfReference = value;
 
 					renderer.setFramebuffer( session.baseLayer.framebuffer );
+					renderer.setRenderTarget( renderer.getRenderTarget() );
 
 					animation.setContext( session );
 					animation.start();
@@ -22702,6 +22774,16 @@
 		var shadowMap = new WebGLShadowMap( _this, objects, capabilities.maxTextureSize );
 
 		this.shadowMap = shadowMap;
+
+		// For right eye in VR multiview
+
+		var multiview = {
+			inProgress: false,
+			modelViewMatrix: new Matrix4(),
+			normalMatrix: new Matrix3(),
+			projectionMatrix: new Matrix4(),
+			camera: null
+		};
 
 		// API
 
@@ -23752,6 +23834,44 @@
 
 					var cameras = camera.cameras;
 
+					// Multiview with opaque framebuffer approach
+
+					if ( vr.multiview && ! capabilities.multiview ) {
+
+						console.warn( 'WebGLRenderer: Use WebGL 2.0 and WEBGL/OVR_multiview extension support browser for VR multiview with opaque framebuffer approach.' );
+						vr.multiview = false;
+
+					}
+
+					if ( vr.multiview ) {
+
+						multiview.camera = cameras[ 1 ];
+
+						multiview.inProgress = true;
+
+						if ( 'viewport' in cameras[ 0 ] ) { // WebXR
+
+							state.viewport( _currentViewport.copy( cameras[ 0 ].viewport ) );
+
+						} else {
+
+							var viewport = vr.getDevice().getViews()[ 0 ].getViewport();
+							state.viewport( _currentViewport.set( viewport.x, viewport.y, viewport.width, viewport.height ) );
+
+						}
+
+						currentRenderState.setupLights( multiview.camera );
+						renderObject( object, scene, cameras[ 0 ], geometry, material, group );
+
+						multiview.inProgress = false;
+						multiview.camera = null;
+
+						continue;
+
+					}
+
+					//
+
 					for ( var j = 0, jl = cameras.length; j < jl; j ++ ) {
 
 						var camera2 = cameras[ j ];
@@ -23802,6 +23922,13 @@
 
 			object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 			object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
+
+			if ( multiview.inProgress ) {
+
+				multiview.modelViewMatrix.multiplyMatrices( multiview.camera.matrixWorldInverse, object.matrixWorld );
+				multiview.normalMatrix.getNormalMatrix( multiview.modelViewMatrix );
+
+			}
 
 			if ( object.isImmediateRenderObject ) {
 
@@ -24106,6 +24233,8 @@
 
 				p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
+				if ( multiview.inProgress ) p_uniforms.setValue( _gl, 'projectionMatrix2', multiview.camera.projectionMatrix );
+
 				if ( capabilities.logarithmicDepthBuffer ) {
 
 					p_uniforms.setValue( _gl, 'logDepthBufFC',
@@ -24143,6 +24272,18 @@
 
 					}
 
+					if ( multiview.inProgress ) {
+
+						var uCamPos = p_uniforms.map.cameraPosition2;
+
+						if ( uCamPos !== undefined ) {
+
+							uCamPos.setValue( _gl, _vector3.setFromMatrixPosition( multiview.camera.matrixWorld ) );
+
+						}
+
+					}
+
 				}
 
 				if ( material.isMeshPhongMaterial ||
@@ -24153,6 +24294,8 @@
 					material.skinning ) {
 
 					p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
+
+					if ( multiview.inProgress ) p_uniforms.setValue( _gl, 'viewMatrix2', multiview.camera.matrixWorldInverse );
 
 				}
 
@@ -24353,6 +24496,13 @@
 			p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
 			p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
 			p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
+
+			if ( multiview.inProgress ) {
+
+				p_uniforms.setValue( _gl, 'modelViewMatrix2', multiview.modelViewMatrix );
+				p_uniforms.setValue( _gl, 'normalMatrix2', multiview.normalMatrix );
+
+			}
 
 			return program;
 
@@ -48134,7 +48284,6 @@
 	exports.CircleGeometry = CircleGeometry;
 	exports.CircleBufferGeometry = CircleBufferGeometry;
 	exports.BoxGeometry = BoxGeometry;
-	exports.CubeGeometry = BoxGeometry;
 	exports.BoxBufferGeometry = BoxBufferGeometry;
 	exports.ShadowMaterial = ShadowMaterial;
 	exports.SpriteMaterial = SpriteMaterial;
@@ -48317,6 +48466,7 @@
 	exports.RGBADepthPacking = RGBADepthPacking;
 	exports.TangentSpaceNormalMap = TangentSpaceNormalMap;
 	exports.ObjectSpaceNormalMap = ObjectSpaceNormalMap;
+	exports.CubeGeometry = BoxGeometry;
 	exports.Face4 = Face4;
 	exports.LineStrip = LineStrip;
 	exports.LinePieces = LinePieces;
@@ -48357,4 +48507,4 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-}));
+})));
