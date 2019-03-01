@@ -98,15 +98,6 @@ function WebVRManager( renderer ) {
 				renderer.setFramebuffer( device.getViews()[ 0 ].framebuffer );
 				renderer.setRenderTarget( renderer.getRenderTarget() );
 
-			} else {
-
-				if ( scope.multiview ) {
-
-					console.warn( 'WebVRManager: No multiview support device.' );
-					scope.multiview = false;
-
-				}
-
 			}
 
 			animation.start();
