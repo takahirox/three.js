@@ -515,7 +515,15 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 			'uniform mat4 viewMatrix;',
 			'uniform vec3 cameraPosition;',
-			'uniform vec3 cameraPosition2;',
+
+			renderer.vr.multiview ? [ // For VR multiview
+
+				'uniform vec3 cameraPosition2;',
+
+				'#define cameraPosition (gl_ViewID_OVR==0u?cameraPosition:cameraPosition2)'
+
+			].join( '\n' ) : '',
+
 
 			( parameters.toneMapping !== NoToneMapping ) ? '#define TONE_MAPPING' : '',
 			( parameters.toneMapping !== NoToneMapping ) ? ShaderChunk[ 'tonemapping_pars_fragment' ] : '', // this code is required here because it is used by the toneMapping() function defined below
