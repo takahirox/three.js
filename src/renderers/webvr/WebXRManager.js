@@ -11,6 +11,8 @@ import { setProjectionFromUnion } from './WebVRUtils.js';
 
 function WebXRManager( renderer ) {
 
+	var scope = this;
+
 	var gl = renderer.context;
 
 	var device = null;
@@ -49,6 +51,9 @@ function WebXRManager( renderer ) {
 	// Multiview with opaque framebuffer approach
 
 	this.multiview = false;
+
+	var multiviewRenderTarget = null;
+	var currentRenderTarget = null;
 
 	//
 
@@ -97,7 +102,18 @@ function WebXRManager( renderer ) {
 	function onSessionEnd() {
 
 		renderer.setFramebuffer( null );
-		renderer.setRenderTarget( renderer.getRenderTarget() ); // Hack #15830
+
+		if ( scope.multiview ) {
+
+			renderer.setRenderTarget( currentRenderTarget );
+			currentRenderTarget = null;
+
+		} else {
+
+			renderer.setRenderTarget( renderer.getRenderTarget() ); // Hack #15830
+
+		}
+
 		animation.stop();
 
 	}
@@ -130,8 +146,22 @@ function WebXRManager( renderer ) {
 
 				frameOfReference = value;
 
-				renderer.setFramebuffer( session.baseLayer.framebuffer );
-				renderer.setRenderTarget( renderer.getRenderTarget() );
+				if ( scope.multiview ) {
+
+					if ( multiviewRenderTarget === null ) {
+
+						multiviewRenderTarget = new WebGLMultiviewRenderTarget();
+
+					}
+
+					currentRenderTarget = renderer.getRenderTarget();
+					renderer.setRenderTarget( multiviewRenderTarget );
+
+				} else {
+
+					renderer.setFramebuffer( session.baseLayer.framebuffer );
+
+				}
 
 				animation.setContext( session );
 				animation.start();

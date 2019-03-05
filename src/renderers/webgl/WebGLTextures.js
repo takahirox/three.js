@@ -42,7 +42,9 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 			// only perform resize for certain image types
 
-			if ( image instanceof ImageBitmap || image instanceof HTMLImageElement || image instanceof HTMLCanvasElement ) {
+			if ( ( typeof HTMLImageElement !== 'undefined' && image instanceof HTMLImageElement ) ||
+				( typeof HTMLCanvasElement !== 'undefined' && image instanceof HTMLCanvasElement ) ||
+				( typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap ) ) {
 
 				var floor = needsPowerOfTwo ? _Math.floorPowerOfTwo : Math.floor;
 
@@ -715,6 +717,27 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 	}
 
+	function setupFrameBufferTextureMultiview( framebuffer, renderTarget, attachment ) {
+
+		if ( ! capabilities.multiview ) {
+
+			console.error( 'WEBGLTextures: No multiview support browser.' );
+			return;
+
+		}
+
+		var ext = extensions.get( 'WEBGL_multiview' );
+
+		var glFormat = utils.convert( renderTarget.texture.format );
+		var glType = utils.convert( renderTarget.texture.type );
+		var glInternalFormat = getInternalFormat( glFormat, glType );
+		state.texImage3D( _gl.TEXTURE_2D_ARRAY, 1, glInternalFormat, renderTarget.width, renderTarget.height, 2, 0, glFormat, glType, null );
+		_gl.bindFramebuffer( _gl.FRAMEBUFFER, framebuffer );
+		ext.framebufferTextureMultiviewWEBGL( _gl.FRAMEBUFFER, attachment, properties.get( renderTarget.texture ).__webglTexture, 0, 0, 2 );
+		_gl.bindFramebuffer( _gl.FRAMEBUFFER, null );
+
+	}
+
 	// Setup storage for internal depth/stencil buffers and bind to correct framebuffer
 	function setupRenderBufferStorage( renderbuffer, renderTarget, isMultisample ) {
 
@@ -878,6 +901,7 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 		var isCube = ( renderTarget.isWebGLRenderTargetCube === true );
 		var isMultisample = ( renderTarget.isWebGLMultisampleRenderTarget === true );
 		var supportsMips = isPowerOfTwo( renderTarget ) || capabilities.isWebGL2;
+		var isMultiview = ( renderTarget.isMultiviewRenderTarget === true );
 
 		// Setup framebuffer
 
@@ -953,6 +977,13 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			}
 
 			state.bindTexture( _gl.TEXTURE_CUBE_MAP, null );
+
+		} else if ( isMultiview ) {
+
+			state.bindTexture( _gl.TEXTURE_2D_ARRAY, textureProperties.__webglTexture );
+			setTextureParameters( _gl.TEXTURE_2D_ARRAY, renderTarget.texture, supportsMips );
+			setupFrameBufferTextureMultiview( renderTargetProperties.__webglFramebuffer, renderTarget, _gl.COLOR_ATTACHMENT0 );
+			state.bindTexture( _gl.TEXTURE_2D_ARRAY, null );
 
 		} else {
 

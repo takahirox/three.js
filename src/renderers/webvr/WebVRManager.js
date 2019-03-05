@@ -58,6 +58,8 @@ function WebVRManager( renderer ) {
 	this.multiview = false;
 
 	var multiviewAvailability = null;
+	var multiviewRenderTarget = null;
+	var currentRenderTarget = null;
 
 	function checkMultiviewAvailability() {
 
@@ -95,8 +97,14 @@ function WebVRManager( renderer ) {
 
 			if ( multiviewAvailability ) {
 
-				renderer.setFramebuffer( device.getViews()[ 0 ].framebuffer );
-				renderer.setRenderTarget( renderer.getRenderTarget() );
+				if ( multiviewRenderTarget === null ) {
+
+					multiviewRenderTarget = new WebGLMultiviewRenderTarget( renderWidth, renderHeight );
+
+				}
+
+				currentRenderTarget = renderer.getRenderTarget();
+				renderer.setRenderTarget( multiviewRenderTarget );
 
 			}
 
@@ -110,8 +118,8 @@ function WebVRManager( renderer ) {
 
 				if ( multiviewAvailability ) {
 
-					renderer.setFramebuffer( null );
-					renderer.setRenderTarget( renderer.getRenderTarget() );
+					renderer.setRenderTarget( currentRenderTarget );
+					currentRenderTarget = null;
 
 				}
 
