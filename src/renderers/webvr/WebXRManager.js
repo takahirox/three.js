@@ -3,6 +3,7 @@
  */
 
 import { Group } from '../../objects/Group.js';
+import { Matrix4 } from '../../math/Matrix4.js';
 import { Vector4 } from '../../math/Vector4.js';
 import { ArrayCamera } from '../../cameras/ArrayCamera.js';
 import { PerspectiveCamera } from '../../cameras/PerspectiveCamera.js';
@@ -338,7 +339,7 @@ function WebXRManager( renderer ) {
 	this.getStandingMatrix = function () {
 
 		console.warn( 'THREE.WebXRManager: getStandingMatrix() is no longer needed.' );
-		return new THREE.Matrix4();
+		return new Matrix4();
 
 	};
 
