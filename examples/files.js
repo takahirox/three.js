@@ -1,7 +1,8 @@
 var files = {
 	"performance": [
 		"performance_dynamic",
-		"performance_static"
+		"performance_static",
+		"performance_static2"
 	],
 	"webgl": [
 		"webgl_animation_cloth",
