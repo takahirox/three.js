@@ -140,14 +140,13 @@
 
 			function animate() {
 
-				requestAnimationFrame( animate );
-
-				render();
-				stats.update();
+				renderer.setAnimationLoop( render );
 
 			}
 
 			function render() {
+
+				stats.update();
 
 				for ( var i = 0, il = objects.length; i < il; i ++ ) {
 
