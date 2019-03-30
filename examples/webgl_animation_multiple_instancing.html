@@ -366,13 +366,14 @@
 				if ( mixers.length === 0 ) return;
 
 				var root = mixers[ 0 ]._root;
+				var geometry = root.geometry;
 				var skeleton = root.skeleton;
 				var bones = skeleton.bones;
 				var boneInverses = skeleton.boneInverses;
 				var boneMatrices = skeleton.boneMatrices;
 				var boneTexture = skeleton.boneTexture;
 
-				for ( var i = 0, il = mixers.length; i < il; i ++ ) {
+				for ( var i = 0, il = geometry.maxInstancedCount; i < il; i ++ ) {
 
 					mixers[ i ].update( delta );
 					root.parent.updateMatrixWorld();
