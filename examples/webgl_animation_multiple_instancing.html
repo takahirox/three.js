@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Multiple animated objects</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="container"></div>
+
+		<script src="../build/three.js"></script>
+		<script src="js/WebGL.js"></script>
+		<script src="js/loaders/GLTFLoader.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+		<script src="js/libs/dat.gui.min.js"></script>
+
+		<script>
+
+			if ( WEBGL.isWebGLAvailable() === false ) {
+
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+			}
+
+			function loadOption( key ) {
+
+				var options = location.href.split( '?' )[ 1 ];
+
+				if ( ! options ) return null;
+
+				var optionArray = options.split( '&' );
+
+				for ( var i = 0, il = optionArray.length; i < il; i ++ ) {
+
+					var tmp = optionArray[ i ].split( '=' );
+					if ( tmp[ 0 ].toLowerCase() === key ) return tmp[ 1 ];
+
+				}
+
+				return null;
+
+			}
+
+			var objectNum = parseInt( loadOption( 'num' ) ) || 20;
+
+			var stats;
+
+			var scene, camera, renderer;
+			var mixers = [];
+
+			var cameraTarget = new THREE.Vector3( 0, 1, 0 );
+			var defaultCameraPosition = new THREE.Vector3( 0, 2, - 3 );
+			var elapsedTime = 0.0;
+
+			var offsetMatrix = new THREE.Matrix4();
+
+			var clock = new THREE.Clock();
+
+			var uniformTime = { value: 0.0 };
+
+			init();
+			render();
+
+			function init() {
+
+				var container = document.getElementById( 'container' );
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xa0a0a0 );
+				scene.fog = new THREE.Fog( 0xa0a0a0, 10, 60 );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1000 );
+
+				scene.add( new THREE.AmbientLight( 0x888888 ) );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( - 3, 10, - 10 );
+				scene.add( light );
+
+				var ground = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry( 400, 400 ),
+					new THREE.MeshPhongMaterial( {
+						color: 0x999999,
+						depthWrite: false
+					} )
+				);
+
+				ground.rotation.x = - Math.PI / 2;
+				scene.add( ground );
+
+				var canvas = document.createElement( 'canvas' );
+				var context = canvas.getContext( 'webgl2' );
+
+				renderer = new THREE.WebGLRenderer( {
+					antialias: true,
+					canvas: canvas,
+					context: context
+				} );
+
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.gammaOutput = true;
+				renderer.gammaFactor = 2.2;
+				//renderer.shadowMap.enabled = true;
+				//renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+				container.appendChild( renderer.domElement );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				var loader = new THREE.GLTFLoader();
+
+				loader.load( 'models/gltf/Soldier.glb', function ( gltf ) {
+
+					var model = gltf.scene.getObjectByName( 'vanguard_Mesh' );
+
+					var baseGeometry = model.geometry;
+					var baseMaterial = model.material;
+
+					baseMaterial.onBeforeCompile = function ( shader ) {
+
+						// console.log( shader.uniforms );
+						// console.log( shader.vertexShader );
+						// console.log( shader.fragmentShader );
+
+						shader.uniforms.time = uniformTime;
+
+						shader.vertexShader = shader.vertexShader
+							.replace( '#include <common>\n',
+								[ '#include <common>',
+								  'uniform float time;',
+								  'attribute vec4 instanceMatrixColumn0;',
+								  'attribute vec4 instanceMatrixColumn1;',
+								  'attribute vec4 instanceMatrixColumn2;',
+								  'attribute vec4 instanceMatrixColumn3;',
+								  'attribute vec3 instanceNormalMatrixColumn0;',
+								  'attribute vec3 instanceNormalMatrixColumn1;',
+								  'attribute vec3 instanceNormalMatrixColumn2;',
+								  'attribute float instanceSpeed;',
+								  'attribute vec3 instanceColor;',
+								  'out vec3 vInstanceColor;' ].join( '\n' ) + '\n' )
+							.replace( '#include <skinning_pars_vertex>\n',
+								[ '#ifdef USE_SKINNING',
+								  'precision highp sampler2DArray;',
+								  'uniform mat4 bindMatrix;',
+								  'uniform mat4 bindMatrixInverse;',
+								  'uniform sampler2DArray boneTexture;',
+								  'uniform int boneTextureSize;',
+								  'mat4 getBoneMatrix( const in float i ) {',
+								  '	float j = i * 4.0;',
+								  '	float x = mod( j, float( boneTextureSize ) );',
+								  '	float y = floor( j / float( boneTextureSize ) );',
+								  '	float dx = 1.0 / float( boneTextureSize );',
+								  '	float dy = 1.0 / float( boneTextureSize );',
+								  '	y = dy * ( y + 0.5 );',
+								  '	vec4 v1 = texture( boneTexture, vec3( dx * ( x + 0.5 ), y, gl_InstanceID ) );',
+								  '	vec4 v2 = texture( boneTexture, vec3( dx * ( x + 1.5 ), y, gl_InstanceID ) );',
+								  '	vec4 v3 = texture( boneTexture, vec3( dx * ( x + 2.5 ), y, gl_InstanceID ) );',
+								  '	vec4 v4 = texture( boneTexture, vec3( dx * ( x + 3.5 ), y, gl_InstanceID ) );',
+								  '	mat4 bone = mat4( v1, v2, v3, v4 );',
+								  '	return bone;',
+								  '}',
+								  '#endif' ].join( '\n' ) + '\n' )
+							.replace( '#include <defaultnormal_vertex>\n',
+								[ 'mat3 instanceNormalMatrix = mat3(',
+								  '	instanceNormalMatrixColumn0,',
+								  '	instanceNormalMatrixColumn1,',
+								  '	instanceNormalMatrixColumn2',
+								  ');',
+								  'objectNormal = instanceNormalMatrix * objectNormal;',
+								  '#include <defaultnormal_vertex>\n' ].join( '\n' ) + '\n' )
+							.replace( '#include <skinning_vertex>\n',
+								[ '#include <skinning_vertex>\n',
+								  'mat4 instanceMatrix = mat4(',
+								  '	instanceMatrixColumn0,',
+								  '	instanceMatrixColumn1,',
+								  '	instanceMatrixColumn2,',
+								  '	instanceMatrixColumn3',
+								  ');',
+								  'transformed = ( instanceMatrix * vec4( transformed + vec3( 0.0, time * instanceSpeed, 0.0 ), 1.0 ) ).xyz;',
+								  'vInstanceColor = instanceColor;' ].join( '\n' ) + '\n' );
+
+						shader.fragmentShader = shader.fragmentShader
+							.replace( '#include <common>\n',
+								[ '#include <common>',
+								  'in vec3 vInstanceColor;' ].join( '\n' ) + '\n' )
+							.replace( 'vec4 diffuseColor = vec4( diffuse, opacity );\n',
+								  'vec4 diffuseColor = vec4( diffuse * vInstanceColor, opacity );\n' );
+
+					}
+
+					var instanceMatrixColumns0 = [];
+					var instanceMatrixColumns1 = [];
+					var instanceMatrixColumns2 = [];
+					var instanceMatrixColumns3 = [];
+					var instanceNormalMatrixColumns0 = [];
+					var instanceNormalMatrixColumns1 = [];
+					var instanceNormalMatrixColumns2 = [];
+					var instanceColors = [];
+					var instanceSpeeds = [];
+
+					var tmp = new THREE.Object3D();
+
+					for ( var i = 0; i < objectNum; i ++ ) {
+
+						tmp.position.set(
+							( Math.random() - 0.5 ) * 400.0,
+							( Math.random() - 0.5 ) * 400.0,
+							0, // ( Math.random() - 0.5 ) * 400.0
+						);
+
+						tmp.rotation.set(
+							0, // Math.random() * 2.0 * Math.PI,
+							0, // Math.random() * 2.0 * Math.PI,
+							Math.random() * 2.0 * Math.PI
+						);
+
+						tmp.scale.set( 1, 1, 1 ).multiplyScalar( 
+							( Math.random() * 0.75 ) + 0.25
+						);
+
+						tmp.updateMatrix();
+						tmp.normalMatrix.getNormalMatrix( tmp.matrix );
+
+						for ( var j = 0; j < 4; j ++ ) {
+
+							instanceMatrixColumns0.push( tmp.matrix.elements[ j ] );
+							instanceMatrixColumns1.push( tmp.matrix.elements[ j + 4 ] );
+							instanceMatrixColumns2.push( tmp.matrix.elements[ j + 8 ] );
+							instanceMatrixColumns3.push( tmp.matrix.elements[ j + 12 ] );
+
+						}
+
+						for ( var j = 0; j < 3; j ++ ) {
+
+							instanceNormalMatrixColumns0.push( tmp.normalMatrix.elements[ j ] );
+							instanceNormalMatrixColumns1.push( tmp.normalMatrix.elements[ j + 3 ] );
+							instanceNormalMatrixColumns2.push( tmp.normalMatrix.elements[ j + 6 ] );
+
+						}
+
+						instanceColors.push( Math.random() * 0.75 + 0.25 );
+						instanceColors.push( Math.random() * 0.75 + 0.25 );
+						instanceColors.push( Math.random() * 0.75 + 0.25 );
+
+					}
+
+					var geometry = new THREE.InstancedBufferGeometry();
+					geometry.addAttribute( 'position', baseGeometry.getAttribute( 'position' ) );
+					geometry.addAttribute( 'normal', baseGeometry.getAttribute( 'normal' ) );
+					geometry.addAttribute( 'uv', baseGeometry.getAttribute( 'uv' ) );
+					geometry.addAttribute( 'uv2', baseGeometry.getAttribute( 'uv2' ) );
+					geometry.addAttribute( 'skinIndex', baseGeometry.getAttribute( 'skinIndex' ) );
+					geometry.addAttribute( 'skinWeight', baseGeometry.getAttribute( 'skinWeight' ) );
+					geometry.setIndex( baseGeometry.getIndex() );
+
+					geometry.addAttribute( 'instanceMatrixColumn0', new THREE.InstancedBufferAttribute( new Float32Array( instanceMatrixColumns0 ), 4 ) );
+					geometry.addAttribute( 'instanceMatrixColumn1', new THREE.InstancedBufferAttribute( new Float32Array( instanceMatrixColumns1 ), 4 ) );
+					geometry.addAttribute( 'instanceMatrixColumn2', new THREE.InstancedBufferAttribute( new Float32Array( instanceMatrixColumns2 ), 4 ) );
+					geometry.addAttribute( 'instanceMatrixColumn3', new THREE.InstancedBufferAttribute( new Float32Array( instanceMatrixColumns3 ), 4 ) );
+					geometry.addAttribute( 'instanceNormalMatrixColumn0', new THREE.InstancedBufferAttribute( new Float32Array( instanceNormalMatrixColumns0 ), 3 ) );
+					geometry.addAttribute( 'instanceNormalMatrixColumn1', new THREE.InstancedBufferAttribute( new Float32Array( instanceNormalMatrixColumns1 ), 3 ) );
+					geometry.addAttribute( 'instanceNormalMatrixColumn2', new THREE.InstancedBufferAttribute( new Float32Array( instanceNormalMatrixColumns2 ), 3 ) );
+					geometry.addAttribute( 'instanceColor', new THREE.InstancedBufferAttribute( new Float32Array( instanceColors ), 3 ) );
+
+					geometry.maxInstancedCount = objectNum;
+
+					var parent = model.parent;
+					parent.scale.multiplyScalar( 0.5 );
+					parent.rotation.set( - Math.PI / 2, 0, 0 );
+
+					var skeleton = model.skeleton;
+					var bones = skeleton.bones;
+
+					var size = Math.sqrt( bones.length * 4 );
+					size = THREE.Math.ceilPowerOfTwo( size );
+					size = Math.max( size, 4 );
+
+					var boneMatrices = new Float32Array( size * size * 4 * objectNum );
+					boneMatrices.set( skeleton.boneMatrices );
+
+					var boneTexture = new THREE.DataTexture2DArray( boneMatrices, size, size, objectNum );
+					boneTexture.format = THREE.RGBAFormat;
+					boneTexture.type = THREE.FloatType;
+					boneTexture.needsUpdate = true;
+
+					skeleton.boneMatrices = boneMatrices;
+					skeleton.boneTexture = boneTexture;
+					skeleton.boneTextureSize = size;
+
+					skeleton.update = function () {};
+
+					var mesh = new THREE.SkinnedMesh( geometry, baseMaterial );
+					mesh.bind( skeleton, model.matrixWorld );
+
+					mesh.add( parent.children[ 0 ] ); // move bones under SkinnedMesh
+
+					while ( parent.children.length > 0 ) {
+
+						parent.remove( parent.children[ 0 ] );
+
+					}
+
+					parent.add( mesh );
+					scene.add( parent );
+
+					var animations = [
+						THREE.AnimationClip.findByName( gltf.animations, 'Idle' ),
+						THREE.AnimationClip.findByName( gltf.animations, 'Walk' ),
+						THREE.AnimationClip.findByName( gltf.animations, 'Run' ),
+					];
+
+					var animationTypes = [ 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2 ];
+					var baseSpeeds = [ 0, 100, 200 ];
+
+					for ( var i = 0; i < objectNum; i ++ ) {
+
+						var mixer = new THREE.AnimationMixer( mesh );
+						var animationType = animationTypes[ ( Math.random() * animationTypes.length ) | 0 ];
+						var action = mixer.clipAction( animations[ animationType ] );
+						action.weight = Math.random() * 0.5 + 0.5;
+						action.timeScale = Math.random() * 0.5 + 0.75;
+						action.play();
+						mixer.update( Math.random() );
+						mixers.push( mixer );
+
+						instanceSpeeds.push( baseSpeeds[ animationType ] * action.weight * action.timeScale );
+
+					}
+
+					geometry.addAttribute( 'instanceSpeed', new THREE.InstancedBufferAttribute( new Float32Array( instanceSpeeds ), 1 ) );
+
+					var gui = new dat.GUI( { width: 350 } );
+					gui.add( geometry, 'maxInstancedCount', 0, objectNum );
+
+				}, undefined, function ( error ) {
+
+					console.error( error );
+
+				} );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function update( delta ) {
+
+				if ( mixers.length === 0 ) return;
+
+				var root = mixers[ 0 ]._root;
+				var skeleton = root.skeleton;
+				var bones = skeleton.bones;
+				var boneInverses = skeleton.boneInverses;
+				var boneMatrices = skeleton.boneMatrices;
+				var boneTexture = skeleton.boneTexture;
+
+				for ( var i = 0, il = mixers.length; i < il; i ++ ) {
+
+					mixers[ i ].update( delta );
+					root.parent.updateMatrixWorld();
+
+					for ( var j = 0, jl = bones.length; j < jl; j ++ ) {
+
+						offsetMatrix.multiplyMatrices( bones[ j ].matrixWorld, boneInverses[ j ] );
+						offsetMatrix.toArray( boneMatrices, j * 16 + i * boneTexture.image.width * boneTexture.image.height * 4 );
+
+					}
+
+					boneTexture.needsUpdate = true;
+
+				}
+
+			}
+
+			function render() {
+
+				requestAnimationFrame( render );
+
+				stats.update();
+
+				var delta = clock.getDelta();
+
+				elapsedTime = ( elapsedTime + delta ) % 30.0;
+
+				scene.rotation.y += delta * 0.05;
+
+				camera.position.y = defaultCameraPosition.y + elapsedTime * 0.05;
+				camera.position.z = defaultCameraPosition.z - elapsedTime * 0.25;
+				camera.lookAt( cameraTarget );
+
+				uniformTime.value = elapsedTime;
+
+				update( delta );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+
+</html>
