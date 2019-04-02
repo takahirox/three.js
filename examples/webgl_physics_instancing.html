@@ -1,0 +1,408 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js physics instancing</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<meta http-equiv="origin-trial" data-feature="WebXR Device API (For Chrome M69+)" data-expires="2019-03-06" content="AvDjbxYpoTgOL1PS0JEra7KFCehfTlKnXpU/ORSwNdCQ35cX70cTUkXOnQ26A5XJi3eXHSKpBPchdt5lbcxDuAIAAABTeyJvcmlnaW4iOiJodHRwczovL3RocmVlanMub3JnOjQ0MyIsImZlYXR1cmUiOiJXZWJYUkRldmljZU02OSIsImV4cGlyeSI6MTU1MTgzMDM5OX0=">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #101010;
+				color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			a {
+				color: #f00;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="../build/three.js"></script>
+		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/libs/ammo.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			function loadOption( key ) {
+
+				var options = location.href.split( '?' )[ 1 ];
+
+				if ( ! options ) return null;
+
+				var optionArray = options.split( '&' );
+
+				for ( var i = 0, il = optionArray.length; i < il; i ++ ) {
+
+					var tmp = optionArray[ i ].split( '=' );
+
+					if ( tmp[ 0 ].toLowerCase() === key ) return tmp[ 1 ];
+
+				}
+
+				return null;
+
+			}
+
+			var objectNum = parseInt( loadOption( 'num' ) ) || 100;
+
+			var container;
+			var stats;
+			var camera, scene, renderer;
+			var controls;
+
+			var world;
+			var boxes = [];
+			var boxSize = 4;
+
+			var clock = new THREE.Clock();
+
+			////
+
+			function InstancedMesh( geometry, material ) {
+
+				THREE.Mesh.call( this, geometry, material );
+
+				this.instancedChildren = [];
+
+			}
+
+			InstancedMesh.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
+
+				constructor: InstancedMesh,
+
+				add: function ( object ) {
+
+					this.instancedChildren.push( object );
+
+				},
+
+				updateMatrixWorld: function ( force ) {
+
+					THREE.Mesh.prototype.updateMatrixWorld.call( this, force );
+
+					var children = this.instancedChildren;
+
+					var instanceMatrixColumn0 = this.geometry.getAttribute( 'instanceMatrixColumn0' );
+					var instanceMatrixColumn1 = this.geometry.getAttribute( 'instanceMatrixColumn1' );
+					var instanceMatrixColumn2 = this.geometry.getAttribute( 'instanceMatrixColumn2' );
+					var instanceMatrixColumn3 = this.geometry.getAttribute( 'instanceMatrixColumn3' );
+
+					var instanceNormalMatrixColumn0 = this.geometry.getAttribute( 'instanceNormalMatrixColumn0' );
+					var instanceNormalMatrixColumn1 = this.geometry.getAttribute( 'instanceNormalMatrixColumn1' );
+					var instanceNormalMatrixColumn2 = this.geometry.getAttribute( 'instanceNormalMatrixColumn2' );
+
+					var index = 0;
+					var index2 = 0;
+
+					for ( var i = 0, il = children.length; i < il; i ++ ) {
+
+						var child = children[ i ];
+
+						child.updateMatrix();
+						child.normalMatrix.getNormalMatrix( child.matrix );
+
+						for ( var j = 0; j < 4; j ++ ) {
+
+							instanceMatrixColumn0.array[ i * 4 + j ] = child.matrix.elements[ j ];
+							instanceMatrixColumn1.array[ i * 4 + j ] = child.matrix.elements[ j + 4 ];
+							instanceMatrixColumn2.array[ i * 4 + j ] = child.matrix.elements[ j + 8 ];
+							instanceMatrixColumn3.array[ i * 4 + j ] = child.matrix.elements[ j + 12 ];
+
+						}
+
+						for ( var j = 0; j < 3; j ++ ) {
+
+							instanceNormalMatrixColumn0.array[ i * 3 + j ] = child.normalMatrix.elements[ j ];
+							instanceNormalMatrixColumn1.array[ i * 3 + j ] = child.normalMatrix.elements[ j + 3 ];
+							instanceNormalMatrixColumn2.array[ i * 3 + j ] = child.normalMatrix.elements[ j + 6 ];
+
+						}
+
+
+					}
+
+					instanceMatrixColumn0.needsUpdate = true;
+					instanceMatrixColumn1.needsUpdate = true;
+					instanceMatrixColumn2.needsUpdate = true;
+					instanceMatrixColumn3.needsUpdate = true;
+					instanceNormalMatrixColumn0.needsUpdate = true;
+					instanceNormalMatrixColumn1.needsUpdate = true;
+					instanceNormalMatrixColumn2.needsUpdate = true;
+
+				}
+
+			} );
+
+			////
+
+			Ammo().then( function ( AmmoLib ) {
+
+				Ammo = AmmoLib;
+
+				init();
+				animate();
+
+			} );
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.z = 100;
+
+				// scene
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0xaaaaaa );
+				directionalLight.position.set( - 1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				var canvas = document.createElement( 'canvas' );
+				var context = canvas.getContext( 'webgl2' );
+
+				renderer = new THREE.WebGLRenderer( { 
+					canvas: canvas,
+					context: context,
+					antialias: true
+				} );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+
+				container.appendChild( renderer.domElement );
+
+				world = createWorld();
+
+				scene.add( createGround() );
+
+				var baseGeometry = new THREE.BoxBufferGeometry( boxSize, boxSize, boxSize );
+				var material = new THREE.MeshStandardMaterial( { color: 0xffffff } );
+
+				var instanceColors = [];
+
+				for ( var i = 0; i < objectNum; i ++ ) {
+
+					instanceColors.push( Math.random() );
+					instanceColors.push( Math.random() );
+					instanceColors.push( Math.random() );
+
+				}
+
+				var geometry = new THREE.InstancedBufferGeometry();
+				geometry.addAttribute( 'position', baseGeometry.getAttribute( 'position' ) );
+				geometry.addAttribute( 'normal', baseGeometry.getAttribute( 'normal' ) );
+				geometry.setIndex( baseGeometry.getIndex() );
+				geometry.addAttribute( 'instanceMatrixColumn0', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 4 ), 4 ) );
+				geometry.addAttribute( 'instanceMatrixColumn1', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 4 ), 4 ) );
+				geometry.addAttribute( 'instanceMatrixColumn2', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 4 ), 4 ) );
+				geometry.addAttribute( 'instanceMatrixColumn3', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 4 ), 4 ) );
+				geometry.addAttribute( 'instanceNormalMatrixColumn0', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 3 ), 3 ) );
+				geometry.addAttribute( 'instanceNormalMatrixColumn1', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 3 ), 3 ) );
+				geometry.addAttribute( 'instanceNormalMatrixColumn2', new THREE.InstancedBufferAttribute( new Float32Array( objectNum * 3 ), 3 ) );
+				geometry.addAttribute( 'instanceColor', new THREE.InstancedBufferAttribute( new Float32Array( instanceColors ), 3 ) );
+				geometry.maxInstancedCount = objectNum;
+
+				var mesh = new InstancedMesh( geometry, material );
+				scene.add( mesh );
+
+				material.onBeforeCompile = function ( shader ) {
+
+					// console.log( shader.uniforms );
+					// console.log( shader.vertexShader );
+					// console.log( shader.fragmentShader );
+
+					var vertexParsChunk = [
+						'uniform float time;',
+						'attribute vec4 instanceMatrixColumn0;',
+						'attribute vec4 instanceMatrixColumn1;',
+						'attribute vec4 instanceMatrixColumn2;',
+						'attribute vec4 instanceMatrixColumn3;',
+						'attribute vec3 instanceNormalMatrixColumn0;',
+						'attribute vec3 instanceNormalMatrixColumn1;',
+						'attribute vec3 instanceNormalMatrixColumn2;',
+						'attribute vec3 instanceColor;',
+						'out vec3 vInstanceColor;'
+					].join( '\n' ) + '\n';
+
+					var vertexChunk = [
+						'mat4 instanceMatrix = mat4(',
+						'	instanceMatrixColumn0,',
+						'	instanceMatrixColumn1,',
+						'	instanceMatrixColumn2,',
+						'	instanceMatrixColumn3',
+						');',
+						'vec3 transformed = ( instanceMatrix * vec4( position, 1.0 ) ).xyz;'
+					].join( '\n' ) + '\n';
+
+					var instanceColorChunk = [
+						'vInstanceColor = instanceColor;'
+					].join( '\n' ) + '\n';
+
+					var normalChunk = [
+						'mat3 instanceNormalMatrix = mat3(',
+						'	instanceNormalMatrixColumn0,',
+						'	instanceNormalMatrixColumn1,',
+						'	instanceNormalMatrixColumn2',
+						');',
+						'objectNormal = instanceNormalMatrix * objectNormal;'
+					].join( '\n' ) + '\n';
+
+					var fragmentParsChunk = [
+						'in vec3 vInstanceColor;'
+					].join( '\n' ) + '\n';
+
+					var colorChunk = [
+						'vec4 diffuseColor = vec4( diffuse * vInstanceColor, opacity );'
+					].join( '\n' ) + '\n';
+
+					shader.vertexShader = shader.vertexShader
+						.replace( '#include <common>\n', '#include <common>\n' + vertexParsChunk )
+						.replace( '#include <defaultnormal_vertex>\n', normalChunk + '#include <defaultnormal_vertex>\n' )
+						.replace( '#include <begin_vertex>\n', vertexChunk + instanceColorChunk );
+
+					shader.fragmentShader = shader.fragmentShader
+						.replace( '#include <common>\n', '#include <common>' + fragmentParsChunk )
+						.replace( 'vec4 diffuseColor = vec4( diffuse, opacity );\n', colorChunk )
+
+				};
+
+				for ( var i = 0; i < objectNum; i ++ ) {
+
+					var object = new THREE.Object3D();
+					object.position.x = ( Math.random() - 0.5 ) * boxSize * 5;
+					object.position.y = ( Math.random() - 0.5 ) * boxSize * 5 + 30;
+					object.position.z = ( Math.random() - 0.5 ) * boxSize * 5;
+
+					var body = createRigidBody( boxSize / 2, boxSize / 2, boxSize / 2, 1.0, object.position );
+					body.setSleepingThresholds( 0, 0 );
+					world.addRigidBody( body );
+					object.userData.body = body;
+					object.userData.ammoTransform = new Ammo.btTransform();
+					object.userData.ammoQuaternion = new Ammo.btQuaternion( 0, 0, 0, 1 );
+
+					boxes.push( object );
+					mesh.add( object );
+
+				}
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+			}
+
+			function onWindowResize () {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function createWorld() {
+
+				var config = new Ammo.btDefaultCollisionConfiguration();
+				var dispatcher = new Ammo.btCollisionDispatcher( config );
+				var cache = new Ammo.btDbvtBroadphase();
+				var solver = new Ammo.btSequentialImpulseConstraintSolver();
+				var world = new Ammo.btDiscreteDynamicsWorld( dispatcher, cache, solver, config );
+				world.setGravity( new Ammo.btVector3( 0, - 9.8 * 10, 0 ) );
+
+				return world;
+
+			}
+
+			function createRigidBody( width, height, depth, weight, position ) {
+
+				var shape = new Ammo.btBoxShape( new Ammo.btVector3( width, height, depth ) );
+				var localInertia = new Ammo.btVector3( 0, 0, 0 );
+				shape.calculateLocalInertia( weight, localInertia );
+
+				var form = new Ammo.btTransform();
+				form.setIdentity();
+				form.setOrigin( new Ammo.btVector3( position.x, position.y, position.z ) );
+				var state = new Ammo.btDefaultMotionState( form );
+				var info = new Ammo.btRigidBodyConstructionInfo( weight, state, shape, localInertia );
+
+				return new Ammo.btRigidBody( info );
+
+			}
+
+			function createGround () {
+
+				var gridHelper = new THREE.GridHelper( 1000, 500 );
+				gridHelper.position.y = - 15;
+
+				var body = createRigidBody( 1000, 1, 1000, 0, gridHelper.position );
+				body.setRestitution( 1 );
+				body.setFriction( 1 );
+				body.setDamping( 0, 0 );
+				body.setSleepingThresholds( 0, 0 );
+				world.addRigidBody( body );
+
+				return gridHelper;
+
+			}
+
+			function updatePhysics( delta ) {
+
+				world.stepSimulation( delta, 2, 1 / 60 );
+				updateBoxes();
+
+			}
+
+			function updateBoxes() {
+
+				for ( var i = 0, il = boxes.length; i < il; i ++ ) {
+
+					var box = boxes[ i ];
+					var body = box.userData.body;
+					var form = box.userData.ammoTransform;
+					var q = box.userData.ammoQuaternion;
+
+					body.getMotionState().getWorldTransform( form );
+					var o = form.getOrigin();
+					form.getBasis().getRotation( q );
+					box.position.set( o.x(), o.y(), o.z() );
+					box.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+
+				}
+
+			}
+
+			function animate() {
+
+				renderer.setAnimationLoop( render );
+
+			}
+
+			function render() {
+
+				stats.update();
+
+				updatePhysics( clock.getDelta() );
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+</html>
