@@ -1,0 +1,319 @@
+{
+    "asset": {
+        "version": "2.0",
+        "generator": "Microsoft glTF Exporter"
+    },
+    "accessors": [
+        {
+            "bufferView": 0,
+            "byteOffset": 0,
+            "componentType": 5123,
+            "count": 18108,
+            "type": "SCALAR"
+        },
+        {
+            "bufferView": 1,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 3575,
+            "type": "VEC3",
+            "max": [
+                0.009921154007315636,
+                0.00977163016796112,
+                0.010076245293021202
+            ],
+            "min": [
+                -0.009921154007315636,
+                -0.00977163016796112,
+                -0.010076245293021202
+            ]
+        },
+        {
+            "bufferView": 2,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 3575,
+            "type": "VEC3"
+        },
+        {
+            "bufferView": 3,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 3575,
+            "type": "VEC2"
+        }
+    ],
+    "bufferViews": [
+        {
+            "buffer": 0,
+            "byteLength": 36216,
+            "byteOffset": 0,
+            "target": 34963
+        },
+        {
+            "buffer": 0,
+            "byteLength": 42900,
+            "byteOffset": 36216,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteLength": 42900,
+            "byteOffset": 79116,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteLength": 28600,
+            "byteOffset": 122016,
+            "target": 34962
+        }
+    ],
+    "buffers": [
+        {
+            "byteLength": 150616,
+            "uri": "geometry.bin"
+        }
+    ],
+    "images": [
+        {
+            "uri": "normal_0.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "emissive_0.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "basecolor_0.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "omr_0.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "normal_1.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "emissive_1.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "basecolor_1.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "omr_1.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "normal_2.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "emissive_2.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "basecolor_2.png",
+            "mimeType": "image/png"
+        },
+        {
+            "uri": "omr_2.png",
+            "mimeType": "image/png"
+        }
+    ],
+    "materials": [
+        {
+            "name": "High_LOD",
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {
+                    "index": 2
+                },
+                "metallicRoughnessTexture": {
+                    "index": 3
+                }
+            },
+            "normalTexture": {
+                "index": 0
+            },
+            "occlusionTexture": {
+                "index": 3
+            },
+            "emissiveTexture": {
+                "index": 1
+            },
+            "emissiveFactor": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "extensions": {
+                "MSFT_lod": {
+                    "ids": [
+                        1,
+                        2
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Medium_LOD",
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {
+                    "index": 6
+                },
+                "metallicRoughnessTexture": {
+                    "index": 7
+                }
+            },
+            "normalTexture": {
+                "index": 4
+            },
+            "occlusionTexture": {
+                "index": 7
+            },
+            "emissiveTexture": {
+                "index": 5
+            },
+            "emissiveFactor": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Low_LOD",
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {
+                    "index": 10
+                },
+                "metallicRoughnessTexture": {
+                    "index": 11
+                }
+            },
+            "normalTexture": {
+                "index": 8
+            },
+            "occlusionTexture": {
+                "index": 11
+            },
+            "emissiveTexture": {
+                "index": 9
+            },
+            "emissiveFactor": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "meshes": [
+        {
+            "name": "mesh",
+            "primitives": [
+                {
+                    "attributes": {
+                        "NORMAL": 2,
+                        "POSITION": 1,
+                        "TEXCOORD_0": 3
+                    },
+                    "indices": 0,
+                    "material": 0,
+                    "mode": 4
+                }
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "mesh": 0
+        },
+        {
+            "name": "root",
+            "children": [
+                0
+            ]
+        }
+    ],
+    "samplers": [
+        {
+            "minFilter": 9985
+        }
+    ],
+    "scenes": [
+        {
+            "nodes": [
+                1
+            ]
+        }
+    ],
+    "scene": 0,
+    "textures": [
+        {
+            "name": "texture_normal0",
+            "sampler": 0,
+            "source": 0
+        },
+        {
+            "name": "texture_emissive0",
+            "sampler": 0,
+            "source": 1
+        },
+        {
+            "name": "texture_basecolor0",
+            "sampler": 0,
+            "source": 2
+        },
+        {
+            "name": "texture_omr0",
+            "sampler": 0,
+            "source": 3
+        },
+        {
+            "name": "texture_normal1",
+            "sampler": 0,
+            "source": 4
+        },
+        {
+            "name": "texture_emissive1",
+            "sampler": 0,
+            "source": 5
+        },
+        {
+            "name": "texture_basecolor1",
+            "sampler": 0,
+            "source": 6
+        },
+        {
+            "name": "texture_omr1",
+            "sampler": 0,
+            "source": 7
+        },
+        {
+            "name": "texture_normal2",
+            "sampler": 0,
+            "source": 8
+        },
+        {
+            "name": "texture_emissive2",
+            "sampler": 0,
+            "source": 9
+        },
+        {
+            "name": "texture_basecolor2",
+            "sampler": 0,
+            "source": 10
+        },
+        {
+            "name": "texture_omr2",
+            "sampler": 0,
+            "source": 11
+        }
+    ],
+    "extensionsUsed": [
+        "MSFT_lod"
+    ]
+}

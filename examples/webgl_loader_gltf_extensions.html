@@ -74,7 +74,7 @@
 					authorURL: 'https://www.microsoft.com/',
 					cameraPos: new THREE.Vector3( 0.02, 0.01, 0.03 ),
 					objectRotation: new THREE.Euler( 0, Math.PI, 0 ),
-					extensions: [ 'glTF', 'glTF-pbrSpecularGlossiness', 'glTF-Binary', 'glTF-dds' ],
+					extensions: [ 'glTF', 'glTF-pbrSpecularGlossiness', 'glTF-Binary', 'glTF-dds', 'glTF-lod' ],
 					addEnvMap: true
 				},
 				'Bot Skinned': {
@@ -354,9 +354,119 @@
 
 				} );
 
+				function GLTFLodExtension() {
+
+					THREE.GLTFLoader.GLTFExtension.call( this, 'MSFT_lod' );
+
+				}
+
+				GLTFLodExtension.prototype = Object.assign( Object.create( THREE.GLTFLoader.GLTFExtension.prototype ), {
+
+					constructor: GLTFLodExtension,
+
+					onAfterNode: function ( node, nodeDef, parser ) {
+
+						var extensions = nodeDef.extensions;
+
+						var nodeHasLod = !! ( extensions && extensions[ this.name ] );
+						var materialHasLod = !! ( node.material && node.material.userData.MSFT_lod );
+
+						if ( ! nodeHasLod && ! materialHasLod ) {
+
+							return node;
+
+						}
+
+						var materials = materialHasLod ? node.material.userData.MSFT_lod : [];
+						var nodePending = [];
+
+						if ( nodeHasLod ) {
+
+							var ids = extensions[ this.name ].ids;
+
+							for ( var i = 0, il = ids.length; i < il; i ++ ) {
+
+								nodePending.push( parser.getDependency( 'node', ids[ i ] ) );
+
+							}
+
+						}
+
+						return Promise.all( nodePending ).then( function ( nodes ) {
+
+							var lod = new THREE.LOD();
+
+							if ( nodeHasLod && materialHasLod ) {
+
+								// @TODO Implement
+
+							} else if ( nodeHasLod ) {
+
+								// @TODO Implement
+
+							} else {
+
+								// @TODO Implement properly
+
+								lod.addLevel( node, 0 );
+
+								for ( var i = 0, il = materials.length; i < il; i ++ ) {
+
+									var mesh = new node.constructor(
+										node.geometry,
+										new THREE.MeshBasicMaterial( { color: 0x888888 * i } ) // materials[ i ]
+									);
+
+									lod.addLevel( mesh, 0.05 * ( i + 1 ) );
+
+								}
+
+							}
+
+							return lod;
+
+						} );
+
+					},
+
+					onAfterMaterial: function ( material, materialDef, parser ) {
+
+						var extensions = materialDef.extensions;
+
+						if ( ! extensions || ! extensions[ this.name ] ) {
+
+							return material;
+
+						}
+
+						var ids = extensions[ this.name ].ids;
+						var pending = [];
+
+						for ( var i = 0, il = ids.length; i < il; i ++ ) {
+
+							pending.push( parser.getDependency( 'material', ids[ i ] ) );
+
+						}
+
+						return Promise.all( pending ).then( function( materials ) {
+
+							material.userData.MSFT_lod = materials;
+
+							return material;
+
+						} );
+
+						return material;
+
+					}
+
+				} );
+
+
 				THREE.DRACOLoader.setDecoderPath( 'js/libs/draco/gltf/' );
 
 				loader = new THREE.GLTFLoader()
+					.registerExtension( 'MSFT_lod', new GLTFLodExtension() )
 					.registerExtension( 'ImageBitmapTextureExtension', new ImageBitmapTextureExtension() );
 
 				var url = sceneInfo.url.replace( /%s/g, state.extension );
@@ -496,6 +606,15 @@
 			}
 
 			function render() {
+
+				scene.traverse( function ( object ) {
+
+					if ( object instanceof THREE.LOD ) {
+
+						object.update( camera );
+
+					}
+				} );
 
 				renderer.render( scene, camera );
 

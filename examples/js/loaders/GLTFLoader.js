@@ -1019,7 +1019,6 @@ THREE.GLTFLoader = ( function () {
 	GLTFParser.prototype.parse = function ( onLoad, onError ) {
 
 		var parser = this;
-		var json = this.json;
 		var extensions = this.extensions;
 
 		// Clear the loader cache
@@ -1027,6 +1026,14 @@ THREE.GLTFLoader = ( function () {
 
 		// Mark the special nodes/meshes in json for efficient parse
 		this.markDefs();
+
+		for ( var key in extensions ) {
+
+			this.json = extensions[ key ].onBeforeGLTF( this.json, this );
+
+		}
+
+		var json = this.json;
 
 		Promise.all( [
 
@@ -1047,6 +1054,12 @@ THREE.GLTFLoader = ( function () {
 			};
 
 			addUnknownExtensionsToUserData( extensions, result, json );
+
+			for ( var key in extensions ) {
+
+				result = extensions[ key ].onAfterGLTF( result, parser.json, parser );
+
+			}
 
 			onLoad( result );
 
@@ -2610,6 +2623,30 @@ THREE.GLTFLoader = ( function () {
 
 		constructor: GLTFExtension,
 
+		onBeforeGLTF: function ( gltfDef, parser ) {
+
+			return gltfDef;
+
+		},
+
+		onAfterGLTF: function ( gltf, gltfDef, parser ) {
+
+			return gltf;
+
+		},
+
+		onBeforeScene: function ( sceneDef, parser ) {
+
+			return sceneDef;
+
+		},
+
+		onAfterScene: function ( scene, sceneDef, parser ) {
+
+			return scene;
+
+		},
+
 		onBeforeNode: function ( nodeDef, parser ) {
 
 			return nodeDef;
@@ -2625,18 +2662,6 @@ THREE.GLTFLoader = ( function () {
 		onAfterNode: function ( node, nodeDef, parser ) {
 
 			return node;
-
-		},
-
-		onBeforeScene: function ( sceneDef, parser ) {
-
-			return sceneDef;
-
-		},
-
-		onAfterScene: function ( scene, sceneDef, parser ) {
-
-			return scene;
 
 		},
 
