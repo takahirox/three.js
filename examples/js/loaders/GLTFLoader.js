@@ -932,6 +932,10 @@ THREE.GLTFLoader = ( function () {
 		this.extensions = extensions || {};
 		this.options = options || {};
 
+		// @TODO: Implement Properly
+		this.binary = this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ];
+		delete this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ];
+
 		// loader object cache
 		this.cache = new GLTFRegistry();
 
@@ -1249,7 +1253,7 @@ THREE.GLTFLoader = ( function () {
 		// If present, GLB container is required to be the first buffer.
 		if ( bufferDef.uri === undefined && bufferIndex === 0 ) {
 
-			return Promise.resolve( this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ].body );
+			return Promise.resolve( this.binary.body );
 
 		}
 
@@ -1684,7 +1688,7 @@ THREE.GLTFLoader = ( function () {
 
 			if ( p === null ) continue;
 
-			materialType = extension.getMaterialType();
+			materialType = extension.getMaterialType( materialDef );
 			pending.push( p );
 
 			break;
@@ -2689,7 +2693,7 @@ THREE.GLTFLoader = ( function () {
 
 		},
 
-		getMaterialType: function () {
+		getMaterialType: function ( materialDef ) {
 
 			return THREE.MeshStandardMaterial;
 
@@ -2839,7 +2843,7 @@ THREE.GLTFLoader = ( function () {
 
 		constructor: GLTFMaterialsPbrSpecularGlossinessExtension,
 
-		getMaterialType: function () {
+		getMaterialType: function ( materialDef ) {
 
 			return THREE.ShaderMaterial; // or extended THREE.MeshStandardMaterial;
 
@@ -2867,7 +2871,7 @@ THREE.GLTFLoader = ( function () {
 
 		constructor: GLTFTechniquesExtension,
 
-		getMaterialType: function () {
+		getMaterialType: function ( materialDef ) {
 
 			return THREE.ShaderMaterial;
 
@@ -2960,7 +2964,7 @@ THREE.GLTFLoader = ( function () {
 
 		constructor: GLTFMaterialsUnlitExtension,
 
-		getMaterialType: function () {
+		getMaterialType: function ( materialDef ) {
 
 			return THREE.MeshBasicMaterial;
 
