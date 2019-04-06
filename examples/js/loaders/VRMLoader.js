@@ -100,7 +100,7 @@ THREE.VRMLoader = ( function () {
 
 				if ( materialDef.extensions === undefined ) materialDef.extensions = {};
 
-				materialDef.extensions.VRM = property;
+				materialDef.extensions[ this.name ] = property;
 
 			}
 
@@ -137,7 +137,7 @@ THREE.VRMLoader = ( function () {
 		getMaterialType: function ( materialDef ) {
 
 			var extensions = materialDef.extensions;
-			var VRMDef = extensions.VRM;
+			var VRMDef = extensions[ this.name ];
 			var shader = VRMDef.shader;
 
 			switch ( shader ) {
