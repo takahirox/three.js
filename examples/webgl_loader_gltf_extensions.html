@@ -289,10 +289,75 @@
 
 				}
 
-				loader = new THREE.GLTFLoader();
+				function ImageBitmapTextureLoader( manager ) {
+
+					THREE.TextureLoader.call( this, manager );
+
+				}
+
+				ImageBitmapTextureLoader.prototype = Object.assign( Object.create( THREE.TextureLoader.prototype ), {
+
+					constructor: ImageBitmapTextureLoader,
+
+					load: function ( url, onLoad, onProgress, onError ) {
+
+			                        var texture = new THREE.Texture();
+
+						var loader = new THREE.ImageBitmapLoader( this.manager );
+						loader.setCrossOrigin( this.crossOrigin );
+						loader.setPath( this.path );
+
+						loader.load( url, function ( image ) {
+
+							texture.image = image;
+							texture.flipY = false;
+
+							var isJPEG = url.search( /\.jpe?g($|\?)/i ) > 0 || url.search( /^data\:image\/jpeg/ ) === 0;
+
+							texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
+							texture.needsUpdate = true;
+
+							if ( onLoad !== undefined ) {
+
+								onLoad( texture );
+
+							}
+
+						}, onProgress, onError );
+
+						return texture;
+
+					}
+
+				} );
+
+				function ImageBitmapTextureExtension( manager ) {
+
+					THREE.GLTFLoader.GLTFExtension.call( this, 'ImageBItmapTextureExtension' );
+
+					this.loader = new ImageBitmapTextureLoader( manager );
+
+				}
+
+				ImageBitmapTextureExtension.prototype = Object.assign( Object.create( THREE.GLTFLoader.GLTFExtension.prototype ), {
+
+					constructor: ImageBitmapTextureExtension,
+
+					onTexture: function ( textureDef, parser ) {
+
+						return parser.loadTextureFile( 
+							parser.json.images[ textureDef.source ],
+							parser.options,
+							this.loader );
+
+					}
+
+				} );
 
 				THREE.DRACOLoader.setDecoderPath( 'js/libs/draco/gltf/' );
-				loader.setDRACOLoader( new THREE.DRACOLoader() );
+
+				loader = new THREE.GLTFLoader()
+					.registerExtension( 'ImageBitmapTextureExtension', new ImageBitmapTextureExtension() );
 
 				var url = sceneInfo.url.replace( /%s/g, state.extension );
 
