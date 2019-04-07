@@ -1501,7 +1501,7 @@ THREE.GLTFLoader = ( function () {
 	 * @param {Object} materialParams
 	 * @param {string} mapName
 	 * @param {Object} mapDef
-	 * @return {Promise}
+	 * @return {Promise<THREE.Texture>}
 	 */
 	GLTFParser.prototype.assignTexture = function ( materialParams, mapName, mapDef ) {
 
@@ -1533,6 +1533,8 @@ THREE.GLTFLoader = ( function () {
 			}
 
 			materialParams[ mapName ] = texture;
+
+			return texture;
 
 		} );
 

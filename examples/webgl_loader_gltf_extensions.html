@@ -55,13 +55,14 @@
 		<script src="js/loaders/DRACOLoader.js"></script>
 		<script src="js/loaders/DDSLoader.js"></script>
 		<script src="js/loaders/GLTFLoader.js"></script>
+		<script src="js/effects/OutlineEffect.js"></script>
 
 		<script src="js/pmrem/PMREMGenerator.js"></script>
 		<script src="js/pmrem/PMREMCubeUVPacker.js"></script>
 
 		<script>
 			var orbitControls;
-			var container, camera, scene, renderer, loader;
+			var container, camera, scene, renderer, effect, loader;
 			var gltf, background, envMap, mixer, gui, extensionControls;
 
 			var clock = new THREE.Clock();
@@ -76,6 +77,18 @@
 					objectRotation: new THREE.Euler( 0, Math.PI, 0 ),
 					extensions: [ 'glTF', 'glTF-pbrSpecularGlossiness', 'glTF-Binary', 'glTF-dds', 'glTF-lod' ],
 					addEnvMap: true
+				},
+				'Boombox Cartoon': {
+					name: 'BoomBox Cartoon (PBR)',
+					url: './models/gltf/BoomBox/%s/BoomBox.gltf',
+					author: 'Microsoft',
+					authorURL: 'https://www.microsoft.com/',
+					cameraPos: new THREE.Vector3( 0.02, 0.01, 0.03 ),
+					objectRotation: new THREE.Euler( 0, Math.PI, 0 ),
+					extensions: [ 'glTF-cartoon' ],
+					outline: true,
+					addEnvMap: true,
+					addLights: true
 				},
 				'Bot Skinned': {
 					name: 'Bot Skinned',
@@ -180,6 +193,8 @@
 				renderer.physicallyCorrectLights = true;
 				container.appendChild( renderer.domElement );
 
+				effect = new THREE.OutlineEffect( renderer );
+
 				window.addEventListener( 'resize', onWindowResize, false );
 
 				// Load background and generate envMap
@@ -225,6 +240,8 @@
 				camera = new THREE.PerspectiveCamera( 45, container.offsetWidth / container.offsetHeight, 0.001, 1000 );
 				scene.add( camera );
 
+				effect.enabled = sceneInfo.outline === true;
+
 				var spot1;
 
 				if ( sceneInfo.addLights ) {
@@ -232,8 +249,8 @@
 					var ambient = new THREE.AmbientLight( 0x222222 );
 					scene.add( ambient );
 
-					var directionalLight = new THREE.DirectionalLight( 0xdddddd, 4 );
-					directionalLight.position.set( 0, 0, 1 ).normalize();
+					var directionalLight = new THREE.DirectionalLight( 0x444444, 4 );
+					directionalLight.position.set( 1, 2, 1 ).normalize();
 					scene.add( directionalLight );
 
 					spot1 = new THREE.SpotLight( 0xffffff, 1 );
@@ -462,11 +479,86 @@
 
 				} );
 
+				function GLTFMaterialCartoonExtension() {
+
+					THREE.GLTFLoader.GLTFExtension.call( this, 'EXT_cartoon' );
+
+				}
+
+				GLTFMaterialCartoonExtension.prototype = Object.assign( Object.create( THREE.GLTFLoader.GLTFExtension.prototype ), {
+
+					constructor: GLTFMaterialCartoonExtension,
+
+					getMaterialType: function ( materialDef ) {
+
+						return THREE.MeshToonMaterial;
+
+					},
+
+					onMaterial: function ( materialDef, materialParams, parser ) {
+
+						var extensions = materialDef.extensions;
+
+						if ( ! extensions || ! extensions[ this.name ] ) {
+
+							return null;
+
+						}
+
+						var pending = [];
+
+						materialParams.color = new THREE.Color( 1.0, 1.0, 1.0 );
+						materialParams.opacity = 1.0;
+
+						materialParams.shininess = 0;
+
+						var metallicRoughness = materialDef.pbrMetallicRoughness;
+
+						if ( metallicRoughness ) {
+
+							if ( Array.isArray( metallicRoughness.baseColorFactor ) ) {
+
+								var array = metallicRoughness.baseColorFactor;
+
+								materialParams.color.fromArray( array );
+								materialParams.opacity = array[ 3 ];
+
+							}
+
+							if ( metallicRoughness.baseColorTexture !== undefined ) {
+
+								pending.push( parser.assignTexture( materialParams, 'map', metallicRoughness.baseColorTexture ) );
+
+							}
+
+						}
+
+						var gradientTexture = extensions[ this.name ].gradientTexture;
+
+						if ( gradientTexture ) {
+
+							pending.push( parser.assignTexture( materialParams, 'gradientMap', gradientTexture ).then( function ( map ) {
+
+								map.minFilter = THREE.NearestFilter;
+								map.magFilter = THREE.NearestFilter;
+
+								return map;
+
+							} ) );
+
+						}
+
+						return Promise.all( pending );
+
+					}
+
+				} );
 
 				THREE.DRACOLoader.setDecoderPath( 'js/libs/draco/gltf/' );
 
 				loader = new THREE.GLTFLoader()
 					.registerExtension( 'MSFT_lod', new GLTFLodExtension() )
+					.registerExtension( 'EXT_cartoon', new GLTFMaterialCartoonExtension() )
 					.registerExtension( 'ImageBitmapTextureExtension', new ImageBitmapTextureExtension() );
 
 				var url = sceneInfo.url.replace( /%s/g, state.extension );
@@ -590,6 +682,7 @@
 				camera.updateProjectionMatrix();
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
+				effect.setSize( window.innerWidth, window.innerHeight );
 
 			}
 
@@ -616,7 +709,7 @@
 					}
 				} );
 
-				renderer.render( scene, camera );
+				effect.render( scene, camera );
 
 			}
 
