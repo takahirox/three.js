@@ -9,16 +9,11 @@
 
 THREE.VRMLoader = ( function () {
 
-	function VRMLoader( manager ) {
+	function VRMLoader( gltfLoader ) {
 
-		if ( THREE.GLTFLoader === undefined ) {
-
-			throw new Error( 'THREE.VRMLoader: Import THREE.GLTFLoader.' );
-
-		}
-
-		this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
-		this.gltfLoader = new THREE.GLTFLoader( this.manager );
+		this.manager = gltfLoader.manager;
+		this.gltfLoader = gltfLoader
+			.registerPlugin( 'VRM', new VRMExtension() );
 
 	}
 
@@ -30,13 +25,7 @@ THREE.VRMLoader = ( function () {
 
 		load: function ( url, onLoad, onProgress, onError ) {
 
-			var scope = this;
-
-			this.gltfLoader.load( url, function ( gltf ) {
-
-				scope.parse( gltf, onLoad );
-
-			}, onProgress, onError );
+			this.gltfLoader.load( url, onLoad, onProgress, onError );
 
 		},
 
@@ -66,21 +55,85 @@ THREE.VRMLoader = ( function () {
 			this.glTFLoader.setDRACOLoader( dracoLoader );
 			return this;
 
-		},
-
-		parse: function ( gltf, onLoad ) {
-
-			var gltfParser = gltf.parser;
-			var gltfExtensions = gltf.userData.gltfExtensions || {};
-			var vrmExtension = gltfExtensions.VRM || {};
-
-			// handle VRM Extension here
-
-			onLoad( gltf );
-
 		}
 
 	};
+
+	var Plugin = THREE.GLTFLoader.Plugin;
+
+	function VRMExtension() {
+
+		Plugin.call( this, 'VRM' );
+
+	}
+
+	VRMExtension.prototype = Object.assign( Object.create( Plugin.prototype ), {
+
+		constructor: VRMExtension,
+
+		onBeforeGLTF: function ( gltfDef, parser ) {
+
+			if ( ! gltfDef.extensions || ! gltfDef.extensions[ this.name ] ) return gltfDef;
+
+			var vrm = gltfDef.extensions[ this.name ];
+
+			var materialDefs = gltfDef.materials;
+			var materialProperties = vrm.materialProperties || [];
+
+			for ( var i = 0, il = materialProperties.length; i < il; i ++ ) {
+
+				var materialDef = materialDefs[ i ];
+				var property = materialProperties[ i ];
+
+				if ( materialDef.extensions === undefined ) materialDef.extensions = {};
+
+				materialDef.extensions[ this.name ] = property;
+
+			}
+
+			return gltfDef;
+
+		},
+
+		onMaterial: function ( materialDef, materialParams, parser ) {
+
+			var extensions = materialDef.extensions;
+
+			if ( ! extensions || ! extensions[ this.name ] ) {
+
+				return null;
+
+			}
+
+			var VRMDef = extensions[ this.name ];
+			var shader = VRMDef.shader;
+
+			if ( shader !== 'VRM/UnlitTexture' && shader !== 'VRM/UnlitTransparent' ) return null;
+
+			var json = parser.json;
+			var textureProperties = VRMDef.textureProperties;
+			var mapDef = { index: textureProperties._MainTex };
+
+			var pending = [];
+
+			materialParams.color = new THREE.Color( 1.0, 1.0, 1.0 );
+			materialParams.opacity = 1.0;
+
+			pending.push( parser.assignTexture( materialParams, 'map', mapDef ) );
+
+			return Promise.all( pending ).then( function () {
+
+				var material = new THREE.MeshBasicMaterial( materialParams );
+
+				if ( material.map ) material.map.encoding = THREE.sRGBEncoding;
+
+				return material;
+
+			} );
+
+		}
+
+	} );
 
 	return VRMLoader;
 
