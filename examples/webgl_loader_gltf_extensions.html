@@ -55,6 +55,9 @@
 		<script src="js/loaders/DRACOLoader.js"></script>
 		<script src="js/loaders/DDSLoader.js"></script>
 		<script src="js/loaders/GLTFLoader.js"></script>
+		<script src="js/loaders/plugins/GLTFTextureDDSExtension.js"></script>
+		<script src="js/loaders/plugins/GLTFLODExtension.js"></script>
+		<script src="js/loaders/plugins/GLTFTextureImageBitmapPlugin.js"></script>
 
 		<script src="js/pmrem/PMREMGenerator.js"></script>
 		<script src="js/pmrem/PMREMCubeUVPacker.js"></script>
@@ -74,7 +77,7 @@
 					authorURL: 'https://www.microsoft.com/',
 					cameraPos: new THREE.Vector3( 0.02, 0.01, 0.03 ),
 					objectRotation: new THREE.Euler( 0, Math.PI, 0 ),
-					extensions: [ 'glTF', 'glTF-pbrSpecularGlossiness', 'glTF-Binary', 'glTF-dds' ],
+					extensions: [ 'glTF', 'glTF-pbrSpecularGlossiness', 'glTF-Binary', 'glTF-dds', 'glTF-lod' ],
 					addEnvMap: true
 				},
 				'Bot Skinned': {
@@ -221,6 +224,7 @@
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x222222 );
+				scene.autoUpdate = false;
 
 				camera = new THREE.PerspectiveCamera( 45, container.offsetWidth / container.offsetHeight, 0.001, 1000 );
 				scene.add( camera );
@@ -289,10 +293,13 @@
 
 				}
 
-				loader = new THREE.GLTFLoader();
-
 				THREE.DRACOLoader.setDecoderPath( 'js/libs/draco/gltf/' );
-				loader.setDRACOLoader( new THREE.DRACOLoader() );
+
+				loader = new THREE.GLTFLoader()
+					.setDRACOLoader( new THREE.DRACOLoader() )
+					.registerPlugin( 'MSFT_lod', new THREE.GLTFLODExtension() )
+					.registerPlugin( 'THREE_texture_imagebitmap', new THREE.GLTFTextureImageBitmapPlugin() )
+					.registerPlugin( 'MSFT_texture_dds', new THREE.GLTFTextureDDSExtension( new THREE.DDSLoader() ) );
 
 				var url = sceneInfo.url.replace( /%s/g, state.extension );
 
@@ -431,6 +438,14 @@
 			}
 
 			function render() {
+
+				scene.updateMatrixWorld();
+
+				scene.traverse( function ( object ) {
+
+					if ( object.isLOD ) object.update( camera );
+
+				} );
 
 				renderer.render( scene, camera );
 
