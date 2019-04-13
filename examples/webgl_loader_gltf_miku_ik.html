@@ -34,6 +34,7 @@
 		</div>
 
 		<script src="../build/three.js"></script>
+		<script src="js/vr/WebVR.js"></script>
 
 		<script src="js/controls/OrbitControls.js"></script>
 		<script src="js/controls/TransformControls.js"></script>
@@ -94,7 +95,10 @@
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.gammaOutput = true;
+				renderer.vr.enabled = true;
 				container.appendChild( renderer.domElement );
+
+				document.body.appendChild( WEBVR.createButton( renderer ) );
 
 				effect = new THREE.OutlineEffect( renderer );
 
@@ -135,13 +139,15 @@
 
 					mesh = gltf.scene.children[ 0 ];
 
+					mesh.rotation.y = Math.PI / 8;
+					mesh.position.y = - 10;
+					mesh.position.z = - 30;
+
 					setupIK( mesh );
 
 					helper.add( mesh, {
 						physics: true
 					} );
-
-					mesh.rotation.y = Math.PI / 8;
 
 					scene.add( mesh );
 
