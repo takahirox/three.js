@@ -7,13 +7,13 @@
 		<style>
 			body {
 				font-family: Monospace;
-				background-color: #000;
-				color: #fff;
+				background-color: #fff;
+				color: #000;
 				margin: 0px;
 				overflow: hidden;
 			}
 			#info {
-				color: #fff;
+				color: #000;
 				position: absolute;
 				top: 10px;
 				width: 100%;
@@ -29,9 +29,6 @@
 	</head>
 
 	<body>
-		<div id="info">
-			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - GLTFLoader<br />
-		</div>
 
 		<script src="../build/three.js"></script>
 		<script src="js/vr/WebVR.js"></script>
@@ -110,7 +107,7 @@
 				//controls.update();
 
 				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0x000000 );
+				scene.background = new THREE.Color( 0xffffff );
 
 				controller = renderer.vr.getController( 0 );
 				scene.add( controller );
