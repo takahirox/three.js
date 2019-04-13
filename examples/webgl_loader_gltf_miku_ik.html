@@ -109,17 +109,8 @@
 				//controls.target.set( 0, 10, 0 );
 				//controls.update();
 
-				// envmap
-				var path = 'textures/cube/skyboxsun25deg/';
-				var format = '.jpg';
-				var envMap = new THREE.CubeTextureLoader().load( [
-					path + 'px' + format, path + 'nx' + format,
-					path + 'py' + format, path + 'ny' + format,
-					path + 'pz' + format, path + 'nz' + format
-				] );
-
 				scene = new THREE.Scene();
-				scene.background = envMap;
+				scene.background = new THREE.Color( 0x000000 );
 
 				controller = renderer.vr.getController( 0 );
 				scene.add( controller );
@@ -127,6 +118,20 @@
 				light = new THREE.DirectionalLight( 0xffffff, 1.4 );
 				light.position.set( -10, 6, 10 );
 				scene.add( light );
+
+				function onAfterRenderScene() {
+
+					scene.onAfterRender = originalAfterRender;
+
+					effect.renderOutline( scene, camera );
+
+					scene.onAfterRender = onAfterRenderScene;
+
+				}
+
+				var originalAfterRender = scene.onAfterRender;
+
+				scene.onAfterRender = onAfterRenderScene;
 
 				// model
 				new THREE.GLTFLoader()
@@ -167,6 +172,7 @@
 				camera.updateProjectionMatrix();
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
+				effect.setSize( window.innerWidth, window.innerHeight );
 
 			}
 
@@ -181,7 +187,7 @@
 			function render() {
 
 				helper.update( clock.getDelta() );
-				effect.render( scene, camera );
+				renderer.render( scene, camera );
 
 				stats.update();
 
@@ -218,7 +224,7 @@
 				addArmIK( '右', mesh,
 					mesh.geometry.userData.MMD.iks,
 					mesh.geometry.userData.MMD.bones );
-
+/*
 				addTransformControl(
 					getBoneByName( mesh, '左足ＩＫ' ) );
 
@@ -233,7 +239,7 @@
 
 				addTransformControl(
 					getBoneByName( mesh, 'センター' ) );
-
+*/
 			}
 
 			function addArmIK( side, mesh, iks, boneParams ) {
@@ -307,7 +313,7 @@
 
 				iks.push( ik );
 
-				addTransformControl( target );
+				//addTransformControl( target );
 
 			}
 

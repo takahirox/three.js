@@ -435,10 +435,17 @@ THREE.OutlineEffect = function ( renderer, parameters ) {
 		var currentAutoClear = renderer.autoClear;
 		renderer.autoClear = this.autoClear;
 
-		// 1. render normally
 		renderer.render( scene, camera );
 
-		// 2. render outline
+		renderer.autoClear = currentAutoClear;
+
+		this.renderOutline( scene, camera );
+
+	};
+
+	this.renderOutline = function ( scene, camera ) {
+
+		var currentAutoClear = renderer.autoClear;
 		var currentSceneAutoUpdate = scene.autoUpdate;
 		var currentSceneBackground = scene.background;
 		var currentShadowMapEnabled = renderer.shadowMap.enabled;
