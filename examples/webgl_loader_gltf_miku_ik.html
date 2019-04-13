@@ -315,9 +315,13 @@
 				var obj1 = new THREE.Object3D();
 				obj1.position.x = - 3;
 
-				var obj2 = new THREE.Object3D();
-				obj2.position.y = 5;
+				var obj2 = new THREE.Mesh(
+					new THREE.SphereBufferGeometry( 0.5 ),
+					new THREE.MeshBasicMaterial( { color: 0x888888 } )
+				);
+				obj2.position.y = 17;
 				obj2.position.z = 3;
+				obj2.visible = false;
 
 				obj1.add( obj2 );
 
@@ -389,8 +393,12 @@
 				obj1.quaternion.copy( controller.quaternion );
 				obj1.updateMatrixWorld();
 
+				var v = new THREE.Vector3();
+				obj2.getWorldPosition( v );
+
 				var target1 = getBoneByName( mesh, '右手首ＩＫ' );
-				obj2.matrixWorld.decompose( target1.position, target1.quaternion, target1.scale );
+				target1.parent.worldToLocal( v );
+				target1.position.copy( v );
 				target1.updateMatrix();
 
 				var target2 = getBoneByName( mesh, '左手首ＩＫ' );
