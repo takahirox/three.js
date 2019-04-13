@@ -15017,7 +15017,7 @@
 		var maxVertexAttributes = gl.getParameter( 34921 );
 
 		var extension = capabilities.isWebGL2 ? null : extensions.get( 'OES_vertex_array_object' );
-		var vaoAvailable = false; // && capabilities.isWebGL2 || extension !== null;
+		var vaoAvailable = capabilities.isWebGL2 || extension !== null;
 
 		var bindingStates = {};
 

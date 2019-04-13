@@ -15017,7 +15017,7 @@
 		var maxVertexAttributes = gl.getParameter( 34921 );
 
 		var extension = capabilities.isWebGL2 ? null : extensions.get( 'OES_vertex_array_object' );
-		var vaoAvailable = false; // && capabilities.isWebGL2 || extension !== null;
+		var vaoAvailable = capabilities.isWebGL2 || extension !== null;
 
 		var bindingStates = {};
 
@@ -15039,13 +15039,9 @@
 
 				}
 
-				if ( geometry.version > currentState.version ) {
+				updateBuffers = needsUpdate( geometry );
 
-					currentState.version = geometry.version;
-
-					updateBuffers = true;
-
-				}
+				if ( updateBuffers ) saveAttributes( geometry );
 
 			} else {
 
@@ -15082,6 +15078,38 @@
 				}
 
 			}
+
+		}
+
+		function needsUpdate( geometry ) {
+
+			var attributes = geometry.attributes;
+			var cache = currentState.attributes;
+
+			if ( Object.keys( attributes ).length !== Object.keys( cache ).length ) return true;
+
+			for ( var key in attributes ) {
+
+				if ( attributes[ key ] !== cache[ key ] ) return true;
+
+			}
+
+			return false;
+
+		}
+
+		function saveAttributes( geometry ) {
+
+			var cache = {};
+			var attributes = geometry.attributes;
+
+			for ( var key in attributes ) {
+
+				cache[ key ] = attributes[ key ];
+
+			}
+
+			currentState.attributes = cache;
 
 		}
 
@@ -15169,6 +15197,7 @@
 				enabledAttributes: enabledAttributes,
 				attributeDivisors: attributeDivisors,
 				object: vao,
+				attributes: {},
 				version: - 1
 
 			};
