@@ -51,6 +51,8 @@
 		<script src="js/animation/MMDPhysics.js"></script>
 		<script src="js/animation/MMDAnimationHelper.js"></script>
 
+		<script src="js/effects/OutlineEffect.js"></script>
+
 		<script src="js/libs/stats.min.js"></script>
 
 		<script>
@@ -64,6 +66,7 @@
 			var boneCaches = {};
 			var tmpVector = new THREE.Vector3();
 
+			var effect;
 			var clock = new THREE.Clock();
 
 			var helper = new THREE.MMDAnimationHelper( { afterglow: 2.0 } );
@@ -97,6 +100,8 @@
 
 				document.body.appendChild( WEBVR.createButton( renderer ) );
 
+				effect = new THREE.OutlineEffect( renderer );
+
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 2000 );
 				camera.position.set( 0, 10, 30 );
 
@@ -104,8 +109,17 @@
 				//controls.target.set( 0, 10, 0 );
 				//controls.update();
 
+				// envmap
+				var path = 'textures/cube/skyboxsun25deg/';
+				var format = '.jpg';
+				var envMap = new THREE.CubeTextureLoader().load( [
+					path + 'px' + format, path + 'nx' + format,
+					path + 'py' + format, path + 'ny' + format,
+					path + 'pz' + format, path + 'nz' + format
+				] );
+
 				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0x000000 );
+				scene.background = envMap;
 
 				controller = renderer.vr.getController( 0 );
 				scene.add( controller );
@@ -160,10 +174,14 @@
 
 			function animate() {
 
-				requestAnimationFrame( animate );
+				renderer.setAnimationLoop( render );
+
+			}
+
+			function render() {
 
 				helper.update( clock.getDelta() );
-				renderer.render( scene, camera );
+				effect.render( scene, camera );
 
 				stats.update();
 
