@@ -312,6 +312,17 @@
 
 				//addTransformControl( target );
 
+				var obj1 = new THREE.Object3D();
+				obj1.position.x = - 3;
+
+				var obj2 = new THREE.Object3D();
+				obj2.position.y = 5;
+				obj2.position.z = 3;
+
+				obj1.add( obj2 );
+
+				mesh.add( obj1 );
+
 			}
 
 			function addArmPlusBones( side, mesh, iks, boneParams ) {
@@ -373,8 +384,13 @@
 
 				if ( ! objects ) return;
 
+				var obj1 = mesh.children[ mesh.children.length - 1 ];
+				var obj2 = obj1.children[ 0 ];
+				obj1.quaternion.copy( controller.quaternion );
+				obj1.updateMatrixWorld();
+
 				var target1 = getBoneByName( mesh, '右手首ＩＫ' );
-				target1.position.copy( controller.position );
+				obj2.matrixWorld.decompose( target1.position, target1.quaternion, target1.scale );
 				target1.updateMatrix();
 
 				var target2 = getBoneByName( mesh, '左手首ＩＫ' );
