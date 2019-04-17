@@ -206,7 +206,7 @@ function unrollLoops( string ) {
 
 }
 
-function WebGLProgram( renderer, extensions, code, material, shader, parameters, capabilities, textures ) {
+function WebGLProgram( renderer, extensions, code, material, shader, parameters, capabilities, textures, bindingStates ) {
 
 	var gl = renderer.context;
 
@@ -697,6 +697,8 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 	// free resource
 
 	this.destroy = function () {
+
+		bindingStates.releaseStatesOfProgram( this );
 
 		gl.deleteProgram( program );
 		this.program = undefined;
