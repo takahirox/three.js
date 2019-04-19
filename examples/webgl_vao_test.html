@@ -77,21 +77,11 @@
 				var map = new THREE.DataTexture( new Uint8Array( [ 0xff, 0xff, 0xff, 0xff ] ), 1, 1 );
 				map.needsUpdate = true;
 
-				var material = new THREE.MeshStandardMaterial( { color: 0xffffff, side: THREE.DoubleSide, map: map, morphTargets: true } );
+				var material = new THREE.MeshStandardMaterial( { color: 0xffffff, side: THREE.DoubleSide, map: map } );
 
 				for ( var i = 0; i < objectNum; i ++ ) {
 
 					var mesh = new THREE.Mesh( createGeometry( i ), material );
-
-					mesh.geometry.morphAttributes.position = [];
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
-					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
 
 					mesh.position.x = ( ( i % 9 ) - 4 ) * 0.5;
 					mesh.position.y = ( ( ( ( i / 9 ) | 0 ) % 9 ) - 4 ) * 0.5;
