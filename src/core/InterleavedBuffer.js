@@ -13,6 +13,7 @@ function InterleavedBuffer( array, stride ) {
 	this.updateRange = { offset: 0, count: - 1 };
 
 	this.version = 0;
+	this.version2 = 0;
 
 }
 
@@ -38,7 +39,8 @@ Object.defineProperties( InterleavedBuffer.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InterleavedBuffer: .array is readonly.' );
+			this._array = value;
+			this.version2 ++;
 
 		}
 
@@ -54,7 +56,8 @@ Object.defineProperties( InterleavedBuffer.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InterleavedBuffer: .stride is readonly.' );
+			this._stride = value;
+			this.version2 ++;
 
 		}
 
@@ -68,6 +71,21 @@ Object.assign( InterleavedBuffer.prototype, {
 
 	onUploadCallback: function () {},
 
+	setArray: function ( array ) {
+
+		if ( Array.isArray( array ) ) {
+
+			throw new TypeError( 'THREE.BufferAttribute: array should be a Typed Array.' );
+
+		}
+
+		this.count = array !== undefined ? array.length / this.stride : 0;
+		this.array = array;
+
+		return this;
+
+	},
+
 	setDynamic: function ( value ) {
 
 		this.dynamic = value;
@@ -76,11 +94,11 @@ Object.assign( InterleavedBuffer.prototype, {
 
 	},
 
-	_copy: function ( source ) {
+	copy: function ( source ) {
 
-		this._array = new source.array.constructor( source.array );
+		this.array = new source.array.constructor( source.array );
 		this.count = source.count;
-		this._stride = source.stride;
+		this.stride = source.stride;
 		this.dynamic = source.dynamic;
 
 		return this;
@@ -114,7 +132,7 @@ Object.assign( InterleavedBuffer.prototype, {
 
 	clone: function () {
 
-		return new this.constructor()._copy( this );
+		return new this.constructor().copy( this );
 
 	},
 

@@ -164,14 +164,24 @@ function WebGLBindingStates( gl, extensions, attributes, capabilities ) {
 
 	function needsUpdate( geometry ) {
 
-		var cache = currentState.attributes;
-		var attributes = geometry.attributes;
+		var cachedAttributes = currentState.attributes;
+		var geometryAttributes = geometry.attributes;
 
-		if ( Object.keys( cache ).length !== Object.keys( attributes ).length ) return true;
+		if ( Object.keys( cachedAttributes ).length !== Object.keys( geometryAttributes ).length ) return true;
 
-		for ( var key in attributes ) {
+		for ( var key in geometryAttributes ) {
 
-			if ( cache[ key ] !== attributes[ key ] ) return true;
+			var cachedAttribute = cachedAttributes[ key ];
+			var geometryAttribute = geometryAttributes[ key ];
+
+			if ( cachedAttribute.attribute !== geometryAttribute ) return true;
+
+			if ( cachedAttribute.version !== geometryAttribute.version2 ) return true;
+
+			if ( cachedAttribute.data.buffer !== geometryAttribute.data ) return true;
+
+			if ( geometryAttribute.data &&
+				cachedAttribute.data.version !== geometryAttribute.data.version2 ) return true;
 
 		}
 
@@ -186,7 +196,22 @@ function WebGLBindingStates( gl, extensions, attributes, capabilities ) {
 
 		for ( var key in attributes ) {
 
-			cache[ key ] = attributes[ key ];
+			var attribute = attributes[ key ];
+
+			var data = {};
+			data.attribute = attribute;
+			data.version = attribute.version2;
+
+			data.data = {};
+
+			if ( attribute.data ) {
+
+				data.data.buffer = attribute.data;
+				data.data.version = attribute.data.version2;
+
+			}
+
+			cache[ key ] = data;
 
 		}
 

@@ -26,6 +26,7 @@ function BufferAttribute( array, itemSize, normalized ) {
 	this.updateRange = { offset: 0, count: - 1 };
 
 	this.version = 0;
+	this.version2 = 0;
 
 }
 
@@ -51,7 +52,8 @@ Object.defineProperties( BufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.BufferAttribute: .array is readonly.' );
+			this._array = value;
+			this.version2 ++;
 
 		}
 
@@ -67,7 +69,8 @@ Object.defineProperties( BufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.BufferAttribute: .itemSize is readonly.' );
+			this._itemSize = value;
+			this.version2 ++;
 
 		}
 
@@ -83,7 +86,8 @@ Object.defineProperties( BufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.BufferAttribute: .normalized is readonly.' );
+			this._normalized = value;
+			this.version2 ++;
 
 		}
 
@@ -97,6 +101,21 @@ Object.assign( BufferAttribute.prototype, {
 
 	onUploadCallback: function () {},
 
+	setArray: function ( array ) {
+
+		if ( Array.isArray( array ) ) {
+
+			throw new TypeError( 'THREE.BufferAttribute: array should be a Typed Array.' );
+
+		}
+
+		this.count = array !== undefined ? array.length / this.itemSize : 0;
+		this.array = array;
+
+		return this;
+
+	},
+
 	setDynamic: function ( value ) {
 
 		this.dynamic = value;
@@ -105,13 +124,13 @@ Object.assign( BufferAttribute.prototype, {
 
 	},
 
-	_copy: function ( source ) {
+	copy: function ( source ) {
 
 		this.name = source.name;
-		this._array = new source.array.constructor( source.array );
-		this._itemSize = source.itemSize;
+		this.array = new source.array.constructor( source.array );
+		this.itemSize = source.itemSize;
 		this.count = source.count;
-		this._normalized = source.normalized;
+		this.normalized = source.normalized;
 
 		this.dynamic = source.dynamic;
 
@@ -354,7 +373,7 @@ Object.assign( BufferAttribute.prototype, {
 
 	clone: function () {
 
-		return new this.constructor( this.array, this.itemSize )._copy( this );
+		return new this.constructor( this.array, this.itemSize ).copy( this );
 
 	}
 

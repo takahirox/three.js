@@ -10,6 +10,8 @@ function InstancedInterleavedBuffer( array, stride, meshPerAttribute ) {
 
 	this._meshPerAttribute = meshPerAttribute || 1;
 
+	this.version2 = 0;
+
 }
 
 InstancedInterleavedBuffer.prototype = Object.assign( Object.create( InterleavedBuffer.prototype ), {
@@ -18,11 +20,11 @@ InstancedInterleavedBuffer.prototype = Object.assign( Object.create( Interleaved
 
 	isInstancedInterleavedBuffer: true,
 
-	_copy: function ( source ) {
+	copy: function ( source ) {
 
 		InterleavedBuffer.prototype.copy.call( this, source );
 
-		this._meshPerAttribute = source.meshPerAttribute;
+		this.meshPerAttribute = source.meshPerAttribute;
 
 		return this;
 
@@ -42,7 +44,8 @@ Object.defineProperties( InstancedInterleavedBuffer.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InstancedInterleavedBuffer: .meshPerAttribute is readonly.' );
+			this._meshPerAttribute = value;
+			this.version2 ++;
 
 		}
 

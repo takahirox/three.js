@@ -11,6 +11,8 @@ function InterleavedBufferAttribute( interleavedBuffer, itemSize, offset, normal
 
 	this._normalized = normalized === true;
 
+	this.version2 = 0;
+
 }
 
 Object.defineProperties( InterleavedBufferAttribute.prototype, {
@@ -45,7 +47,8 @@ Object.defineProperties( InterleavedBufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InterleavedBufferAttribute: .data is readonly.' );
+			this._data = value;
+			this.version2 ++;
 
 		}
 
@@ -61,7 +64,8 @@ Object.defineProperties( InterleavedBufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InterleavedBufferAttribute: .itemSize is readonly.' );
+			this._itemSize = value;
+			this.version2 ++;
 
 		}
 
@@ -77,7 +81,8 @@ Object.defineProperties( InterleavedBufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InterleavedBufferAttribute: .offset is readonly.' );
+			this._offset = value;
+			this.version2 ++;
 
 		}
 
@@ -93,7 +98,8 @@ Object.defineProperties( InterleavedBufferAttribute.prototype, {
 
 		set: function ( value ) {
 
-			console.warn( 'THREE.InterleavedBufferAttribute: .normalized is readonly.' );
+			this._normalized = value;
+			this.version2 ++;
 
 		}
 
