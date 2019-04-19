@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - VAO test</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #fff;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+				display:block;
+			}
+			#info a {
+				color: #75ddc1;
+				font-weight: bold;
+			}
+		</style>
+	</head>
+
+	<body>
+		<script src="../build/three.js"></script>
+
+		<script src="js/controls/OrbitControls.js"></script>
+
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			var container, stats, controls;
+			var camera, scene, renderer;
+
+			var container2;
+
+			var objectNum = parseInt( location.href.split( '?' )[ 1 ] );
+			if ( isNaN( objectNum ) ) objectNum = 100;
+
+			var count = 0;
+			var count2 = 0;
+			var elapsedTime = 0.0;
+			var minElapsedTime = 0.0;
+			var maxElapsedTime = 0.0;
+			var totalElapsedTime = 0.0;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 2000 );
+				camera.position.z = 10;
+
+				controls = new THREE.OrbitControls( camera );
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 1, 1, 1 ).normalize();
+				scene.add( light );
+
+				// objects
+
+				var map = new THREE.DataTexture( new Uint8Array( [ 0xff, 0xff, 0xff, 0xff ] ), 1, 1 );
+				map.needsUpdate = true;
+
+				var material = new THREE.MeshStandardMaterial( { color: 0xffffff, side: THREE.DoubleSide, map: map, morphTargets: true } );
+
+				for ( var i = 0; i < objectNum; i ++ ) {
+
+					var mesh = new THREE.Mesh( createGeometry( i ), material );
+
+					mesh.geometry.morphAttributes.position = [];
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+					mesh.geometry.morphAttributes.position.push( mesh.geometry.getAttribute( 'position' ).clone() );
+
+					mesh.position.x = ( ( i % 9 ) - 4 ) * 0.5;
+					mesh.position.y = ( ( ( ( i / 9 ) | 0 ) % 9 ) - 4 ) * 0.5;
+					mesh.position.z = - ( ( i / 81 ) | 0 ) * 0.5;
+
+					scene.add( mesh );
+
+				}
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				// stats
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				container2 = document.createElement( 'div' );
+				container2.style.position = 'fixed';
+				container2.style.top = '0px';
+				container2.style.right = '0px';
+				container2.style.zIndex = '10000';
+				container.appendChild( container2 );
+
+				container2.appendChild( document.createTextNode( 'Elapsed .render() CPU time [ms] / 60 frames' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( 'min / max / avg / count' ) );
+				container2.appendChild( document.createElement( 'br' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+				container2.appendChild( document.createTextNode( ' / ' ) );
+				container2.appendChild( document.createTextNode( '0' ) );
+
+			}
+
+			function createGeometry( id ) {
+
+				switch( id % 6 ) {
+
+					case 0:
+
+						return new THREE.BoxBufferGeometry( 0.1, 0.1, 0.1 );
+
+					case 1:
+
+						return new THREE.SphereBufferGeometry( 0.1 );
+
+					case 2:
+
+						return new THREE.CircleBufferGeometry( 0.1 );
+
+					case 3:
+
+						return new THREE.ConeBufferGeometry( 0.1, 0.1 );
+
+					case 4:
+
+						return new THREE.CylinderBufferGeometry( 0.1, 0.1, 0.1 );
+
+					case 5:
+
+						return new THREE.PlaneBufferGeometry( 0.1, 0.1 );
+
+				}
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				var startTime = performance.now();
+
+				renderer.render( scene, camera );
+
+				var endTime = performance.now();
+
+				elapsedTime += ( endTime - startTime );
+
+				if ( ++ count === 60 ) {
+
+					count2 ++;
+
+					// ignore first ten for min/max/avg
+
+					if ( count2 > 10 ) {
+
+						minElapsedTime = minElapsedTime === 0.0 ? elapsedTime : Math.min( elapsedTime, minElapsedTime );
+						maxElapsedTime = Math.max( elapsedTime, maxElapsedTime );
+						totalElapsedTime += elapsedTime;
+
+					}
+
+					container2.childNodes[ 2 ].textContent = elapsedTime.toFixed( 2 );
+					container2.childNodes[ 6 ].textContent = minElapsedTime.toFixed( 2 );
+					container2.childNodes[ 8 ].textContent = maxElapsedTime.toFixed( 2 );
+					container2.childNodes[ 10 ].textContent = ( totalElapsedTime / ( count2 - 10 ) ).toFixed( 2 );
+					container2.childNodes[ 12 ].textContent = count2 - 10;
+
+					elapsedTime = 0.0;
+					count = 0;
+
+				}
+
+				stats.update();
+
+			}
+
+		</script>
+
+	</body>
+</html>
