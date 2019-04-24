@@ -712,6 +712,8 @@ function WebGLRenderer( parameters ) {
 
 		var program = setProgram( camera, fog, material, object );
 
+		if ( program === null ) return;
+
 		var updateBuffers = false;
 
 		if ( _currentGeometryProgram.geometry !== geometry.id ||
@@ -1430,6 +1432,8 @@ function WebGLRenderer( parameters ) {
 
 			var program = setProgram( camera, scene.fog, material, object );
 
+			if ( program === null ) return;
+
 			_currentGeometryProgram.geometry = null;
 			_currentGeometryProgram.program = null;
 			_currentGeometryProgram.wireframe = false;
@@ -1536,6 +1540,8 @@ function WebGLRenderer( parameters ) {
 
 			program = programCache.acquireProgram( material, materialProperties.shader, parameters, code );
 
+			if ( ! program.isReady() ) return false;
+
 			materialProperties.program = program;
 			material.program = program;
 
@@ -1632,6 +1638,8 @@ function WebGLRenderer( parameters ) {
 
 		materialProperties.uniformsList = uniformsList;
 
+		return true;
+
 	}
 
 	function setProgram( camera, fog, material, object ) {
@@ -1695,7 +1703,8 @@ function WebGLRenderer( parameters ) {
 
 		if ( material.needsUpdate ) {
 
-			initMaterial( material, fog, object );
+			if ( ! initMaterial( material, fog, object ) ) return null;
+
 			material.needsUpdate = false;
 
 		}

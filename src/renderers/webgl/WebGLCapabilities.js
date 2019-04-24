@@ -86,6 +86,8 @@ function WebGLCapabilities( gl, extensions, parameters ) {
 
 	var maxSamples = isWebGL2 ? gl.getParameter( gl.MAX_SAMPLES ) : 0;
 
+	var parallelShaderCompile = !! extensions.get( 'KHR_parallel_shader_compile' );
+
 	return {
 
 		isWebGL2: isWebGL2,
@@ -110,7 +112,9 @@ function WebGLCapabilities( gl, extensions, parameters ) {
 		floatFragmentTextures: floatFragmentTextures,
 		floatVertexTextures: floatVertexTextures,
 
-		maxSamples: maxSamples
+		maxSamples: maxSamples,
+
+		parallelShaderCompile: parallelShaderCompile
 
 	};
 

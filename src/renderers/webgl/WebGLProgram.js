@@ -667,6 +667,25 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 	gl.deleteShader( glVertexShader );
 	gl.deleteShader( glFragmentShader );
 
+	var ready = false;
+
+	this.isReady = function () {
+
+		if ( ready ) return ready;
+
+		var ext = extensions.get( 'KHR_parallel_shader_compile' );
+		ready = gl.getProgramParameter( program, ext.COMPLETION_STATUS_KHR );
+
+		return ready;
+
+	};
+
+	if ( ! capabilities.parallelShaderCompile ) {
+
+		ready = true;
+
+	}
+
 	// set up caching for uniform locations
 
 	var cachedUniforms;
