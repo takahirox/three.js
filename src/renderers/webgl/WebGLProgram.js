@@ -589,100 +589,122 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 	gl.attachShader( program, glVertexShader );
 	gl.attachShader( program, glFragmentShader );
 
-	// Force a particular attribute to index 0.
+	var scope = this;
 
-	if ( material.index0AttributeName !== undefined ) {
+	function linkProgram() {
 
-		gl.bindAttribLocation( program, 0, material.index0AttributeName );
+		// Force a particular attribute to index 0.
 
-	} else if ( parameters.morphTargets === true ) {
+		if ( material.index0AttributeName !== undefined ) {
 
-		// programs with morphTargets displace position out of attribute 0
-		gl.bindAttribLocation( program, 0, 'position' );
+			gl.bindAttribLocation( program, 0, material.index0AttributeName );
 
-	}
+		} else if ( parameters.morphTargets === true ) {
 
-	gl.linkProgram( program );
-
-	// check for link errors
-	if ( renderer.debug.checkShaderErrors ) {
-
-		var programLog = gl.getProgramInfoLog( program ).trim();
-		var vertexLog = gl.getShaderInfoLog( glVertexShader ).trim();
-		var fragmentLog = gl.getShaderInfoLog( glFragmentShader ).trim();
-
-		var runnable = true;
-		var haveDiagnostics = true;
-
-		// console.log( '**VERTEX**', gl.getExtension( 'WEBGL_debug_shaders' ).getTranslatedShaderSource( glVertexShader ) );
-		// console.log( '**FRAGMENT**', gl.getExtension( 'WEBGL_debug_shaders' ).getTranslatedShaderSource( glFragmentShader ) );
-
-		if ( gl.getProgramParameter( program, gl.LINK_STATUS ) === false ) {
-
-			runnable = false;
-
-			console.error( 'THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.VALIDATE_STATUS', gl.getProgramParameter( program, gl.VALIDATE_STATUS ), 'gl.getProgramInfoLog', programLog, vertexLog, fragmentLog );
-
-		} else if ( programLog !== '' ) {
-
-			console.warn( 'THREE.WebGLProgram: gl.getProgramInfoLog()', programLog );
-
-		} else if ( vertexLog === '' || fragmentLog === '' ) {
-
-			haveDiagnostics = false;
+			// programs with morphTargets displace position out of attribute 0
+			gl.bindAttribLocation( program, 0, 'position' );
 
 		}
 
-		if ( haveDiagnostics ) {
+		gl.linkProgram( program );
 
-			this.diagnostics = {
+		// check for link errors
+		if ( renderer.debug.checkShaderErrors ) {
 
-				runnable: runnable,
-				material: material,
+			var programLog = gl.getProgramInfoLog( program ).trim();
+			var vertexLog = gl.getShaderInfoLog( glVertexShader ).trim();
+			var fragmentLog = gl.getShaderInfoLog( glFragmentShader ).trim();
 
-				programLog: programLog,
+			var runnable = true;
+			var haveDiagnostics = true;
 
-				vertexShader: {
+			// console.log( '**VERTEX**', gl.getExtension( 'WEBGL_debug_shaders' ).getTranslatedShaderSource( glVertexShader ) );
+			// console.log( '**FRAGMENT**', gl.getExtension( 'WEBGL_debug_shaders' ).getTranslatedShaderSource( glFragmentShader ) );
 
-					log: vertexLog,
-					prefix: prefixVertex
+			if ( gl.getProgramParameter( program, gl.LINK_STATUS ) === false ) {
 
-				},
+				runnable = false;
 
-				fragmentShader: {
+				console.error( 'THREE.WebGLProgram: shader error: ', gl.getError(), 'gl.VALIDATE_STATUS', gl.getProgramParameter( program, gl.VALIDATE_STATUS ), 'gl.getProgramInfoLog', programLog, vertexLog, fragmentLog );
 
-					log: fragmentLog,
-					prefix: prefixFragment
+			} else if ( programLog !== '' ) {
 
-				}
+				console.warn( 'THREE.WebGLProgram: gl.getProgramInfoLog()', programLog );
 
-			};
+			} else if ( vertexLog === '' || fragmentLog === '' ) {
+
+				haveDiagnostics = false;
+
+			}
+
+			if ( haveDiagnostics ) {
+
+				scope.diagnostics = {
+
+					runnable: runnable,
+					material: material,
+
+					programLog: programLog,
+
+					vertexShader: {
+
+						log: vertexLog,
+						prefix: prefixVertex
+
+					},
+
+					fragmentShader: {
+
+						log: fragmentLog,
+						prefix: prefixFragment
+
+					}
+
+				};
+
+			}
 
 		}
 
 	}
 
-	// clean up
-
-	gl.deleteShader( glVertexShader );
-	gl.deleteShader( glFragmentShader );
-
-	var ready = false;
+	var state = 0; // 0: compiling, 1: linking, 2: ready
 
 	this.isReady = function () {
 
-		if ( ready ) return ready;
+		if ( state === 2 ) return true;
 
 		var ext = extensions.get( 'KHR_parallel_shader_compile' );
-		ready = gl.getProgramParameter( program, ext.COMPLETION_STATUS_KHR );
 
-		return ready;
+		if ( state === 0 ) {
+
+			if ( gl.getProgramParameter( program, ext.COMPLETION_STATUS_KHR ) ) {
+
+				linkProgram();
+				state = 1;
+
+			}
+
+		}
+
+		if ( state === 1 ) {
+
+			if ( gl.getProgramParameter( program, ext.COMPLETION_STATUS_KHR ) ) {
+
+				state = 2;
+
+			}
+
+		}
+
+		return state === 2;
 
 	};
 
 	if ( ! capabilities.parallelShaderCompile ) {
 
-		ready = true;
+		state = 2;
+		linkProgram();
 
 	}
 
