@@ -666,6 +666,10 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 		}
 
+		// clean up
+		gl.deleteShader( glVertexShader );
+		gl.deleteShader( glFragmentShader );
+
 	}
 
 	var state = 0; // 0: compiling, 1: linking, 2: ready
