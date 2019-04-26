@@ -41,6 +41,7 @@ import { WebGLState } from './webgl/WebGLState.js';
 import { WebGLTextures } from './webgl/WebGLTextures.js';
 import { WebGLUniforms } from './webgl/WebGLUniforms.js';
 import { WebGLUtils } from './webgl/WebGLUtils.js';
+import { WebGLMultiview } from './webgl/WebGLMultiview.js';
 import { WebVRManager } from './webvr/WebVRManager.js';
 import { WebXRManager } from './webvr/WebXRManager.js';
 
@@ -60,6 +61,8 @@ function WebGLRenderer( parameters ) {
 
 	var _canvas = parameters.canvas !== undefined ? parameters.canvas : document.createElementNS( 'http://www.w3.org/1999/xhtml', 'canvas' ),
 		_context = parameters.context !== undefined ? parameters.context : null,
+
+		_multiviewRequested = parameters.multiview !== undefined ? parameters.multiview : false,
 
 		_alpha = parameters.alpha !== undefined ? parameters.alpha : false,
 		_depth = parameters.depth !== undefined ? parameters.depth : true,
@@ -311,6 +314,8 @@ function WebGLRenderer( parameters ) {
 	var vr = ( typeof navigator !== 'undefined' && 'xr' in navigator ) ? new WebXRManager( _this ) : new WebVRManager( _this );
 
 	this.vr = vr;
+
+	var multiview = this.multiview = new WebGLMultiview( _multiviewRequested, _gl, _canvas, extensions, capabilities, properties );
 
 	// shadow map
 
@@ -1173,7 +1178,13 @@ function WebGLRenderer( parameters ) {
 
 			this.setRenderTarget( renderTarget );
 
+		} else if ( this.multiview.isEnabled() ) {
+
+			this.setRenderTarget( this.multiview.renderTarget );
+			this.multiview.bindFramebuffer( camera );
+
 		}
+
 
 		//
 
@@ -1218,6 +1229,12 @@ function WebGLRenderer( parameters ) {
 			// resolve multisample renderbuffers to a single-sample texture if necessary
 
 			textures.updateMultisampleRenderTarget( _currentRenderTarget );
+
+			if ( this.multiview.isEnabled() ) {
+
+				this.multiview.unbindFramebuffer( camera );
+
+			}
 
 		}
 
@@ -1358,57 +1375,76 @@ function WebGLRenderer( parameters ) {
 
 	function renderObjects( renderList, scene, camera, overrideMaterial ) {
 
-		for ( var i = 0, l = renderList.length; i < l; i ++ ) {
+		if ( multiview.isEnabled() ) {
 
-			var renderItem = renderList[ i ];
+			for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
-			var object = renderItem.object;
-			var geometry = renderItem.geometry;
-			var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
-			var group = renderItem.group;
+				var renderItem = renderList[ i ];
 
-			if ( camera.isArrayCamera ) {
+				var object = renderItem.object;
+				var geometry = renderItem.geometry;
+				var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
+				var group = renderItem.group;
 
-				_currentArrayCamera = camera;
+				renderObject(	object, scene, camera, geometry, material, group );
 
-				var cameras = camera.cameras;
+			}
 
-				for ( var j = 0, jl = cameras.length; j < jl; j ++ ) {
+		} else {
 
-					var camera2 = cameras[ j ];
+			for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
-					if ( object.layers.test( camera2.layers ) ) {
+				var renderItem = renderList[ i ];
 
-						if ( 'viewport' in camera2 ) { // XR
+				var object = renderItem.object;
+				var geometry = renderItem.geometry;
+				var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
+				var group = renderItem.group;
 
-							state.viewport( _currentViewport.copy( camera2.viewport ) );
+				if ( camera.isArrayCamera ) {
 
-						} else {
+					_currentArrayCamera = camera;
 
-							var bounds = camera2.bounds;
+					var cameras = camera.cameras;
 
-							var x = bounds.x * _width;
-							var y = bounds.y * _height;
-							var width = bounds.z * _width;
-							var height = bounds.w * _height;
+					for ( var j = 0, jl = cameras.length; j < jl; j ++ ) {
 
-							state.viewport( _currentViewport.set( x, y, width, height ).multiplyScalar( _pixelRatio ) );
+						var camera2 = cameras[ j ];
+
+						if ( object.layers.test( camera2.layers ) ) {
+
+							if ( 'viewport' in camera2 ) { // XR
+
+								state.viewport( _currentViewport.copy( camera2.viewport ) );
+
+							} else {
+
+								var bounds = camera2.bounds;
+
+								var x = bounds.x * _width;
+								var y = bounds.y * _height;
+								var width = bounds.z * _width;
+								var height = bounds.w * _height;
+
+								state.viewport( _currentViewport.set( x, y, width, height ).multiplyScalar( _pixelRatio ) );
+
+							}
+
+							currentRenderState.setupLights( camera2 );
+
+							renderObject( object, scene, camera2, geometry, material, group );
 
 						}
 
-						currentRenderState.setupLights( camera2 );
-
-						renderObject( object, scene, camera2, geometry, material, group );
-
 					}
 
+				} else {
+
+					_currentArrayCamera = null;
+
+					renderObject( object, scene, camera, geometry, material, group );
+
 				}
-
-			} else {
-
-				_currentArrayCamera = null;
-
-				renderObject( object, scene, camera, geometry, material, group );
 
 			}
 
@@ -1421,8 +1457,16 @@ function WebGLRenderer( parameters ) {
 		object.onBeforeRender( _this, scene, camera, geometry, material, group );
 		currentRenderState = renderStates.get( scene, _currentArrayCamera || camera );
 
-		object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
-		object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
+		if ( multiview.isEnabled() ) {
+
+			multiview.computeObjectMatrices( object, camera );
+
+		} else {
+
+			object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
+			object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
+
+		}
 
 		if ( object.isImmediateRenderObject ) {
 
@@ -1726,7 +1770,16 @@ function WebGLRenderer( parameters ) {
 
 		if ( refreshProgram || _currentCamera !== camera ) {
 
-			p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
+			if ( material.supportsMultiview && multiview.isEnabled() ) {
+
+				multiview.computeCameraMatrices( camera );
+				p_uniforms.setValue( _gl, 'projectionMatrices', camera.projectionMatrices );
+
+			} else {
+
+				p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
+
+			}
 
 			if ( capabilities.logarithmicDepthBuffer ) {
 
@@ -1774,7 +1827,15 @@ function WebGLRenderer( parameters ) {
 				material.isShaderMaterial ||
 				material.skinning ) {
 
-				p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
+				if ( material.supportsMultiview && multiview.isEnabled() ) {
+
+					p_uniforms.setValue( _gl, 'viewMatrices', camera.viewMatrices );
+
+				} else {
+
+					p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
+
+				}
 
 			}
 
@@ -1972,8 +2033,18 @@ function WebGLRenderer( parameters ) {
 
 		// common matrices
 
-		p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
-		p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
+		if ( material.supportsMultiview && multiview.isEnabled() ) {
+
+			p_uniforms.setValue( _gl, 'modelViewMatrices', object.modelViewMatrices );
+			p_uniforms.setValue( _gl, 'normalMatrices', object.normalMatrices );
+
+		} else {
+
+			p_uniforms.setValue( _gl, 'modelViewMatrix', object.modelViewMatrix );
+			p_uniforms.setValue( _gl, 'normalMatrix', object.normalMatrix );
+
+		}
+
 		p_uniforms.setValue( _gl, 'modelMatrix', object.matrixWorld );
 
 		return program;
