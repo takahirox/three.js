@@ -72,7 +72,7 @@
 
 				var geometry = new THREE.IcosahedronBufferGeometry( radius, 2 );
 
-				var numObjects = urlParams.get('num') || 200;
+				var numObjects = urlParams.get('num') || 200;
 
 				for ( var i = 0; i < numObjects; i ++ ) {
 
@@ -93,12 +93,13 @@
 
 				//
 
-        var canvas = document.createElement( 'canvas' );
+			        var canvas = document.createElement( 'canvas' );
 				var context = canvas.getContext( 'webgl2', { antialias: false } );
-				renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context, multiview: multiview } );
+				renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
+				renderer.debug.checkShaderErrors = true;
 				container.appendChild( renderer.domElement );
 
 				//
@@ -122,7 +123,7 @@
 				}
 
 				info.innerHTML = '<b>OVR_multiview2</b> demo<br/>requested: ' + colorize( multiview ) + ` <a href="?num=${ numObjects }&${ multiview ? '' : 'enableMultiview' }">toggle</a>`
-					+ `<br/>available: ${ colorize( renderer.multiview.isAvailable() ) }<br/>enabled: ${ colorize( renderer.multiview.isEnabled() ) }<br/>
+					+ `<br/>
 						${addNumLink(200)}
 						${addNumLink(500)}
 						${addNumLink(1000)}

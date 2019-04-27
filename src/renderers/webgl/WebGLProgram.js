@@ -299,6 +299,8 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 	var prefixVertex, prefixFragment;
 
+	var numViews = renderer.getNumViews();
+
 	if ( material.isRawShaderMaterial ) {
 
 		prefixVertex = [
@@ -327,8 +329,6 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		}
 
 	} else {
-
-		var numMultiviewViews = renderer.multiview.getNumViews();
 
 		prefixVertex = [
 
@@ -385,25 +385,26 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 			'uniform mat4 modelMatrix;',
 			'uniform vec3 cameraPosition;',
 
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
-				'uniform mat4 modelViewMatrices[' + numMultiviewViews + '];',
-				'uniform mat3 normalMatrices[' + numMultiviewViews + '];',
-				'uniform mat4 viewMatrices[' + numMultiviewViews + '];',
-				'uniform mat4 projectionMatrices[' + numMultiviewViews + '];',
+			( ( numViews > 0 ) ? [
 
-				'#define modelViewMatrix modelViewMatrices[VIEW_ID]',
-				'#define normalMatrix normalMatrices[VIEW_ID]',
-				'#define viewMatrix viewMatrices[VIEW_ID]',
-				'#define projectionMatrix projectionMatrices[VIEW_ID]'
+				'uniform mat4 modelViewMatrices[ ' + numViews + ' ];',
+				'uniform mat3 normalMatrices[ ' + numViews + ' ];',
+				'uniform mat4 viewMatrices[ ' + numViews + ' ];',
+				'uniform mat4 projectionMatrices[ ' + numViews + ' ];',
 
-			].join( '\n' ) : [
+				'#define modelViewMatrix modelViewMatrices[ VIEW_ID ]',
+				'#define normalMatrix normalMatrices[ VIEW_ID ]',
+				'#define viewMatrix viewMatrices[ VIEW_ID ]',
+				'#define projectionMatrix projectionMatrices[ VIEW_ID ]'
+
+			] : [
 
 				'uniform mat4 modelViewMatrix;',
 				'uniform mat4 projectionMatrix;',
 				'uniform mat4 viewMatrix;',
 				'uniform mat3 normalMatrix;',
 
-			].join( '\n' ),
+			] ).join( '\n' ),
 
 			'attribute vec3 position;',
 			'attribute vec3 normal;',
@@ -516,10 +517,10 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 			'uniform vec3 cameraPosition;',
 
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+			( numViews > 0 ) ? [
 
-				'uniform mat4 viewMatrices[' + numMultiviewViews + '];',
-				'#define viewMatrix viewMatrices[VIEW_ID]'
+				'uniform mat4 viewMatrices[ ' + numViews + ' ];',
+				'#define viewMatrix viewMatrices[ VIEW_ID ]'
 
 			].join( '\n' ) : 'uniform mat4 viewMatrix;',
 
@@ -577,10 +578,10 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		prefixVertex = [
 			'#version 300 es\n',
 
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+			( numViews > 0 ) ? [
 
 				'#extension GL_OVR_multiview2 : require',
-				'layout(num_views = ' + numMultiviewViews + ') in;',
+				'layout(num_views = ' + numViews + ') in;',
 				'#define VIEW_ID gl_ViewID_OVR'
 
 			].join( '\n' ) : '',
@@ -592,12 +593,14 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 		prefixFragment = [
 			'#version 300 es\n',
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+
+			( numViews > 0 ) ? [
 
 				'#extension GL_OVR_multiview2 : require',
 				'#define VIEW_ID gl_ViewID_OVR'
 
 			].join( '\n' ) : '',
+
 			'#define varying in',
 			isGLSL3ShaderMaterial ? '' : 'out highp vec4 pc_fragColor;',
 			isGLSL3ShaderMaterial ? '' : '#define gl_FragColor pc_fragColor',

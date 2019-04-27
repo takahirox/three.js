@@ -1,64 +1,39 @@
 /**
  * @author fernandojsg / http://fernandojsg.com
+ * @author Takahiro / https://github.com/takahirox
  */
 
-import { WebGLRenderTarget } from '../WebGLRenderTarget.js';
+import { WebGLMultiviewRenderTarget } from '../WebGLMultiviewRenderTarget.js';
+import { Vector2 } from '../../math/Vector2.js';
 import { Matrix3 } from '../../math/Matrix3.js';
 import { Matrix4 } from '../../math/Matrix4.js';
 
-function WebGLMultiview( requested, gl, canvas, extensions, capabilities, properties ) {
+function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
-	this.isAvailable = function () {
+	var gl = renderer.context;
 
-		return capabilities.multiview;
+	var available = capabilities.multiview;
+	var maxNumViews = capabilities.maxMultiviewViews;
+	var enabled = available;
+	var renderTarget = new WebGLMultiviewRenderTarget( 0, 0, 2 );
+	var currentRenderTarget;
+	var renderSize = new Vector2();
 
-	};
+	function getNumViews() {
 
-	this.getNumViews = function () {
-
-		return numViews;
-
-	};
-
-	this.getMaxViews = function () {
-
-		return capabilities.maxMultiviewViews;
-
-	};
-
-	this.isEnabled = function () {
-
-		return requested && this.isAvailable();
-
-	};
-
-	if ( requested && ! this.isAvailable() ) {
-
-		console.warn( 'WebGLRenderer: Multiview requested but not supported by the browser' );
-
-	} else if ( requested !== false && this.isAvailable() ) {
-
-		console.info( 'WebGLRenderer: Multiview enabled' );
+		return renderTarget.numViews;
 
 	}
 
-	var numViews = 2;
-	var framebuffer; // multiview framebuffer.
-	var viewFramebuffer; // single views inside the multiview framebuffer.
-	var framebufferWidth = 0;
-	var framebufferHeight = 0;
+	function updateCameraMatrices( camera ) {
 
-	var texture = {
-		color: null,
-		depthStencil: null
-	};
+		var numViews = getNumViews();
 
-	this.computeCameraMatrices = function ( camera ) {
-
+		// @TODO
 		if ( ! camera.projectionMatrices ) {
 
-			camera.projectionMatrices = new Array( numViews );
-			camera.viewMatrices = new Array( numViews );
+			camera.projectionMatrices = [];
+			camera.viewMatrices = [];
 
 			for ( var i = 0; i < numViews; i ++ ) {
 
@@ -80,23 +55,22 @@ function WebGLMultiview( requested, gl, canvas, extensions, capabilities, proper
 
 		} else {
 
-			for ( var i = 0; i < numViews; i ++ ) {
-
-				camera.projectionMatrices[ i ].copy( camera.projectionMatrix );
-				camera.viewMatrices[ i ].copy( camera.matrixWorldInverse );
-
-			}
+			camera.projectionMatrices[ 0 ].copy( camera.projectionMatrix );
+			camera.viewMatrices[ 0 ].copy( camera.matrixWorldInverse );
 
 		}
 
-	};
+	}
 
-	this.computeObjectMatrices = function ( object, camera ) {
+	function updateObjectMatrices( object, camera ) {
 
+		var numViews = getNumViews();
+
+		// @TODO
 		if ( ! object.modelViewMatrices ) {
 
-			object.modelViewMatrices = new Array( numViews );
-			object.normalMatrices = new Array( numViews );
+			object.modelViewMatrices = [];
+			object.normalMatrices = [];
 
 			for ( var i = 0; i < numViews; i ++ ) {
 
@@ -118,132 +92,139 @@ function WebGLMultiview( requested, gl, canvas, extensions, capabilities, proper
 
 		} else {
 
-			// In this case we still need to provide an array of matrices but just the first one will be used
 			object.modelViewMatrices[ 0 ].multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
 			object.normalMatrices[ 0 ].getNormalMatrix( object.modelViewMatrices[ 0 ] );
 
-			for ( var i = 1; i < numViews; i ++ ) {
-
-				object.modelViewMatrices[ i ].copy( object.modelViewMatrices[ 0 ] );
-				object.normalMatrices[ i ].copy( object.normalMatrices[ 0 ] );
-
-			}
-
 		}
 
-	};
+	}
 
-	// @todo Get ArrayCamera
-	this.createMultiviewRenderTargetTexture = function () {
+	function overrideRenderTarget( camera ) {
 
-		var halfWidth = Math.floor( canvas.width * 0.5 );
+		currentRenderTarget = renderer.getRenderTarget();
 
-		framebuffer = gl.createFramebuffer();
-		gl.bindFramebuffer( gl.FRAMEBUFFER, framebuffer );
+		var numViews = getNumViews();
 
-		var ext = extensions.get( 'OVR_multiview2' );
+		renderer.getDrawingBufferSize( renderSize );
 
-		texture.color = gl.createTexture();
-		gl.bindTexture( gl.TEXTURE_2D_ARRAY, texture.color );
-		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
-		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
-		gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, halfWidth, canvas.height, numViews, 0, gl.RGBA, gl.UNSIGNED_BYTE, null );
-		ext.framebufferTextureMultiviewOVR( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, texture.color, 0, 0, numViews );
+		var views = renderTarget.views;
 
-		texture.depthStencil = gl.createTexture();
-		gl.bindTexture( gl.TEXTURE_2D_ARRAY, texture.depthStencil );
-		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
-		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
-		gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.DEPTH24_STENCIL8, halfWidth, canvas.height, numViews, 0, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8, null );
-		ext.framebufferTextureMultiviewOVR( gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, texture.depthStencil, 0, 0, numViews );
-
-		viewFramebuffer = new Array( numViews );
-		for ( var viewIndex = 0; viewIndex < numViews; ++ viewIndex ) {
-
-			viewFramebuffer[ viewIndex ] = gl.createFramebuffer();
-			gl.bindFramebuffer( gl.FRAMEBUFFER, viewFramebuffer[ viewIndex ] );
-			gl.framebufferTextureLayer( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, texture.color, 0, viewIndex );
-
-		}
-
-		framebufferWidth = halfWidth;
-		framebufferHeight = canvas.height;
-
-		this.renderTarget = new WebGLRenderTarget( framebufferWidth, framebufferHeight );
-
-		// @hack This should be done in WebGLTextures?
-		properties.get( this.renderTarget ).__webglFramebuffer = framebuffer;
-
-	};
-
-	this.bindFramebuffer = function ( camera ) {
-
-		var width = canvas.width;
-		var height = canvas.height;
+		var needsUpdate = false;
 
 		if ( camera.isArrayCamera ) {
 
-			// Every camera must have the same size, so we just get the size from the first one
-			var bounds = camera.cameras[ 0 ].bounds;
-
-			width *= bounds.z;
-			height *= bounds.w;
-
-		}
-
-		if ( framebufferWidth < width || framebufferHeight < height ) {
-
-			console.log( 'WebGLMultiview: Updating multiview FBO with dimensions: ', width, height );
-			gl.bindTexture( gl.TEXTURE_2D_ARRAY, texture.color );
-			gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, width, height, numViews, 0, gl.RGBA, gl.UNSIGNED_BYTE, null );
-			gl.bindTexture( gl.TEXTURE_2D_ARRAY, texture.depthStencil );
-			gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.DEPTH24_STENCIL8, width, height, numViews, 0, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8, null );
-			framebufferWidth = width;
-			framebufferHeight = height;
-
-			this.renderTarget.setSize( width, height );
-
-		}
-
-		gl.bindFramebuffer( gl.DRAW_FRAMEBUFFER, framebuffer );
-
-	};
-
-	this.unbindFramebuffer = function ( camera ) {
-
-		gl.bindFramebuffer( gl.DRAW_FRAMEBUFFER, null );
-
-		if ( camera.isArrayCamera ) {
-
-			for ( var i = 0; i < camera.cameras.length; i ++ ) {
+			for ( var i = 0; i < numViews; i ++ ) {
 
 				var bounds = camera.cameras[ i ].bounds;
 
-				var x = bounds.x * canvas.width;
-				var y = bounds.y * canvas.height;
-				var width = bounds.z * canvas.width;
-				var height = bounds.w * canvas.height;
+				var width = bounds.z * renderSize.x;
+				var height = bounds.w * renderSize.y;
 
-				gl.bindFramebuffer( gl.READ_FRAMEBUFFER, viewFramebuffer[ i ] );
-				gl.blitFramebuffer( 0, 0, width, height, x, y, x + width, y + height, gl.COLOR_BUFFER_BIT, gl.NEAREST );
+				if ( views[ i ].x !== width || views[ i ].y !== height ) {
+
+					views[ i ].set( width, height );
+					needsUpdate = true;
+
+				}
 
 			}
 
 		} else {
 
-			gl.bindFramebuffer( gl.READ_FRAMEBUFFER, viewFramebuffer[ 0 ] );
-			gl.blitFramebuffer( 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height, gl.COLOR_BUFFER_BIT, gl.NEAREST );
+			for ( var i = 0; i < numViews; i ++ ) {
+
+				if ( i === 0 ) {
+
+					if ( views[ i ].x !== renderSize.x || views[ i ].y !== renderSize.y ) {
+
+						views[ i ].set( renderSize.x, renderSize.y ) ;
+						needsUpdate = true;
+
+					}
+
+				} else {
+
+					views[ i ].set( 0, 0 );
+
+				}
+
+			}
 
 		}
 
-	};
+		renderTarget.setSize( renderSize.x, renderSize.y );
+		renderer.setRenderTarget( renderTarget );
 
+		// @TODO
+		if ( needsUpdate ) {
 
-	if ( this.isEnabled() ) {
+			var width = renderSize.x;
+			var height = renderSize.y;
 
-		this.createMultiviewRenderTargetTexture();
+			if ( camera.isArrayCamera ) {
+
+				// Every camera must have the same size, so we just get the size from the first one
+				var bounds = camera.cameras[ 0 ].bounds;
+
+				width *= bounds.z;
+				height *= bounds.w;
+
+			}
+
+			console.log( 'Resize: ', width, height );
+
+			var colorTexture = properties.get( renderTarget ).__webglColorTexture;
+			var depthStencilTexture = properties.get( renderTarget ).__webglDepthStencilTexture;
+
+			gl.bindTexture( gl.TEXTURE_2D_ARRAY, colorTexture );
+			gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, width, height, numViews, 0, gl.RGBA, gl.UNSIGNED_BYTE, null );
+			gl.bindTexture( gl.TEXTURE_2D_ARRAY, depthStencilTexture );
+			gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.DEPTH24_STENCIL8, width, height, numViews, 0, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8, null )
+			gl.bindTexture( gl.TEXTURE_2D_ARRAY, null );
+
+		}
 
 	}
+
+	function flush() {
+
+		var dstRenderTarget = currentRenderTarget;
+		var dstFramebuffer = dstRenderTarget ? properties.get( dstRenderTarget ).__webglFramebuffer : renderer.getFramebuffer();
+
+		var srcFramebuffers = properties.get( renderTarget ).__webglViewFramebuffers;
+		var views = renderTarget.views;
+
+		// @TODO
+		gl.bindFramebuffer( gl.FRAMEBUFFER, dstFramebuffer );
+
+		var widthOffset = 0;
+
+		for ( var i = 0, il = views.length; i < il; i ++ ) {
+
+			var view = views[ i ];
+			var width = view.x;
+			var height = view.y;
+
+			if ( width === 0 || height === 0 ) continue;
+
+			var srcFramebuffer = srcFramebuffers[ i ];
+
+			gl.bindFramebuffer( gl.READ_FRAMEBUFFER, srcFramebuffer );
+			gl.blitFramebuffer( 0, 0, width, height, widthOffset, 0, widthOffset + width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST );
+
+			widthOffset += width;
+
+		}
+
+		renderer.setRenderTarget( currentRenderTarget );
+
+	}
+
+	this.enabled = enabled;
+	this.overrideRenderTarget = overrideRenderTarget;
+	this.flush = flush;
+	this.updateCameraMatrices = updateCameraMatrices;
+	this.updateObjectMatrices = updateObjectMatrices;
 
 }
 
