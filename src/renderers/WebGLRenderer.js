@@ -1455,16 +1455,8 @@ function WebGLRenderer( parameters ) {
 		object.onBeforeRender( _this, scene, camera, geometry, material, group );
 		currentRenderState = renderStates.get( scene, _currentArrayCamera || camera );
 
-		if ( multiview.enabled ) {
-
-			multiview.updateObjectMatrices( object, camera );
-
-		} else {
-
-			object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
-			object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
-
-		}
+		object.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
+		object.normalMatrix.getNormalMatrix( object.modelViewMatrix );
 
 		if ( object.isImmediateRenderObject ) {
 
@@ -1768,10 +1760,9 @@ function WebGLRenderer( parameters ) {
 
 		if ( refreshProgram || _currentCamera !== camera ) {
 
-			if ( multiview.enabled && program.numViews > 0 ) {
+			if ( program.numViews > 0 ) {
 
-				multiview.updateCameraMatrices( camera );
-				p_uniforms.setValue( _gl, 'projectionMatrices', camera.projectionMatrices );
+				multiview.updateProjectionMatricesUniform( camera, p_uniforms );
 
 			} else {
 
@@ -1825,9 +1816,9 @@ function WebGLRenderer( parameters ) {
 				material.isShaderMaterial ||
 				material.skinning ) {
 
-				if ( multiview.enabled && program.numViews > 0 ) {
+				if ( program.numViews > 0 ) {
 
-					p_uniforms.setValue( _gl, 'viewMatrices', camera.viewMatrices );
+					multiview.updateViewMatricesUniform( camera, p_uniforms );
 
 				} else {
 
@@ -2031,10 +2022,9 @@ function WebGLRenderer( parameters ) {
 
 		// common matrices
 
-		if ( multiview.enabled && program.numViews > 0 ) {
+		if ( program.numViews > 0 ) {
 
-			p_uniforms.setValue( _gl, 'modelViewMatrices', object.modelViewMatrices );
-			p_uniforms.setValue( _gl, 'normalMatrices', object.normalMatrices );
+			multiview.updateObjectMatricesUniform( object, camera, p_uniforms );
 
 		} else {
 

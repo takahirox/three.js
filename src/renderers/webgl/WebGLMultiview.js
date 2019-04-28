@@ -19,83 +19,113 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 	var currentRenderTarget;
 	var renderSize = new Vector2();
 
+	// 
+	var array = [];
+	var matrix3s = [];
+	var matrix4s = [];
+
 	function getNumViews() {
 
 		return renderTarget.numViews;
 
 	}
 
-	function updateCameraMatrices( camera ) {
+	function getCameraArray( camera ) {
 
-		var numViews = getNumViews();
+		if ( camera.isArrayCamera ) return camera.cameras;
 
-		// @TODO
-		if ( ! camera.projectionMatrices ) {
+		array[ 0 ] = camera;
 
-			camera.projectionMatrices = [];
-			camera.viewMatrices = [];
-
-			for ( var i = 0; i < numViews; i ++ ) {
-
-				camera.projectionMatrices[ i ] = new Matrix4();
-				camera.viewMatrices[ i ] = new Matrix4();
-
-			}
-
-		}
-
-		if ( camera.isArrayCamera ) {
-
-			for ( var i = 0; i < numViews; i ++ ) {
-
-				camera.projectionMatrices[ i ].copy( camera.cameras[ i ].projectionMatrix );
-				camera.viewMatrices[ i ].copy( camera.cameras[ i ].matrixWorldInverse );
-
-			}
-
-		} else {
-
-			camera.projectionMatrices[ 0 ].copy( camera.projectionMatrix );
-			camera.viewMatrices[ 0 ].copy( camera.matrixWorldInverse );
-
-		}
+		return array;
 
 	}
 
-	function updateObjectMatrices( object, camera ) {
+	function getMatrix3s( length ) {
+
+		if ( matrix3s.length < length ) {
+
+			for ( var i = matrix3s.length; i < length; i ++ ) {
+
+				matrix3s[ i ] = new Matrix3();
+
+			}
+
+		}
+
+		return matrix3s;
+
+	}
+
+	function getMatrix4s( length ) {
+
+		if ( matrix4s.length < length ) {
+
+			for ( var i = matrix4s.length; i < length; i ++ ) {
+
+				matrix4s[ i ] = new Matrix4();
+
+			}
+
+		}
+
+		return matrix4s;
+
+	}
+
+	function updateProjectionMatricesUniform( camera, p_uniforms ) {
 
 		var numViews = getNumViews();
+		var matrices = getMatrix4s( numViews );
+		var cameras = getCameraArray( camera );
 
-		// @TODO
-		if ( ! object.modelViewMatrices ) {
+		for ( var i = 0; i < numViews; i ++ ) {
 
-			object.modelViewMatrices = [];
-			object.normalMatrices = [];
+			var cameraIndex = i < cameras.length ? i : cameras.length - 1;
 
-			for ( var i = 0; i < numViews; i ++ ) {
-
-				object.modelViewMatrices[ i ] = new Matrix4();
-				object.normalMatrices[ i ] = new Matrix3();
-
-			}
+			matrices[ i ].copy( cameras[ cameraIndex ].projectionMatrix );
 
 		}
 
-		if ( camera.isArrayCamera ) {
+		p_uniforms.setValue( gl, 'projectionMatrices', matrices );
 
-			for ( var i = 0; i < numViews; i ++ ) {
+	}
 
-				object.modelViewMatrices[ i ].multiplyMatrices( camera.cameras[ i ].matrixWorldInverse, object.matrixWorld );
-				object.normalMatrices[ i ].getNormalMatrix( object.modelViewMatrices[ i ] );
+	function updateViewMatricesUniform( camera, p_uniforms ) {
 
-			}
+		var numViews = getNumViews();
+		var matrices = getMatrix4s( numViews );
+		var cameras = getCameraArray( camera );
 
-		} else {
+		for ( var i = 0; i < numViews; i ++ ) {
 
-			object.modelViewMatrices[ 0 ].multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
-			object.normalMatrices[ 0 ].getNormalMatrix( object.modelViewMatrices[ 0 ] );
+			var cameraIndex = i < cameras.length ? i : cameras.length - 1;
+
+			matrices[ i ].copy( cameras[ cameraIndex ].matrixWorldInverse );
 
 		}
+
+		p_uniforms.setValue( gl, 'viewMatrices', matrices );
+
+	}
+
+	function updateObjectMatricesUniform( object, camera, p_uniforms ) {
+
+		var numViews = getNumViews();
+		var modelViewMatrices = getMatrix4s( numViews );
+		var normalMatrices = getMatrix3s( numViews );
+		var cameras = getCameraArray( camera );
+
+		for ( var i = 0; i < numViews; i ++ ) {
+
+			var cameraIndex = i < cameras.length ? i : cameras.length - 1;
+
+			modelViewMatrices[ i ].multiplyMatrices( cameras[ cameraIndex ].matrixWorldInverse, object.matrixWorld );
+			normalMatrices[ i ].getNormalMatrix( modelViewMatrices[ i ] );
+
+		}
+
+		p_uniforms.setValue( gl, 'modelViewMatrices', modelViewMatrices );
+		p_uniforms.setValue( gl, 'normalMatrices', normalMatrices );
 
 	}
 
@@ -223,8 +253,9 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 	this.enabled = enabled;
 	this.overrideRenderTarget = overrideRenderTarget;
 	this.flush = flush;
-	this.updateCameraMatrices = updateCameraMatrices;
-	this.updateObjectMatrices = updateObjectMatrices;
+	this.updateProjectionMatricesUniform = updateProjectionMatricesUniform;
+	this.updateViewMatricesUniform = updateViewMatricesUniform;
+	this.updateObjectMatricesUniform = updateObjectMatricesUniform;
 
 }
 
