@@ -783,6 +783,7 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 	this.program = program;
 	this.vertexShader = glVertexShader;
 	this.fragmentShader = glFragmentShader;
+	this.numViews = numViews;
 
 	return this;
 

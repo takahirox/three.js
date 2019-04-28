@@ -1768,7 +1768,7 @@ function WebGLRenderer( parameters ) {
 
 		if ( refreshProgram || _currentCamera !== camera ) {
 
-			if ( multiview.enabled ) {
+			if ( multiview.enabled && program.numViews > 0 ) {
 
 				multiview.updateCameraMatrices( camera );
 				p_uniforms.setValue( _gl, 'projectionMatrices', camera.projectionMatrices );
@@ -1825,7 +1825,7 @@ function WebGLRenderer( parameters ) {
 				material.isShaderMaterial ||
 				material.skinning ) {
 
-				if ( multiview.enabled ) {
+				if ( multiview.enabled && program.numViews > 0 ) {
 
 					p_uniforms.setValue( _gl, 'viewMatrices', camera.viewMatrices );
 
@@ -2031,7 +2031,7 @@ function WebGLRenderer( parameters ) {
 
 		// common matrices
 
-		if ( multiview.enabled ) {
+		if ( multiview.enabled && program.numViews > 0 ) {
 
 			p_uniforms.setValue( _gl, 'modelViewMatrices', object.modelViewMatrices );
 			p_uniforms.setValue( _gl, 'normalMatrices', object.normalMatrices );
