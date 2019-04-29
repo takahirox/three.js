@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - loaders - MMD loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #fff;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				display:block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		</div>
+
+		<script src="../build/three.js"></script>
+
+		<script src="js/libs/mmdparser.min.js"></script>
+		<script src="js/libs/ammo.js"></script>
+
+		<script src="js/loaders/TGALoader.js"></script>
+		<script src="js/loaders/MMDLoader.js"></script>
+		<script src="js/effects/OutlineEffect.js"></script>
+		<script src="js/animation/CCDIKSolver.js"></script>
+		<script src="js/animation/MMDPhysics.js"></script>
+		<script src="js/animation/MMDAnimationHelper.js"></script>
+
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			var container;
+
+			var mesh, camera, scene, renderer, effect;
+			var helper;
+
+			var renderTarget;
+			var viewTargets = [];
+
+			var ready = false;
+
+			var clock = new THREE.Clock();
+
+			Ammo().then( function( AmmoLib ) {
+
+				Ammo = AmmoLib;
+
+				init();
+				animate();
+
+			} );
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				// RenderTarget
+
+				renderTarget = new THREE.WebGLMultiviewRenderTarget( 0, 0, 4 );
+				resizeRenderTarget();
+
+				// scene
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+
+				scene.add( new THREE.PolarGridHelper( 300, 10 ) );
+
+				// camera
+
+				var cameras = [];
+
+				for ( var i = 0; i < 4; i ++ ) {
+
+					cameras[ i ] = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+
+				}
+
+				cameras[ 2 ].position.y = 10;
+				cameras[ 2 ].position.z = 40;
+				cameras[ 2 ].lookAt( new THREE.Vector3( 0, 10, 0 ) );
+
+				cameras[ 3 ].position.y = 10;
+				cameras[ 3 ].position.z = - 40;
+				cameras[ 3 ].lookAt( new THREE.Vector3( 0, 10, 0 ) );
+
+				camera = new THREE.ArrayCamera( cameras );
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x887766 );
+				directionalLight.position.set( - 1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				var canvas = document.createElement( 'canvas' );
+				gl = canvas.getContext( 'webgl2', { antialias: false } );
+				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: gl } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				renderer.setRenderTarget( renderTarget );
+
+				effect = new THREE.OutlineEffect( renderer );
+
+				// model
+
+				function onProgress( xhr ) {
+
+					if ( xhr.lengthComputable ) {
+
+						var percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+
+					}
+
+				}
+
+				var modelFile = 'models/mmd/miku/miku_v2.pmd';
+				var vmdFiles = [ 'models/mmd/vmds/wavefile_v2.vmd' ];
+				var cameraFiles = [ 'models/mmd/vmds/wavefile_camera.vmd' ];
+
+				helper = new THREE.MMDAnimationHelper();
+
+				var loader = new THREE.MMDLoader();
+
+				loader.loadWithAnimation( modelFile, vmdFiles, function ( mmd ) {
+
+					mesh = mmd.mesh;
+
+					helper.add( mesh, {
+						animation: mmd.animation,
+						physics: true
+					} );
+
+					var headBone = mesh.skeleton.bones[ 0 ];
+					cameras[ 1 ].position.y += 10;
+					cameras[ 1 ].position.z += 8;
+					headBone.add( cameras[ 1 ] );
+
+					loader.loadAnimation( cameraFiles, camera.cameras[ 0 ], function ( cameraAnimation ) {
+
+						helper.add( camera.cameras[ 0 ], {
+							animation: cameraAnimation
+						} );
+
+						scene.add( mesh );
+
+						ready = true;
+
+					}, onProgress, null );
+
+				}, onProgress, null );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				var cameras = camera.cameras;
+
+				for ( var i = 0, il = cameras.length; i < il; i ++ ) {
+
+					var camera = cameras[ i ];
+
+					camera.aspect = window.innerWidth / window.innerHeight;
+					camera.updateProjectionMatrix();
+
+				}
+
+				effect.setSize( window.innerWidth, window.innerHeight );
+
+				resizeRenderTarget();
+
+			}
+
+			function resizeRenderTarget() {
+
+				var screenWidth = window.innerWidth * window.devicePixelRatio;
+				var screenHeight = window.innerHeight * window.devicePixelRatio;
+
+				var width = screenWidth / 2;
+				var height = screenHeight / 2;
+
+				var views = [];
+
+				for ( var i = 0; i < 4; i ++ ) {
+
+					views[ i ] = new THREE.Vector2(	width, height );
+
+				}
+
+				viewTargets[ 0 ] = new THREE.Vector4( 0, height, width, height );
+				viewTargets[ 1 ] = new THREE.Vector4( width, height, width, height );
+				viewTargets[ 2 ] = new THREE.Vector4( 0, 0, width, height );
+				viewTargets[ 3 ] = new THREE.Vector4( width, 0, width, height );
+
+				renderTarget.setSize( screenWidth, screenHeight, views );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				if ( ready ) {
+
+					helper.update( clock.getDelta() );
+
+				}
+
+				var cameras = camera.cameras;
+
+				for ( var i = 0, il = cameras.length; i < il; i ++ ) {
+
+					cameras[ i ].updateMatrixWorld();
+
+				}
+
+				effect.render( scene, camera );
+
+				renderer.multiview.flushToRenderTarget( renderTarget, null, viewTargets );
+
+			}
+
+		</script>
+
+	</body>
+</html>
