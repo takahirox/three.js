@@ -67,8 +67,7 @@ function WebGLRenderer( parameters ) {
 		_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 		_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 		_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
-		_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
+		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
 
 	var currentRenderList = null;
 	var currentRenderState = null;
@@ -314,6 +313,8 @@ function WebGLRenderer( parameters ) {
 	this.vr = vr;
 
 	var multiview = new WebGLMultiview( _this, extensions, capabilities, properties );
+
+	this.multiview = multiview;
 
 	// shadow map
 
@@ -1256,7 +1257,7 @@ function WebGLRenderer( parameters ) {
 
 			if ( vr.multiview ) {
 
-				multiview.flush();
+				multiview.resetRenderTarget();
 
 			}
 
@@ -1387,6 +1388,8 @@ function WebGLRenderer( parameters ) {
 
 	function renderObjects( renderList, scene, camera, overrideMaterial ) {
 
+		var numViews = _this.getNumViews();
+
 		for ( var i = 0, l = renderList.length; i < l; i ++ ) {
 
 			var renderItem = renderList[ i ];
@@ -1396,13 +1399,13 @@ function WebGLRenderer( parameters ) {
 			var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 			var group = renderItem.group;
 
-			if ( vr.multiview && camera.isArrayCamera ) {
+			if ( vr.multiview && camera.isArrayCamera && numViews > 0 ) {
 
 				_currentArrayCamera = camera;
 
 				renderObject( object, scene, camera, geometry, material, group );
 
-			} else if ( camera.isArrayCamera ) {
+			} else if ( camera.isArrayCamera && numViews === 0 ) {
 
 				_currentArrayCamera = camera;
 
@@ -2494,6 +2497,12 @@ function WebGLRenderer( parameters ) {
 	this.getFramebuffer = function () {
 
 		return _framebuffer;
+
+	};
+
+	this.getCurrentFramebuffer = function () {
+
+		return _currentFramebuffer;
 
 	};
 
