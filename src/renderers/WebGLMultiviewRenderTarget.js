@@ -36,7 +36,60 @@ WebGLMultiviewRenderTarget.prototype = Object.assign( Object.create( WebGLRender
 
 		this.numViews = source.numViews;
 
+		for ( var i = 0, il = this.views.length; i < il; i ++ ) {
+
+			this.views[ i ].copy( source.views[ i ] );
+
+		}
+
 		return this;
+
+	},
+
+	setSize: function ( width, height, views ) {
+
+		if ( views === undefined ) {
+
+			views = [];
+
+			for ( var i = 0; i < this.numViews; i ++ ) {
+
+				views[ i ] = new Vector2( width / this.numViews, height );
+
+			}
+
+		}
+
+		var updated = false;
+
+		if ( this.width !== width || this.height !== height ) {
+
+			this.width = width;
+			this.height = height;
+
+			updated = true;
+
+		}
+
+		for ( var i = 0; i < this.numViews; i ++ ) {
+
+			if ( ! this.views[ i ].equals( views[ i ] ) ) {
+
+				this.views[ i ].copy( views[ i ] );
+				updated = true;
+
+			}
+
+		}
+
+		if ( updated ) {
+
+			this.dispose();
+
+		}
+
+		this.viewport.set( 0, 0, width, height );
+		this.scissor.set( 0, 0, width, height );
 
 	}
 

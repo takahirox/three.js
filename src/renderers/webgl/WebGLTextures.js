@@ -986,8 +986,8 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 					var numViews = renderTarget.numViews;
 
-					var colorTexture = _gl.createTexture();
-					var depthStencilTexture = _gl.createTexture();
+					renderTargetProperties.__webglColorTexture = _gl.createTexture();
+					renderTargetProperties.__webglDepthStencilTexture = _gl.createTexture();
 
 					info.memory.textures += 2;
 
@@ -995,34 +995,23 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 
 					var ext = extensions.get( 'OVR_multiview2' );
 
-					var width = renderTarget.views[ 0 ].x;
-					var height = renderTarget.views[ 0 ].y;
+					updateMultiviewRenderTarget( renderTarget );
 
-					_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, colorTexture );
-					_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MAG_FILTER, _gl.NEAREST );
-					_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MIN_FILTER, _gl.NEAREST );
-					_gl.texImage3D( _gl.TEXTURE_2D_ARRAY, 0, _gl.RGBA8, width, height, numViews, 0, _gl.RGBA, _gl.UNSIGNED_BYTE, null );
-					ext.framebufferTextureMultiviewOVR( _gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0, colorTexture, 0, 0, numViews );
+					_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, renderTargetProperties.__webglColorTexture );
+					ext.framebufferTextureMultiviewOVR( _gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0, renderTargetProperties.__webglColorTexture, 0, 0, numViews );
 
-					_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, depthStencilTexture );
-					_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MAG_FILTER, _gl.NEAREST );
-					_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MIN_FILTER, _gl.NEAREST );
-					_gl.texImage3D( _gl.TEXTURE_2D_ARRAY, 0, _gl.DEPTH24_STENCIL8, width, height, numViews, 0, _gl.DEPTH_STENCIL, _gl.UNSIGNED_INT_24_8, null )
-					ext.framebufferTextureMultiviewOVR( _gl.FRAMEBUFFER, _gl.DEPTH_STENCIL_ATTACHMENT, depthStencilTexture, 0, 0, numViews );
+					_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, renderTargetProperties.__webglDepthStencilTexture );
+					ext.framebufferTextureMultiviewOVR( _gl.FRAMEBUFFER, _gl.DEPTH_STENCIL_ATTACHMENT, renderTargetProperties.__webglDepthStencilTexture, 0, 0, numViews );
 
-					var viewFramebuffers = [];
+					renderTargetProperties.__webglViewFramebuffers = [];
 
 					for ( var i = 0; i < numViews; i ++ ) {
 
-						viewFramebuffers[ i ] = _gl.createFramebuffer();
-						_gl.bindFramebuffer( _gl.FRAMEBUFFER, viewFramebuffers[ i ] );
-						_gl.framebufferTextureLayer( _gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0, colorTexture, 0, i );
+						renderTargetProperties.__webglViewFramebuffers[ i ] = _gl.createFramebuffer();
+						_gl.bindFramebuffer( _gl.FRAMEBUFFER, renderTargetProperties.__webglViewFramebuffers[ i ] );
+						_gl.framebufferTextureLayer( _gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0, renderTargetProperties.__webglColorTexture, 0, i );
 
 					}
-
-					renderTargetProperties.__webglColorTexture = colorTexture;
-					renderTargetProperties.__webglDepthStencilTexture = depthStencilTexture;
-					renderTargetProperties.__webglViewFramebuffers = viewFramebuffers;
 
 					_gl.bindFramebuffer( _gl.FRAMEBUFFER, null );
 					_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, null );
@@ -1125,6 +1114,44 @@ function WebGLTextures( _gl, extensions, state, properties, capabilities, utils,
 			} else {
 
 				console.warn( 'THREE.WebGLRenderer: WebGLMultisampleRenderTarget can only be used with WebGL2.' );
+
+			}
+
+		}
+
+	}
+
+	function updateMultiviewRenderTarget( renderTarget ) {
+
+		if ( renderTarget.isWebGLMultiviewRenderTarget ) {
+
+			if ( capabilities.isWebGL2 ) {
+
+				var numViews = renderTarget.numViews;
+				var views = renderTarget.views;
+
+				var width = views[ 0 ].x;
+				var height = views[ 0 ].y;
+
+				var renderTargetProperties = properties.get( renderTarget );
+				var colorTexture = renderTargetProperties.__webglColorTexture;
+				var depthStencilTexture = renderTargetProperties.__webglDepthStencilTexture;
+
+				_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, colorTexture );
+				_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MAG_FILTER, _gl.NEAREST );
+				_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MIN_FILTER, _gl.NEAREST );
+				_gl.texImage3D( _gl.TEXTURE_2D_ARRAY, 0, _gl.RGBA8, width, height, numViews, 0, _gl.RGBA, _gl.UNSIGNED_BYTE, null );
+
+				_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, depthStencilTexture );
+				_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MAG_FILTER, _gl.NEAREST );
+				_gl.texParameteri( _gl.TEXTURE_2D_ARRAY, _gl.TEXTURE_MIN_FILTER, _gl.NEAREST );
+				_gl.texImage3D( _gl.TEXTURE_2D_ARRAY, 0, _gl.DEPTH24_STENCIL8, width, height, numViews, 0, _gl.DEPTH_STENCIL, _gl.UNSIGNED_INT_24_8, null );
+
+				_gl.bindTexture( _gl.TEXTURE_2D_ARRAY, null );
+
+			} else {
+
+				console.warn( 'THREE.WebGLRenderer: WebGLMultiviewRenderTarget can only be used with WebGL2.' );
 
 			}
 

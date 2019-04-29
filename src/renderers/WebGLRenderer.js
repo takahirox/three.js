@@ -67,7 +67,8 @@ function WebGLRenderer( parameters ) {
 		_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 		_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 		_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
+		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
+		_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
 
 	var currentRenderList = null;
 	var currentRenderState = null;
@@ -313,6 +314,8 @@ function WebGLRenderer( parameters ) {
 	this.vr = vr;
 
 	var multiview = new WebGLMultiview( _this, extensions, capabilities, properties );
+
+	if ( ! _multiview ) multiview.enabled = false;
 
 	// shadow map
 

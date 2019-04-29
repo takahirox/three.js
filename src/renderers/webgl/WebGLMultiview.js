@@ -21,6 +21,7 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	// 
 	var array = [];
+	var vector2s = [];
 	var matrix3s = [];
 	var matrix4s = [];
 
@@ -37,6 +38,22 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 		array[ 0 ] = camera;
 
 		return array;
+
+	}
+
+	function getViewArray( length ) {
+
+		if ( vector2s.length < length ) {
+
+			for ( var i = vector2s.length; i < length; i ++ ) {
+
+				vector2s[ i ] = new Vector2();
+
+			}
+
+		}
+
+		return vector2s;
 
 	}
 
@@ -129,17 +146,12 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	}
 
-	function overrideRenderTarget( camera ) {
-
-		currentRenderTarget = renderer.getRenderTarget();
-
-		var numViews = getNumViews();
+	function resizeRenderTarget( camera ) {
 
 		renderer.getDrawingBufferSize( renderSize );
 
-		var views = renderTarget.views;
-
-		var needsUpdate = false;
+		var numViews = getNumViews();
+		var views = getViewArray( numViews );
 
 		if ( camera.isArrayCamera ) {
 
@@ -150,69 +162,31 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 				var width = bounds.z * renderSize.x;
 				var height = bounds.w * renderSize.y;
 
-				if ( views[ i ].x !== width || views[ i ].y !== height ) {
-
-					views[ i ].set( width, height );
-					needsUpdate = true;
-
-				}
+				views[ i ].set( width, height );
 
 			}
 
 		} else {
 
-			for ( var i = 0; i < numViews; i ++ ) {
+			views[ 0 ].set( renderSize.x, renderSize.y ) ;
 
-				if ( i === 0 ) {
+			for ( var i = 1; i < numViews; i ++ ) {
 
-					if ( views[ i ].x !== renderSize.x || views[ i ].y !== renderSize.y ) {
-
-						views[ i ].set( renderSize.x, renderSize.y ) ;
-						needsUpdate = true;
-
-					}
-
-				} else {
-
-					views[ i ].set( 0, 0 );
-
-				}
+				views[ i ].set( 0, 0 );
 
 			}
 
 		}
 
-		renderTarget.setSize( renderSize.x, renderSize.y );
+		renderTarget.setSize( renderSize.x, renderSize.y, views );
+
+	}
+
+	function overrideRenderTarget( camera ) {
+
+		currentRenderTarget = renderer.getRenderTarget();
+		resizeRenderTarget( camera );
 		renderer.setRenderTarget( renderTarget );
-
-		// @TODO
-		if ( needsUpdate ) {
-
-			var width = renderSize.x;
-			var height = renderSize.y;
-
-			if ( camera.isArrayCamera ) {
-
-				// Every camera must have the same size, so we just get the size from the first one
-				var bounds = camera.cameras[ 0 ].bounds;
-
-				width *= bounds.z;
-				height *= bounds.w;
-
-			}
-
-			console.log( 'Resize: ', width, height );
-
-			var colorTexture = properties.get( renderTarget ).__webglColorTexture;
-			var depthStencilTexture = properties.get( renderTarget ).__webglDepthStencilTexture;
-
-			gl.bindTexture( gl.TEXTURE_2D_ARRAY, colorTexture );
-			gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, width, height, numViews, 0, gl.RGBA, gl.UNSIGNED_BYTE, null );
-			gl.bindTexture( gl.TEXTURE_2D_ARRAY, depthStencilTexture );
-			gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.DEPTH24_STENCIL8, width, height, numViews, 0, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8, null )
-			gl.bindTexture( gl.TEXTURE_2D_ARRAY, null );
-
-		}
 
 	}
 
