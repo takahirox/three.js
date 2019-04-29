@@ -50,6 +50,7 @@ function WebXRManager( renderer ) {
 	//
 
 	this.enabled = false;
+	this.multiview = false;
 
 	this.getController = function ( id ) {
 

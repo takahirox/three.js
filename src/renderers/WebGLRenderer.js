@@ -315,8 +315,6 @@ function WebGLRenderer( parameters ) {
 
 	var multiview = new WebGLMultiview( _this, extensions, capabilities, properties );
 
-	if ( ! _multiview ) multiview.enabled = false;
-
 	// shadow map
 
 	var shadowMap = new WebGLShadowMap( _this, objects, capabilities.maxTextureSize );
@@ -1194,7 +1192,7 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		if ( vr.enabled && multiview.enabled ) {
+		if ( vr.enabled && vr.multiview ) {
 
 			multiview.overrideRenderTarget( camera );
 
@@ -1256,7 +1254,7 @@ function WebGLRenderer( parameters ) {
 
 		if ( vr.enabled ) {
 
-			if ( multiview.enabled ) {
+			if ( vr.multiview ) {
 
 				multiview.flush();
 
@@ -1398,7 +1396,7 @@ function WebGLRenderer( parameters ) {
 			var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 			var group = renderItem.group;
 
-			if ( multiview.enabled && camera.isArrayCamera ) {
+			if ( vr.multiview && camera.isArrayCamera ) {
 
 				_currentArrayCamera = camera;
 

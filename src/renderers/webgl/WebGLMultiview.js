@@ -14,7 +14,6 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	var available = capabilities.multiview;
 	var maxNumViews = capabilities.maxMultiviewViews;
-	var enabled = available;
 	var renderTarget = new WebGLMultiviewRenderTarget( 0, 0, 2 );
 	var currentRenderTarget;
 	var renderSize = new Vector2();
@@ -224,7 +223,6 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	}
 
-	this.enabled = enabled;
 	this.overrideRenderTarget = overrideRenderTarget;
 	this.flush = flush;
 	this.updateProjectionMatricesUniform = updateProjectionMatricesUniform;

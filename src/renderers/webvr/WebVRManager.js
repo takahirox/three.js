@@ -180,6 +180,8 @@ function WebVRManager( renderer ) {
 
 	this.enabled = false;
 
+	this.multiview = false;
+
 	this.getController = function ( id ) {
 
 		var controller = controllers[ id ];

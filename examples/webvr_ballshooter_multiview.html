@@ -95,10 +95,11 @@
 
 				var canvas = document.createElement( 'canvas' );
 				var context = canvas.getContext( 'webgl2', { antialias: false } );
-				renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context, multiview: multiview } );
+				renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.vr.enabled = true;
+				renderer.vr.multiview = multiview;
 				renderer.debug.checkShaderErrors = true;
 				container.appendChild( renderer.domElement );
 
