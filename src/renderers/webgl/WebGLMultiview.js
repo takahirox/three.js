@@ -14,11 +14,15 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	var available = capabilities.multiview;
 	var maxNumViews = capabilities.maxMultiviewViews;
+
+	// for VR
+
 	var renderTarget = new WebGLMultiviewRenderTarget( 0, 0, 2 );
 	var currentRenderTarget;
 	var renderSize = new Vector2();
 
 	// 
+
 	var array = [];
 	var vector2s = [];
 	var matrix3s = [];
@@ -144,6 +148,8 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 		p_uniforms.setValue( gl, 'normalMatrices', normalMatrices );
 
 	}
+
+	//
 
 	function resizeRenderTarget( camera ) {
 
