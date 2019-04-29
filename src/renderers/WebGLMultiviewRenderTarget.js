@@ -88,8 +88,8 @@ WebGLMultiviewRenderTarget.prototype = Object.assign( Object.create( WebGLRender
 
 		}
 
-		this.viewport.set( 0, 0, width, height );
-		this.scissor.set( 0, 0, width, height );
+		this.viewport.set( 0, 0, this.views[ 0 ].x, this.views[ 0 ].y );
+		this.scissor.set( 0, 0, this.views[ 0 ].x, this.views[ 0 ].y );
 
 	}
 
