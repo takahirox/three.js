@@ -144,8 +144,8 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	function detachRenderTarget( camera ) {
 
-		flushToRenderTarget( camera, renderTarget, currentRenderTarget );
 		renderer.setRenderTarget( currentRenderTarget );
+		flushToRenderTarget( camera, renderTarget, currentRenderTarget );
 
 	}
 
@@ -157,10 +157,6 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 		var viewWidth = srcRenderTarget.width;
 		var viewHeight = srcRenderTarget.height;
-
-		var dstFramebuffer = dstRenderTarget ? properties.get( dstRenderTarget ).__webglFramebuffer : renderer.getFramebuffer();
-
-		gl.bindFramebuffer( gl.FRAMEBUFFER, dstFramebuffer );
 
 		if ( camera.isArrayCamera ) {
 
@@ -186,8 +182,6 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 			gl.blitFramebuffer( 0, 0, viewWidth, viewHeight, 0, 0, renderSize.x, renderSize.y, gl.COLOR_BUFFER_BIT, gl.NEAREST );
 
 		}
-
-		gl.bindFramebuffer( gl.FRAMEBUFFER, renderer.getCurrentFramebuffer() );
 
 	}
 
