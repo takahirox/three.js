@@ -49,9 +49,6 @@
 			var mesh, camera, scene, renderer, effect;
 			var helper;
 
-			var renderTarget;
-			var viewTargets = [];
-
 			var ready = false;
 
 			var clock = new THREE.Clock();
@@ -69,11 +66,6 @@
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
-
-				// RenderTarget
-
-				renderTarget = new THREE.WebGLMultiviewRenderTarget( 0, 0, 4 );
-				resizeRenderTarget();
 
 				// scene
 
@@ -100,6 +92,11 @@
 				cameras[ 3 ].position.z = - 40;
 				cameras[ 3 ].lookAt( new THREE.Vector3( 0, 10, 0 ) );
 
+				cameras[ 0 ].bounds = new THREE.Vector4( 0.0, 0.5, 0.5, 0.5 );
+				cameras[ 1 ].bounds = new THREE.Vector4( 0.5, 0.5, 0.5, 0.5 );
+				cameras[ 2 ].bounds = new THREE.Vector4( 0.0, 0.0, 0.5, 0.5 );
+				cameras[ 3 ].bounds = new THREE.Vector4( 0.5, 0.0, 0.5, 0.5 );
+
 				camera = new THREE.ArrayCamera( cameras );
 
 				var ambient = new THREE.AmbientLight( 0x666666 );
@@ -112,13 +109,11 @@
 				//
 
 				var canvas = document.createElement( 'canvas' );
-				gl = canvas.getContext( 'webgl2', { antialias: false } );
-				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: gl } );
+				var context = canvas.getContext( 'webgl2', { antialias: false } );
+				renderer = new THREE.WebGLRenderer( { antialias: true, canvas: canvas, context: context, multiview: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );
-
-				renderer.setRenderTarget( renderTarget );
 
 				effect = new THREE.OutlineEffect( renderer );
 
@@ -192,33 +187,6 @@
 
 				effect.setSize( window.innerWidth, window.innerHeight );
 
-				resizeRenderTarget();
-
-			}
-
-			function resizeRenderTarget() {
-
-				var screenWidth = window.innerWidth * window.devicePixelRatio;
-				var screenHeight = window.innerHeight * window.devicePixelRatio;
-
-				var width = screenWidth / 2;
-				var height = screenHeight / 2;
-
-				var views = [];
-
-				for ( var i = 0; i < 4; i ++ ) {
-
-					views[ i ] = new THREE.Vector2(	width, height );
-
-				}
-
-				viewTargets[ 0 ] = new THREE.Vector4( 0, height, width, height );
-				viewTargets[ 1 ] = new THREE.Vector4( width, height, width, height );
-				viewTargets[ 2 ] = new THREE.Vector4( 0, 0, width, height );
-				viewTargets[ 3 ] = new THREE.Vector4( width, 0, width, height );
-
-				renderTarget.setSize( screenWidth, screenHeight, views );
-
 			}
 
 			//
@@ -247,8 +215,6 @@
 				}
 
 				effect.render( scene, camera );
-
-				renderer.multiview.flushToRenderTarget( renderTarget, null, viewTargets );
 
 			}
 
