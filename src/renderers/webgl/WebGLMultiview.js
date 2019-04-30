@@ -145,12 +145,13 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 	function detachRenderTarget( camera ) {
 
 		renderer.setRenderTarget( currentRenderTarget );
-		flushToRenderTarget( camera, renderTarget, currentRenderTarget );
+		flush( camera );
 
 	}
 
-	function flushToRenderTarget( camera, srcRenderTarget, dstRenderTarget ) {
+	function flush( camera ) {
 
+		var srcRenderTarget = renderTarget;
 		var numViews = srcRenderTarget.numViews;
 
 		var srcFramebuffers = properties.get( srcRenderTarget ).__webglViewFramebuffers;
