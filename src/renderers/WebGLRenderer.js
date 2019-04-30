@@ -2501,18 +2501,6 @@ function WebGLRenderer( parameters ) {
 
 	};
 
-	this.getFramebuffer = function () {
-
-		return _framebuffer;
-
-	};
-
-	this.getCurrentFramebuffer = function () {
-
-		return _currentFramebuffer;
-
-	};
-
 	this.getRenderTarget = function () {
 
 		return _currentRenderTarget;
