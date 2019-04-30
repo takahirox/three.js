@@ -299,6 +299,8 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 	var prefixVertex, prefixFragment;
 
+	var numMultiviewViews = renderer.multiview.getNumViews();
+
 	if ( material.isRawShaderMaterial ) {
 
 		prefixVertex = [
@@ -327,8 +329,6 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		}
 
 	} else {
-
-		var numMultiviewViews = renderer.multiview.getNumViews();
 
 		prefixVertex = [
 
@@ -385,7 +385,7 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 			'uniform mat4 modelMatrix;',
 			'uniform vec3 cameraPosition;',
 
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+			numMultiviewViews > 0 ? [
 				'uniform mat4 modelViewMatrices[' + numMultiviewViews + '];',
 				'uniform mat3 normalMatrices[' + numMultiviewViews + '];',
 				'uniform mat4 viewMatrices[' + numMultiviewViews + '];',
@@ -516,7 +516,7 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 			'uniform vec3 cameraPosition;',
 
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+			numMultiviewViews > 0 ? [
 
 				'uniform mat4 viewMatrices[' + numMultiviewViews + '];',
 				'#define viewMatrix viewMatrices[VIEW_ID]'
@@ -577,7 +577,7 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		prefixVertex = [
 			'#version 300 es\n',
 
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+			numMultiviewViews > 0 ? [
 
 				'#extension GL_OVR_multiview2 : require',
 				'layout(num_views = ' + numMultiviewViews + ') in;',
@@ -592,7 +592,7 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 		prefixFragment = [
 			'#version 300 es\n',
-			material.supportsMultiview && renderer.multiview.isEnabled() ? [
+			numMultiviewViews > 0 ? [
 
 				'#extension GL_OVR_multiview2 : require',
 				'#define VIEW_ID gl_ViewID_OVR'
@@ -780,6 +780,7 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 	this.program = program;
 	this.vertexShader = glVertexShader;
 	this.fragmentShader = glFragmentShader;
+	this.numMultiviewViews = numMultiviewViews;
 
 	return this;
 
