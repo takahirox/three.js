@@ -16,19 +16,20 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 	var available = capabilities.multiview;
 	var maxNumViews = capabilities.maxMultiviewViews;
 
-	// for VR
-
 	var renderTarget = new WebGLMultiviewRenderTarget( 0, 0, 2 );
 	var currentRenderTarget;
 	var renderSize = new Vector2();
 
-	// 
-
 	var cameraArray = [];
-	var viewTargets = [];
-	var vector2s = [];
 	var matrix3s = [];
 	var matrix4s = [];
+
+	for ( var i = 0; i < maxNumViews; i ++ ) {
+
+		matrix3s[ i ] = new Matrix3();
+		matrix4s[ i ] = new Matrix4();
+
+	}
 
 	function getCameraArray( camera ) {
 
@@ -40,74 +41,10 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	}
 
-	function getViewTargets( length ) {
-
-		if ( viewTargets.length < length ) {
-
-			for ( var i = viewTargets.length; i < length; i ++ ) {
-
-				viewTargets[ i ] = new Vector4();
-
-			}
-
-		}
-
-		return viewTargets;
-
-	}
-
-	function getViewArray( length ) {
-
-		if ( vector2s.length < length ) {
-
-			for ( var i = vector2s.length; i < length; i ++ ) {
-
-				vector2s[ i ] = new Vector2();
-
-			}
-
-		}
-
-		return vector2s;
-
-	}
-
-	function getMatrix3s( length ) {
-
-		if ( matrix3s.length < length ) {
-
-			for ( var i = matrix3s.length; i < length; i ++ ) {
-
-				matrix3s[ i ] = new Matrix3();
-
-			}
-
-		}
-
-		return matrix3s;
-
-	}
-
-	function getMatrix4s( length ) {
-
-		if ( matrix4s.length < length ) {
-
-			for ( var i = matrix4s.length; i < length; i ++ ) {
-
-				matrix4s[ i ] = new Matrix4();
-
-			}
-
-		}
-
-		return matrix4s;
-
-	}
-
 	function updateProjectionMatricesUniform( camera, p_uniforms ) {
 
-		var numViews = renderer.getNumViews();
-		var matrices = getMatrix4s( numViews );
+		var numViews = getNumViews();
+		var matrices = matrix4s;
 		var cameras = getCameraArray( camera );
 
 		for ( var i = 0; i < numViews; i ++ ) {
@@ -124,8 +61,8 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	function updateViewMatricesUniform( camera, p_uniforms ) {
 
-		var numViews = renderer.getNumViews();
-		var matrices = getMatrix4s( numViews );
+		var numViews = getNumViews();
+		var matrices = matrix4s;
 		var cameras = getCameraArray( camera );
 
 		for ( var i = 0; i < numViews; i ++ ) {
@@ -142,9 +79,9 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	function updateObjectMatricesUniform( object, camera, p_uniforms ) {
 
-		var numViews = renderer.getNumViews();
-		var modelViewMatrices = getMatrix4s( numViews );
-		var normalMatrices = getMatrix3s( numViews );
+		var numViews = getNumViews();
+		var modelViewMatrices = matrix4s;
+		var normalMatrices = matrix3s;
 		var cameras = getCameraArray( camera );
 
 		for ( var i = 0; i < numViews; i ++ ) {
@@ -171,41 +108,33 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	function resizeRenderTarget( camera ) {
 
-		renderer.getDrawingBufferSize( renderSize );
+		if ( currentRenderTarget ) {
 
-		var numViews = getNumViews();
-		var views = getViewArray( numViews );
-
-		if ( camera.isArrayCamera ) {
-
-			for ( var i = 0; i < numViews; i ++ ) {
-
-				var bounds = camera.cameras[ i ].bounds;
-
-				var width = bounds.z * renderSize.x;
-				var height = bounds.w * renderSize.y;
-
-				views[ i ].set( width, height );
-
-			}
+			renderSize.set( currentRenderTarget.width, currentRenderTarget.height );
 
 		} else {
 
-			views[ 0 ].set( renderSize.x, renderSize.y ) ;
-
-			for ( var i = 1; i < numViews; i ++ ) {
-
-				views[ i ].set( 0, 0 );
-
-			}
+			renderer.getDrawingBufferSize( renderSize );
 
 		}
 
-		renderTarget.setSize( renderSize.x, renderSize.y, views );
+		if ( camera.isArrayCamera ) {
+
+			var bounds = camera.cameras[ 0 ].bounds;
+
+			renderTarget.setSize( bounds.z * renderSize.x, bounds.w * renderSize.y );
+			renderTarget.setNumViews( camera.cameras.length );
+
+		} else {
+
+			renderTarget.setSize( renderSize.x, renderSize.y );
+			renderTarget.setNumViews( 2 );
+
+		}
 
 	}
 
-	function overrideRenderTarget( camera ) {
+	function attachRenderTarget( camera ) {
 
 		currentRenderTarget = renderer.getRenderTarget();
 		resizeRenderTarget( camera );
@@ -213,64 +142,48 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	}
 
-	function resetRenderTarget() {
+	function detachRenderTarget( camera ) {
 
-		var numViews = getNumViews();
-		var targets = getViewTargets( numViews );
-		var views = renderTarget.views;
-
-		var offset = 0;
-
-		for ( var i = 0; i < numViews; i ++ ) {
-
-			var view = views[ i ];
-			var target = targets[ i ];
-
-			target.x = offset;
-			target.y = 0;
-			target.z = view.x;
-			target.w = view.y;
-
-			offset += view.width;
-
-		}
-
-		flushToRenderTarget( renderTarget, currentRenderTarget, targets );
+		flushToRenderTarget( camera, renderTarget, currentRenderTarget );
 		renderer.setRenderTarget( currentRenderTarget );
 
 	}
 
-	function flushToRenderTarget( srcRenderTarget, dstRenderTarget, targets ) {
+	function flushToRenderTarget( camera, srcRenderTarget, dstRenderTarget ) {
 
-		if ( ! srcRenderTarget || ! srcRenderTarget.isWebGLMultiviewRenderTarget ) {
-
-			console.error( 'THREE.WebGLMultiview.flushToRenderTarget: source renderTarget must be WebGLMultiview ' );
-
-			return;
-
-		}
+		var numViews = srcRenderTarget.numViews;
 
 		var srcFramebuffers = properties.get( srcRenderTarget ).__webglViewFramebuffers;
-		var views = srcRenderTarget.views;
+
+		var viewWidth = srcRenderTarget.width;
+		var viewHeight = srcRenderTarget.height;
 
 		var dstFramebuffer = dstRenderTarget ? properties.get( dstRenderTarget ).__webglFramebuffer : renderer.getFramebuffer();
 
 		gl.bindFramebuffer( gl.FRAMEBUFFER, dstFramebuffer );
 
-		for ( var i = 0, il = views.length; i < il; i ++ ) {
+		if ( camera.isArrayCamera ) {
 
-			var view = views[ i ];
-			var width = view.x;
-			var height = view.y;
-			var targetX = targets[ i ].x;
-			var targetY = targets[ i ].y;
-			var targetWidth = targets[ i ].z;
-			var targetHeight = targets[ i ].w;
+			var cameras = camera.cameras;
 
-			if ( width === 0 || height === 0 || targetWidth === 0 || targetHeight === 0 ) continue;
+			for ( var i = 0; i < numViews; i ++ ) {
 
-			gl.bindFramebuffer( gl.READ_FRAMEBUFFER,  srcFramebuffers[ i ] );
-			gl.blitFramebuffer( 0, 0, width, height, targetX, targetY, targetX + targetWidth, targetY + targetHeight, gl.COLOR_BUFFER_BIT, gl.NEAREST );
+				var bounds = camera.cameras[ i ].bounds;
+
+				var x1 = bounds.x * renderSize.x;
+				var y1 = bounds.y * renderSize.y;
+				var x2 = x1 + bounds.z * renderSize.x;
+				var y2 = y1 + bounds.w * renderSize.y;
+
+				gl.bindFramebuffer( gl.READ_FRAMEBUFFER,  srcFramebuffers[ i ] );
+				gl.blitFramebuffer( 0, 0, viewWidth, viewHeight, x1, y1, x2, y2, gl.COLOR_BUFFER_BIT, gl.NEAREST );
+
+			}
+
+		} else {
+
+			gl.bindFramebuffer( gl.READ_FRAMEBUFFER,  srcFramebuffers[ 0 ] );
+			gl.blitFramebuffer( 0, 0, viewWidth, viewHeight, 0, 0, renderSize.x, renderSize.y, gl.COLOR_BUFFER_BIT, gl.NEAREST );
 
 		}
 
@@ -278,9 +191,9 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	}
 
-	this.overrideRenderTarget = overrideRenderTarget;
-	this.resetRenderTarget = resetRenderTarget;
-	this.flushToRenderTarget = flushToRenderTarget;
+	this.available = available;
+	this.attachRenderTarget = attachRenderTarget;
+	this.detachRenderTarget = detachRenderTarget;
 	this.updateProjectionMatricesUniform = updateProjectionMatricesUniform;
 	this.updateViewMatricesUniform = updateViewMatricesUniform;
 	this.updateObjectMatricesUniform = updateObjectMatricesUniform;

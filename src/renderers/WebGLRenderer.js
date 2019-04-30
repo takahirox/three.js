@@ -67,7 +67,8 @@ function WebGLRenderer( parameters ) {
 		_antialias = parameters.antialias !== undefined ? parameters.antialias : false,
 		_premultipliedAlpha = parameters.premultipliedAlpha !== undefined ? parameters.premultipliedAlpha : true,
 		_preserveDrawingBuffer = parameters.preserveDrawingBuffer !== undefined ? parameters.preserveDrawingBuffer : false,
-		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default';
+		_powerPreference = parameters.powerPreference !== undefined ? parameters.powerPreference : 'default',
+		_multiview = parameters.multiview !== undefined ? parameters.multiview : false;
 
 	var currentRenderList = null;
 	var currentRenderState = null;
@@ -314,7 +315,13 @@ function WebGLRenderer( parameters ) {
 
 	var multiview = new WebGLMultiview( _this, extensions, capabilities, properties );
 
-	this.multiview = multiview;
+	if ( _multiview && ! multiview.available ) {
+
+		console.warn( 'THREE.WebGLRenderer: multiview parameter is true but the browser doesn\'t seemt to support multiview extension. Forcing to false.' );
+
+		_multiview = false;
+
+	}
 
 	// shadow map
 
@@ -1193,9 +1200,9 @@ function WebGLRenderer( parameters ) {
 
 		}
 
-		if ( vr.enabled && vr.multiview ) {
+		if ( _multiview ) {
 
-			multiview.overrideRenderTarget( camera );
+			multiview.attachRenderTarget( camera );
 
 		}
 
@@ -1253,13 +1260,13 @@ function WebGLRenderer( parameters ) {
 
 		state.setPolygonOffset( false );
 
+		if ( _multiview ) {
+
+			multiview.detachRenderTarget( camera );
+
+		}
+
 		if ( vr.enabled ) {
-
-			if ( vr.multiview ) {
-
-				multiview.resetRenderTarget();
-
-			}
 
 			vr.submitFrame();
 
