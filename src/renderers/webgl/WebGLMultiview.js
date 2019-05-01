@@ -106,6 +106,25 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	}
 
+	function isMultiviewUsable( camera ) {
+
+		if ( ! camera.isArrayCamera ) return true;
+
+		var cameras = camera.cameras;
+
+		if ( cameras.length > maxNumViews ) return false;
+
+		for ( var i = 1, il = cameras.length; i < il; i ++ ) {
+
+			if ( cameras[ 0 ].bounds.z !== cameras[ i ].bounds.z ||
+				cameras[ 0 ].bounds.w !== cameras[ i ].bounds.w ) return false;
+
+		}
+
+		return true;
+
+	}
+
 	function resizeRenderTarget( camera ) {
 
 		if ( currentRenderTarget ) {
@@ -136,6 +155,8 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 
 	function attachRenderTarget( camera ) {
 
+		if ( ! isMultiviewUsable( camera ) ) return;
+
 		currentRenderTarget = renderer.getRenderTarget();
 		resizeRenderTarget( camera );
 		renderer.setRenderTarget( renderTarget );
@@ -143,6 +164,8 @@ function WebGLMultiview( renderer, extensions, capabilities, properties ) {
 	}
 
 	function detachRenderTarget( camera ) {
+
+		if ( renderTarget !== renderer.getRenderTarget() ) return false;
 
 		renderer.setRenderTarget( currentRenderTarget );
 		flush( camera );
