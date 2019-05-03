@@ -266,7 +266,7 @@ function WebGLPrograms( renderer, extensions, capabilities, textures ) {
 
 			var programInfo = programs[ p ];
 
-			if ( programInfo.code === code ) {
+			if ( programInfo.code === code && this.isCompatible( programInfo ) ) {
 
 				program = programInfo;
 				++ program.usedTimes;
@@ -290,17 +290,33 @@ function WebGLPrograms( renderer, extensions, capabilities, textures ) {
 
 	this.releaseProgram = function ( program ) {
 
-		if ( -- program.usedTimes === 0 ) {
+		var index = 0;
 
-			// Remove from unordered set
-			var i = programs.indexOf( program );
-			programs[ i ] = programs[ programs.length - 1 ];
-			programs.pop();
+		while ( index < programs.length ) {
 
-			// Free WebGL resources
-			program.destroy();
+			if ( programs[ index ].code === program.code &&
+				-- programs[ index ].usedTimes === 0 ) {
+
+				// Free WebGL resources
+				programs[ index ].destroy();
+
+				// Remove from unordered set
+				programs[ index ] = programs[ programs.length - 1 ];
+				programs.length -= 1;
+
+			} else {
+
+				index ++;
+
+			}
 
 		}
+
+	};
+
+	this.isCompatible = function ( program ) {
+
+		return program.numMultiviewViews === renderer.multiview.getNumViews();
 
 	};
 

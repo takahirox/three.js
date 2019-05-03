@@ -1485,6 +1485,10 @@ function WebGLRenderer( parameters ) {
 			// changed glsl or parameters
 			releaseMaterialProgramReference( material );
 
+		} else if ( ! programCache.isCompatible( program ) ) {
+
+			//
+
 		} else if ( lightsHash.stateID !== lightsStateHash.stateID ||
 			lightsHash.directionalLength !== lightsStateHash.directionalLength ||
 			lightsHash.pointLength !== lightsStateHash.pointLength ||
@@ -1676,6 +1680,10 @@ function WebGLRenderer( parameters ) {
 		if ( material.needsUpdate === false ) {
 
 			if ( materialProperties.program === undefined ) {
+
+				material.needsUpdate = true;
+
+			} else if ( ! programCache.isCompatible( materialProperties.program ) ) {
 
 				material.needsUpdate = true;
 
