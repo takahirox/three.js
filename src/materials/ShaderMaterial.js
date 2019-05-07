@@ -33,6 +33,7 @@ function ShaderMaterial( parameters ) {
 
 	this.defines = {};
 	this.uniforms = {};
+	this.uniformsGroups = [];
 
 	this.vertexShader = default_vertex;
 	this.fragmentShader = default_fragment;
@@ -95,6 +96,7 @@ ShaderMaterial.prototype.copy = function ( source ) {
 	this.vertexShader = source.vertexShader;
 
 	this.uniforms = cloneUniforms( source.uniforms );
+	this.uniformsGroups = source.uniformsGroups;
 
 	this.defines = Object.assign( {}, source.defines );
 

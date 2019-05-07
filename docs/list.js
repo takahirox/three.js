@@ -99,7 +99,8 @@ var list = {
 				"Layers": "api/en/core/Layers",
 				"Object3D": "api/en/core/Object3D",
 				"Raycaster": "api/en/core/Raycaster",
-				"Uniform": "api/en/core/Uniform"
+				"Uniform": "api/en/core/Uniform",
+				"UniformsGroup": "api/en/core/UniformsGroup"
 			},
 
 			"Core / BufferAttributes": {
@@ -531,7 +532,8 @@ var list = {
 				"Layers": "api/zh/core/Layers",
 				"Object3D": "api/zh/core/Object3D",
 				"Raycaster": "api/zh/core/Raycaster",
-				"Uniform": "api/zh/core/Uniform"
+				"Uniform": "api/zh/core/Uniform",
+				"UniformsGroup": "api/zh/core/UniformsGroup"
 			},
 
 			"核心 / BufferAttributes": {

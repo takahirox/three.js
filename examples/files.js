@@ -320,7 +320,8 @@ var files = {
 		"webgl2_materials_texture2darray",
 		"webgl2_materials_texture3d",
 		"webgl2_multisampled_renderbuffers",
-		"webgl2_sandbox"
+		"webgl2_sandbox",
+		"webgl2_ubo"
 	],
 	"webaudio": [
 		"webaudio_orientation",
