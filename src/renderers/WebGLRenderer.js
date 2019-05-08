@@ -11,6 +11,8 @@ import {
 	BackSide
 } from '../constants.js';
 import { _Math } from '../math/Math.js';
+import { Uniform } from '../core/Uniform.js';
+import { UniformsGroup } from '../core/UniformsGroup.js';
 import { DataTexture } from '../textures/DataTexture.js';
 import { Frustum } from '../math/Frustum.js';
 import { Matrix4 } from '../math/Matrix4.js';
@@ -208,11 +210,11 @@ function WebGLRenderer( parameters ) {
 		_canvas.addEventListener( 'webglcontextlost', onContextLost, false );
 		_canvas.addEventListener( 'webglcontextrestored', onContextRestore, false );
 
-		_gl = _context || _canvas.getContext( 'webgl', contextAttributes ) || _canvas.getContext( 'experimental-webgl', contextAttributes );
+		_gl = _context || _canvas.getContext( 'webgl2', contextAttributes ) || _canvas.getContext( 'experimental-webgl', contextAttributes );
 
 		if ( _gl === null ) {
 
-			if ( _canvas.getContext( 'webgl' ) !== null ) {
+			if ( _canvas.getContext( 'webgl2' ) !== null ) {
 
 				throw new Error( 'Error creating WebGL context with your selected attributes.' );
 
@@ -307,6 +309,14 @@ function WebGLRenderer( parameters ) {
 	}
 
 	initGLContext();
+
+	//
+
+	var cameraUniformsGroup = new UniformsGroup();
+	cameraUniformsGroup.setName( 'ViewData' );
+	cameraUniformsGroup.add( new Uniform( new Matrix4() ) ); // projection matrix
+	cameraUniformsGroup.add( new Uniform( new Matrix4() ) ); // view matrix
+	cameraUniformsGroup.add( new Uniform( new Vector3() ) ); // cameraPosition
 
 	// vr
 
@@ -1139,6 +1149,10 @@ function WebGLRenderer( parameters ) {
 
 		scene.onBeforeRender( _this, scene, camera, renderTarget || _currentRenderTarget );
 
+		cameraUniformsGroup.uniforms[ 0 ].value.copy( camera.projectionMatrix );
+		cameraUniformsGroup.uniforms[ 1 ].value.copy( camera.matrixWorldInverse );
+		cameraUniformsGroup.uniforms[ 2 ].value.setFromMatrixPosition( camera.matrixWorld );
+
 		_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
 		_frustum.setFromMatrix( _projScreenMatrix );
 
@@ -1499,11 +1513,18 @@ function WebGLRenderer( parameters ) {
 
 				var shader = ShaderLib[ parameters.shaderID ];
 
+				if ( shader.uniformsGroups === undefined ) {
+
+					shader.uniformsGroups = [ cameraUniformsGroup ];
+
+				}
+
 				materialProperties.shader = {
 					name: material.type,
 					uniforms: cloneUniforms( shader.uniforms ),
 					vertexShader: shader.vertexShader,
-					fragmentShader: shader.fragmentShader
+					fragmentShader: shader.fragmentShader,
+					uniformsGroups: shader.uniformsGroups
 				};
 
 			} else {
@@ -1967,9 +1988,10 @@ function WebGLRenderer( parameters ) {
 
 		// UBOs
 
-		if ( material.isShaderMaterial || material.isRawShaderMaterial ) {
+		var groups = materialProperties.shader.uniformsGroups;
 
-			var groups = materialProperties.shader.uniformsGroups;
+		if ( groups ) {
+
 			var webglProgram = materialProperties.program.program;
 
 			for ( var i = 0, l = groups.length; i < l; i ++ ) {

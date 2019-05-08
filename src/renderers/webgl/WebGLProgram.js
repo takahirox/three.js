@@ -383,10 +383,13 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 			'uniform mat4 modelMatrix;',
 			'uniform mat4 modelViewMatrix;',
-			'uniform mat4 projectionMatrix;',
-			'uniform mat4 viewMatrix;',
 			'uniform mat3 normalMatrix;',
-			'uniform vec3 cameraPosition;',
+
+			'uniform ViewData {',
+			'	mat4 projectionMatrix;',
+			'	mat4 viewMatrix;',
+			'	vec3 cameraPosition;',
+			'};',
 
 			'attribute vec3 position;',
 			'attribute vec3 normal;',
@@ -497,8 +500,11 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 
 			parameters.envMap && ( capabilities.isWebGL2 || extensions.get( 'EXT_shader_texture_lod' ) ) ? '#define TEXTURE_LOD_EXT' : '',
 
-			'uniform mat4 viewMatrix;',
-			'uniform vec3 cameraPosition;',
+			'uniform ViewData {',
+			'	mat4 projectionMatrix;',
+			'	mat4 viewMatrix;',
+			'	vec3 cameraPosition;',
+			'};',
 
 			( parameters.toneMapping !== NoToneMapping ) ? '#define TONE_MAPPING' : '',
 			( parameters.toneMapping !== NoToneMapping ) ? ShaderChunk[ 'tonemapping_pars_fragment' ] : '', // this code is required here because it is used by the toneMapping() function defined below

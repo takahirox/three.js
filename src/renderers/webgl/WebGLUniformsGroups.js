@@ -6,16 +6,25 @@ function WebGLUniformsGroups( gl, info, capabilities ) {
 
 	var buffers = {};
 	var updateList = {};
+	var bounds = {};
 
 	var allocatedBindingPoints = [];
 	var maxBindingPoints = ( capabilities.isWebGL2 ) ? gl.getParameter( gl.MAX_UNIFORM_BUFFER_BINDINGS ) : null; // binding points are global whereas block indices are per shader program
 
 	function bind( uniformsGroup, program ) {
 
-		// bind shader specific block index to global block point
+		if ( bounds[ uniformsGroup.id ] === undefined ) bounds[ uniformsGroup.id ] = {};
 
-		var blockIndex = gl.getUniformBlockIndex( program, uniformsGroup.name );
-		gl.uniformBlockBinding( program, blockIndex, uniformsGroup.__bindingPointIndex );
+		if ( bounds[ uniformsGroup.id ][ program.id ] === undefined ) {
+
+			// bind shader specific block index to global block point
+
+			var blockIndex = gl.getUniformBlockIndex( program, uniformsGroup.name );
+			gl.uniformBlockBinding( program, blockIndex, uniformsGroup.__bindingPointIndex );
+
+			bounds[ uniformsGroup.id ][ program.id ] === true;
+
+		}
 
 	}
 
