@@ -1736,7 +1736,7 @@ function WebGLRenderer( parameters ) {
 
 		if ( refreshProgram || _currentCamera !== camera ) {
 
-			p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
+			//p_uniforms.setValue( _gl, 'projectionMatrix', camera.projectionMatrix );
 
 			if ( capabilities.logarithmicDepthBuffer ) {
 
@@ -1757,7 +1757,7 @@ function WebGLRenderer( parameters ) {
 				refreshLights = true;		// remains set until update done
 
 			}
-
+/*
 			// load material specific uniforms
 			// (shader material also gets them for the sake of genericity)
 
@@ -1787,7 +1787,7 @@ function WebGLRenderer( parameters ) {
 				p_uniforms.setValue( _gl, 'viewMatrix', camera.matrixWorldInverse );
 
 			}
-
+*/
 		}
 
 		// skinning uniforms must be set even if material didn't change

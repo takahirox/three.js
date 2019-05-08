@@ -13,16 +13,16 @@ function WebGLUniformsGroups( gl, info, capabilities ) {
 
 	function bind( uniformsGroup, program ) {
 
-		if ( bounds[ uniformsGroup.id ] === undefined ) bounds[ uniformsGroup.id ] = {};
+		if ( bounds[ uniformsGroup.id ] === undefined ) bounds[ uniformsGroup.id ] = new Map();
 
-		if ( bounds[ uniformsGroup.id ][ program.id ] === undefined ) {
+		if ( ! bounds[ uniformsGroup.id ].has( program ) ) {
 
 			// bind shader specific block index to global block point
 
 			var blockIndex = gl.getUniformBlockIndex( program, uniformsGroup.name );
 			gl.uniformBlockBinding( program, blockIndex, uniformsGroup.__bindingPointIndex );
 
-			bounds[ uniformsGroup.id ][ program.id ] === true;
+			bounds[ uniformsGroup.id ].set( program, true );
 
 		}
 
