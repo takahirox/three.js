@@ -111,13 +111,34 @@ Object.assign( THREE.EffectComposer.prototype, {
 
 		var pass, i, il = this.passes.length;
 
+		var currentVREnabled = this.renderer.vr.enabled;
+		var currentMultiviewEnabled = this.renderer.multiview.isEnabled();
+
+		if ( currentVREnabled ) {
+
+			this.renderer.vr.enabled = false;
+
+		}
+
+		if ( currentMultiviewEnabled ) {
+
+			//var renderSize = this.renderer.getDrawingBufferSize( new THREE.Vector2() );
+			//this.readBuffer.setSize( renderSize.x / 2, renderSize.y );
+			//this.writeBuffer.setSize( renderSize.x / 2, renderSize.y );
+
+			this.renderer.setRenderTarget( this.readBuffer );
+			this.renderer.setRenderTarget( this.writeBuffer );
+			this.renderer.capabilities.multiview = false;
+
+		}
+
 		for ( i = 0; i < il; i ++ ) {
 
 			pass = this.passes[ i ];
 
 			if ( pass.enabled === false ) continue;
 
-			pass.renderToScreen = ( this.renderToScreen && this.isLastEnabledPass( i ) );
+			pass.renderToScreen = ( ! currentMultiviewEnabled && this.renderToScreen && this.isLastEnabledPass( i ) );
 			pass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive );
 
 			if ( pass.needsSwap ) {
@@ -151,6 +172,24 @@ Object.assign( THREE.EffectComposer.prototype, {
 				}
 
 			}
+
+		}
+
+		if ( currentMultiviewEnabled ) {
+
+			if ( ( il % 2 ) === 1 ) {
+
+				this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime );
+
+			}
+
+			this.renderer.capabilities.multiview = true;
+
+		}
+
+		if ( currentVREnabled ) {
+
+			this.renderer.vr.enabled = true;
 
 		}
 
@@ -229,9 +268,31 @@ THREE.Pass.FullScreenQuad = ( function () {
 	var camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
 	var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
 
+	var renderSize = new THREE.Vector2();
+
+	var camera2 = new THREE.ArrayCamera( [
+		new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 ),
+		new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 )
+	] );
+
+	camera2.cameras[ 0 ].viewport = new THREE.Vector4();
+	camera2.cameras[ 1 ].viewport = new THREE.Vector4();
+
 	var FullScreenQuad = function ( material ) {
 
 		this._mesh = new THREE.Mesh( geometry, material );
+
+	};
+
+	function overrideShader( material ) {
+
+		material.fragmentShader = material.fragmentShader
+			.replace( 'uniform sampler2D tDiffuse', 'uniform highp sampler2DArray tDiffuse' )
+			.replace( /texture2D\s*\(\s*tDiffuse\s*,\s*(.*)\s*\)/g, 'texture( tDiffuse, vec3( $1, VIEW_ID ) )' );
+
+		//console.log( material.fragmentShader );
+
+		return material;
 
 	};
 
@@ -255,7 +316,27 @@ THREE.Pass.FullScreenQuad = ( function () {
 
 		render: function ( renderer ) {
 
-			renderer.render( this._mesh, camera );
+			if ( renderer.multiview.getNumViews() > 0 ) {
+
+				if ( ! this._mesh.material.userData.converted ) {
+
+					this._mesh.material = overrideShader( this._mesh.material );
+					this._mesh.material.userData.converted = true;
+
+				}
+
+				renderer.getDrawingBufferSize( renderSize );
+
+				camera2.cameras[ 0 ].viewport.set( 0, 0, renderSize.x / 2, renderSize.y );
+				camera2.cameras[ 1 ].viewport.set( renderSize.x / 2, 0, renderSize.x / 2, renderSize.y );
+
+				renderer.render( this._mesh, camera2 );
+
+			} else {
+
+				renderer.render( this._mesh, camera );
+
+			}
 
 		}
 

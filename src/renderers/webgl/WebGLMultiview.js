@@ -31,9 +31,11 @@ function WebGLMultiview( renderer, requested, options ) {
 
 	function getNumViews() {
 
-		if ( renderTarget && renderer.getRenderTarget() === renderTarget ) {
+		var currentRenderTarget = renderer.getRenderTarget();
 
-			return renderTarget.numViews;
+		if ( currentRenderTarget && currentRenderTarget.isWebGLMultiviewRenderTarget ) {
+
+			return currentRenderTarget.numViews;
 
 		}
 

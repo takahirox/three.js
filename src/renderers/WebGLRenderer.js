@@ -1386,7 +1386,7 @@ function WebGLRenderer( parameters ) {
 			var material = overrideMaterial === undefined ? renderItem.material : overrideMaterial;
 			var group = renderItem.group;
 
-			if ( multiview.isEnabled() ) {
+			if ( multiview.getNumViews() > 0 ) {
 
 				_currentArrayCamera = camera;
 
