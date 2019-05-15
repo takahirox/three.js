@@ -178,7 +178,9 @@ function WebGLRenderer( parameters ) {
 
 		_projScreenMatrix = new Matrix4(),
 
-		_vector3 = new Vector3();
+		_vector3 = new Vector3(),
+
+		_compilingShaders = false;
 
 	function getTargetPixelRatio() {
 
@@ -1010,6 +1012,8 @@ function WebGLRenderer( parameters ) {
 
 	this.compile = function ( scene, camera ) {
 
+		var compiling = false;
+
 		currentRenderState = renderStates.get( scene, camera );
 		currentRenderState.init();
 
@@ -1039,19 +1043,21 @@ function WebGLRenderer( parameters ) {
 
 					for ( var i = 0; i < object.material.length; i ++ ) {
 
-						initMaterial( object.material[ i ], scene.fog, object );
+						compiling = compiling || ! initMaterial( object.material[ i ], scene.fog, object, true );
 
 					}
 
 				} else {
 
-					initMaterial( object.material, scene.fog, object );
+					compiling = compiling || ! initMaterial( object.material, scene.fog, object, true );
 
 				}
 
 			}
 
 		} );
+
+		return compiling;
 
 	};
 
@@ -1130,6 +1136,9 @@ function WebGLRenderer( parameters ) {
 			camera = vr.getCamera( camera );
 
 		}
+
+		_compilingShaders = false;
+		_compilingShaders = this.compile( scene, camera );
 
 		//
 
@@ -1451,7 +1460,9 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	function initMaterial( material, fog, object ) {
+	function initMaterial( material, fog, object, compileOnly ) {
+
+		if ( _compilingShaders && compileOnly !== true ) return false;
 
 		var materialProperties = properties.get( material );
 
@@ -1500,7 +1511,7 @@ function WebGLRenderer( parameters ) {
 		} else if ( parameters.shaderID !== undefined ) {
 
 			// same glsl and uniform list
-			return;
+			return true;
 
 		} else {
 
@@ -1540,8 +1551,20 @@ function WebGLRenderer( parameters ) {
 
 			program = programCache.acquireProgram( material, materialProperties.shader, parameters, code );
 
-			if ( ! program.isReady() ) return false;
+			var ready = program.isReady();
 
+			if ( ! ready ) return false;
+
+			if ( compileOnly ) {
+
+				_gl.getProgramParameter( program.program, _gl.ACTIVE_ATTRIBUTES );
+				return true;
+
+			}
+
+			if ( _compilingShaders && ! program.used ) return false;
+
+			program.ready = true;
 			materialProperties.program = program;
 			material.program = program;
 
@@ -1562,7 +1585,7 @@ function WebGLRenderer( parameters ) {
 				}
 
 			}
-
+v
 		}
 
 		if ( material.morphNormals ) {
@@ -1703,7 +1726,9 @@ function WebGLRenderer( parameters ) {
 
 		if ( material.needsUpdate ) {
 
-			if ( ! initMaterial( material, fog, object ) ) return null;
+			var flag = initMaterial( material, fog, object );
+
+			if ( ! flag ) return null;
 
 			material.needsUpdate = false;
 
@@ -1724,6 +1749,8 @@ function WebGLRenderer( parameters ) {
 			refreshLights = true;
 
 		}
+
+		program.used = true;
 
 		if ( material.id !== _currentMaterialId ) {
 

@@ -710,6 +710,11 @@ function WebGLProgram( renderer, extensions, code, material, shader, parameters,
 		state = 2;
 		linkProgram();
 
+	} else {
+
+		state = 1;
+		linkProgram();
+
 	}
 
 	// set up caching for uniform locations
