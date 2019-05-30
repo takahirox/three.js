@@ -14,6 +14,8 @@ THREE.GLTFLoader = ( function () {
 		this.dracoLoader = null;
 		this.plugins = {};
 
+		this.registerPlugin( new GLTFTextureDDSExtension() );
+
 	}
 
 	GLTFLoader.prototype = {
@@ -208,10 +210,6 @@ THREE.GLTFLoader = ( function () {
 							extensions[ extensionName ] = new GLTFDracoMeshCompressionExtension( json, this.dracoLoader );
 							break;
 
-						case EXTENSIONS.MSFT_TEXTURE_DDS:
-							extensions[ EXTENSIONS.MSFT_TEXTURE_DDS ] = new GLTFTextureDDSExtension();
-							break;
-
 						case EXTENSIONS.KHR_TEXTURE_TRANSFORM:
 							extensions[ EXTENSIONS.KHR_TEXTURE_TRANSFORM ] = new GLTFTextureTransformExtension( json );
 							break;
@@ -291,8 +289,7 @@ THREE.GLTFLoader = ( function () {
 		KHR_LIGHTS_PUNCTUAL: 'KHR_lights_punctual',
 		KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS: 'KHR_materials_pbrSpecularGlossiness',
 		KHR_MATERIALS_UNLIT: 'KHR_materials_unlit',
-		KHR_TEXTURE_TRANSFORM: 'KHR_texture_transform',
-		MSFT_TEXTURE_DDS: 'MSFT_texture_dds'
+		KHR_TEXTURE_TRANSFORM: 'KHR_texture_transform'
 	};
 
 	/**
@@ -304,16 +301,43 @@ THREE.GLTFLoader = ( function () {
 	 */
 	function GLTFTextureDDSExtension() {
 
-		if ( ! THREE.DDSLoader ) {
+		this.name = 'MSFT_texture_dds';
+		this.targets = [ 'Texture' ];
+		this.ddsLoader = null;
 
-			throw new Error( 'THREE.GLTFLoader: Attempting to load .dds texture without importing THREE.DDSLoader' );
+	}
+
+	GLTFTextureDDSExtension.prototype = {
+
+		constructor: GLTFTextureDDSExtension,
+
+		_getLoader: function () {
+
+			if ( this.ddsLoader !== null ) return this.ddsLoader;
+
+			if ( ! THREE.DDSLoader ) {
+
+				throw new Error( 'THREE.GLTFLoader: Attempting to load .dds texture without importing THREE.DDSLoader' );
+
+			}
+
+			this.ddsLoader = new THREE.DDSLoader();
+			return this.ddsLoader;
+
+		},
+
+		onTexture: function ( textureDef, parser ) {
+
+			var extensions = textureDef.extensions;
+			var json = parser.json;
+			var imageDef = json.images[ extensions[ this.name ].source ];
+			var loader = this._getLoader();
+
+			return parser.loadTextureFile( imageDef, loader );
 
 		}
 
-		this.name = EXTENSIONS.MSFT_TEXTURE_DDS;
-		this.ddsLoader = new THREE.DDSLoader();
-
-	}
+	};
 
 	/**
 	 * Lights Extension
@@ -2219,46 +2243,29 @@ THREE.GLTFLoader = ( function () {
 	};
 
 	/**
-	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#textures
-	 * @param {GLTF.Texture} textureDef
+	 * @param {GLTF.Image} imageDef
+	 * @param {THREE.Loader} loader (optional)
 	 * @return {Promise<THREE.Texture>}
 	 */
-	GLTFParser.prototype.loadTexture = function ( textureDef ) {
+	GLTFParser.prototype.loadTextureFile = function ( imageDef, loader ) {
 
 		var parser = this;
-		var json = this.json;
 		var options = this.options;
-		var textureLoader = this.textureLoader;
 
-		var URL = window.URL || window.webkitURL;
-
-		var textureExtensions = textureDef.extensions || {};
-
-		var source;
-
-		if ( textureExtensions[ EXTENSIONS.MSFT_TEXTURE_DDS ] ) {
-
-			source = json.images[ textureExtensions[ EXTENSIONS.MSFT_TEXTURE_DDS ].source ];
-
-		} else {
-
-			source = json.images[ textureDef.source ];
-
-		}
-
-		var sourceURI = source.uri;
+		var sourceURI = imageDef.uri;
 		var isObjectURL = false;
 
-		if ( source.bufferView !== undefined ) {
+		if ( imageDef.bufferView !== undefined ) {
 
 			// Load binary image data from bufferView, if provided.
 
-			sourceURI = parser.getDependency( 'bufferView', source.bufferView ).then( function ( bufferView ) {
+			var URL = window.URL || window.webkitURL;
+
+			sourceURI = parser.getDependency( 'bufferView', imageDef.bufferView ).then( function ( bufferView ) {
 
 				isObjectURL = true;
-				var blob = new Blob( [ bufferView ], { type: source.mimeType } );
-				sourceURI = URL.createObjectURL( blob );
-				return sourceURI;
+				var blob = new Blob( [ bufferView ], { type: imageDef.mimeType } );
+				return URL.createObjectURL( blob );
 
 			} );
 
@@ -2268,13 +2275,9 @@ THREE.GLTFLoader = ( function () {
 
 			// Load Texture resource.
 
-			var loader = THREE.Loader.Handlers.get( sourceURI );
+			if ( loader === undefined ) {
 
-			if ( ! loader ) {
-
-				loader = textureExtensions[ EXTENSIONS.MSFT_TEXTURE_DDS ]
-					? parser.extensions[ EXTENSIONS.MSFT_TEXTURE_DDS ].ddsLoader
-					: textureLoader;
+				loader = THREE.Loader.Handlers.get( sourceURI ) || parser.textureLoader;
 
 			}
 
@@ -2282,28 +2285,44 @@ THREE.GLTFLoader = ( function () {
 
 				loader.load( resolveURL( sourceURI, options.path ), resolve, undefined, reject );
 
+			} ).then( function ( texture ) {
+
+				// Clean up resources.
+				if ( isObjectURL ) URL.revokeObjectURL( sourceURI );
+
+				// Ignore unknown mime types, like DDS files.
+				if ( imageDef.mimeType in MIME_TYPE_FORMATS ) texture.format = MIME_TYPE_FORMATS[ imageDef.mimeType ];
+
+				return texture;
+
 			} );
 
-		} ).then( function ( texture ) {
+		} );
 
-			// Clean up resources and configure Texture.
+	};
 
-			if ( isObjectURL === true ) {
+	/**
+	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#textures
+	 * @param {GLTF.Texture} textureDef
+	 * @return {Promise<THREE.Texture>}
+	 */
+	GLTFParser.prototype.loadTexture = function ( textureDef ) {
 
-				URL.revokeObjectURL( sourceURI );
+		var json = this.json;
 
-			}
+		var texturePromise = this._on( 'Texture', textureDef );
+
+		if ( texturePromise === null ) {
+
+			texturePromise = this.loadTextureFile( json.images[ textureDef.source ], this.textureLoader );
+
+		}
+
+		return texturePromise.then( function ( texture ) {
 
 			texture.flipY = false;
 
 			if ( textureDef.name !== undefined ) texture.name = textureDef.name;
-
-			// Ignore unknown mime types, like DDS files.
-			if ( source.mimeType in MIME_TYPE_FORMATS ) {
-
-				texture.format = MIME_TYPE_FORMATS[ source.mimeType ];
-
-			}
 
 			var samplers = json.samplers || {};
 			var sampler = samplers[ textureDef.sampler ] || {};
