@@ -16,6 +16,7 @@ THREE.GLTFLoader = ( function () {
 
 		this.registerPlugin( new GLTFTextureDDSExtension() );
 		this.registerPlugin( new GLTFTextureTransformExtension() );
+		this.registerPlugin( new GLTFLightsExtension() );
 
 	}
 
@@ -195,10 +196,6 @@ THREE.GLTFLoader = ( function () {
 
 					switch ( extensionName ) {
 
-						case EXTENSIONS.KHR_LIGHTS_PUNCTUAL:
-							extensions[ extensionName ] = new GLTFLightsExtension( json );
-							break;
-
 						case EXTENSIONS.KHR_MATERIALS_UNLIT:
 							extensions[ extensionName ] = new GLTFMaterialsUnlitExtension( json );
 							break;
@@ -283,7 +280,6 @@ THREE.GLTFLoader = ( function () {
 	var EXTENSIONS = {
 		KHR_BINARY_GLTF: 'KHR_binary_glTF',
 		KHR_DRACO_MESH_COMPRESSION: 'KHR_draco_mesh_compression',
-		KHR_LIGHTS_PUNCTUAL: 'KHR_lights_punctual',
 		KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS: 'KHR_materials_pbrSpecularGlossiness',
 		KHR_MATERIALS_UNLIT: 'KHR_materials_unlit'
 	};
@@ -340,67 +336,79 @@ THREE.GLTFLoader = ( function () {
 	 *
 	 * Specification: PENDING
 	 */
-	function GLTFLightsExtension( json ) {
+	function GLTFLightsExtension() {
 
-		this.name = EXTENSIONS.KHR_LIGHTS_PUNCTUAL;
-
-		var extension = ( json.extensions && json.extensions[ EXTENSIONS.KHR_LIGHTS_PUNCTUAL ] ) || {};
-		this.lightDefs = extension.lights || [];
+		this.name = 'KHR_lights_punctual';
+		this.targets = [ 'Node' ];
 
 	}
 
-	GLTFLightsExtension.prototype.loadLight = function ( lightIndex ) {
+	GLTFLightsExtension.prototype = {
 
-		var lightDef = this.lightDefs[ lightIndex ];
-		var lightNode;
+		constructor: GLTFLightsExtension,
 
-		var color = new THREE.Color( 0xffffff );
-		if ( lightDef.color !== undefined ) color.fromArray( lightDef.color );
+		onNode: function ( nodeDef, parser ) {
 
-		var range = lightDef.range !== undefined ? lightDef.range : 0;
+			var extensions = nodeDef.extensions;
+			var json = parser.json;
+			var lightExtension = ( json.extensions && json.extensions[ this.name ] ) || {};
+			var lightDefs = lightExtension.lights || [];
 
-		switch ( lightDef.type ) {
+			var lightIndex = extensions[ this.name ].light;
+			var lightDef = lightDefs[ lightIndex ];
 
-			case 'directional':
-				lightNode = new THREE.DirectionalLight( color );
-				lightNode.target.position.set( 0, 0, - 1 );
-				lightNode.add( lightNode.target );
-				break;
+			var lightNode;
 
-			case 'point':
-				lightNode = new THREE.PointLight( color );
-				lightNode.distance = range;
-				break;
+			var color = new THREE.Color( 0xffffff );
 
-			case 'spot':
-				lightNode = new THREE.SpotLight( color );
-				lightNode.distance = range;
-				// Handle spotlight properties.
-				lightDef.spot = lightDef.spot || {};
-				lightDef.spot.innerConeAngle = lightDef.spot.innerConeAngle !== undefined ? lightDef.spot.innerConeAngle : 0;
-				lightDef.spot.outerConeAngle = lightDef.spot.outerConeAngle !== undefined ? lightDef.spot.outerConeAngle : Math.PI / 4.0;
-				lightNode.angle = lightDef.spot.outerConeAngle;
-				lightNode.penumbra = 1.0 - lightDef.spot.innerConeAngle / lightDef.spot.outerConeAngle;
-				lightNode.target.position.set( 0, 0, - 1 );
-				lightNode.add( lightNode.target );
-				break;
+			if ( lightDef.color !== undefined ) color.fromArray( lightDef.color );
 
-			default:
-				throw new Error( 'THREE.GLTFLoader: Unexpected light type, "' + lightDef.type + '".' );
+			var range = lightDef.range !== undefined ? lightDef.range : 0;
+
+			switch ( lightDef.type ) {
+
+				case 'directional':
+					lightNode = new THREE.DirectionalLight( color );
+					lightNode.target.position.set( 0, 0, - 1 );
+					lightNode.add( lightNode.target );
+					break;
+
+				case 'point':
+					lightNode = new THREE.PointLight( color );
+					lightNode.distance = range;
+					break;
+
+				case 'spot':
+					lightNode = new THREE.SpotLight( color );
+					lightNode.distance = range;
+					// Handle spotlight properties.
+					lightDef.spot = lightDef.spot || {};
+					lightDef.spot.innerConeAngle = lightDef.spot.innerConeAngle !== undefined ? lightDef.spot.innerConeAngle : 0;
+					lightDef.spot.outerConeAngle = lightDef.spot.outerConeAngle !== undefined ? lightDef.spot.outerConeAngle : Math.PI / 4.0;
+					lightNode.angle = lightDef.spot.outerConeAngle;
+					lightNode.penumbra = 1.0 - lightDef.spot.innerConeAngle / lightDef.spot.outerConeAngle;
+					lightNode.target.position.set( 0, 0, - 1 );
+					lightNode.add( lightNode.target );
+					break;
+
+				default:
+					throw new Error( 'THREE.GLTFLoader: Unexpected light type, "' + lightDef.type + '".' );
+
+			}
+
+			// Some lights (e.g. spot) default to a position other than the origin. Reset the position
+			// here, because node-level parsing will only override position if explicitly specified.
+			lightNode.position.set( 0, 0, 0 );
+
+			lightNode.decay = 2;
+
+			if ( lightDef.intensity !== undefined ) lightNode.intensity = lightDef.intensity;
+
+			lightNode.name = lightDef.name || ( 'light_' + lightIndex );
+
+			return Promise.resolve( lightNode );
 
 		}
-
-		// Some lights (e.g. spot) default to a position other than the origin. Reset the position
-		// here, because node-level parsing will only override position if explicitly specified.
-		lightNode.position.set( 0, 0, 0 );
-
-		lightNode.decay = 2;
-
-		if ( lightDef.intensity !== undefined ) lightNode.intensity = lightDef.intensity;
-
-		lightNode.name = lightDef.name || ( 'light_' + lightIndex );
-
-		return Promise.resolve( lightNode );
 
 	};
 
@@ -2021,10 +2029,6 @@ THREE.GLTFLoader = ( function () {
 
 					break;
 
-				case 'light':
-					dependency = this.extensions[ EXTENSIONS.KHR_LIGHTS_PUNCTUAL ].loadLight( index );
-					break;
-
 				default:
 					throw new Error( 'Unknown type: ' + type );
 
@@ -3150,6 +3154,10 @@ THREE.GLTFLoader = ( function () {
 
 		return ( function () {
 
+			var node = parser._on( 'Node', nodeDef );
+
+			if ( node !== null ) return node;
+
 			// .isBone isn't in glTF spec. See .markDefs
 			if ( nodeDef.isBone === true ) {
 
@@ -3208,12 +3216,6 @@ THREE.GLTFLoader = ( function () {
 			} else if ( nodeDef.camera !== undefined ) {
 
 				return parser.getDependency( 'camera', nodeDef.camera );
-
-			} else if ( nodeDef.extensions
-				&& nodeDef.extensions[ EXTENSIONS.KHR_LIGHTS_PUNCTUAL ]
-				&& nodeDef.extensions[ EXTENSIONS.KHR_LIGHTS_PUNCTUAL ].light !== undefined ) {
-
-				return parser.getDependency( 'light', nodeDef.extensions[ EXTENSIONS.KHR_LIGHTS_PUNCTUAL ].light );
 
 			} else {
 
