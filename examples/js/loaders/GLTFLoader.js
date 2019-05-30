@@ -11,9 +11,8 @@ THREE.GLTFLoader = ( function () {
 	function GLTFLoader( manager ) {
 
 		this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
-		this.dracoLoader = null;
-		this.plugins = {};
 
+		this.plugins = {};
 		this.registerPlugin( new GLTFTextureDDSExtension() );
 		this.registerPlugin( new GLTFTextureTransformExtension() );
 		this.registerPlugin( new GLTFLightsExtension() );
@@ -118,7 +117,7 @@ THREE.GLTFLoader = ( function () {
 
 		setDRACOLoader: function ( dracoLoader ) {
 
-			this.dracoLoader = dracoLoader;
+			this.registerPlugin( new GLTFDracoMeshCompressionExtension( dracoLoader ) );
 			return this;
 
 		},
@@ -204,13 +203,22 @@ THREE.GLTFLoader = ( function () {
 							extensions[ extensionName ] = new GLTFMaterialsPbrSpecularGlossinessExtension( json );
 							break;
 
-						case EXTENSIONS.KHR_DRACO_MESH_COMPRESSION:
-							extensions[ extensionName ] = new GLTFDracoMeshCompressionExtension( json, this.dracoLoader );
-							break;
-
 						default:
 
-							if ( extensionsRequired.indexOf( extensionName ) >= 0 ) {
+							var supportExtension = false;
+
+							for ( var targetName in this.plugins ) {
+
+								if ( this.plugins[ targetName ][ extensionName ] ) {
+
+									supportExtension = true;
+									break;
+
+								}
+
+							}
+
+							if ( ! supportExtension ) {
 
 								console.warn( 'THREE.GLTFLoader: Unknown extension "' + extensionName + '".' );
 
@@ -279,7 +287,6 @@ THREE.GLTFLoader = ( function () {
 
 	var EXTENSIONS = {
 		KHR_BINARY_GLTF: 'KHR_binary_glTF',
-		KHR_DRACO_MESH_COMPRESSION: 'KHR_draco_mesh_compression',
 		KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS: 'KHR_materials_pbrSpecularGlossiness',
 		KHR_MATERIALS_UNLIT: 'KHR_materials_unlit'
 	};
@@ -534,76 +541,92 @@ THREE.GLTFLoader = ( function () {
 	 *
 	 * Specification: https://github.com/KhronosGroup/glTF/pull/874
 	 */
-	function GLTFDracoMeshCompressionExtension( json, dracoLoader ) {
+	function GLTFDracoMeshCompressionExtension( dracoLoader ) {
 
-		if ( ! dracoLoader ) {
-
-			throw new Error( 'THREE.GLTFLoader: No DRACOLoader instance provided.' );
-
-		}
-
-		this.name = EXTENSIONS.KHR_DRACO_MESH_COMPRESSION;
-		this.json = json;
+		this.name = 'KHR_draco_mesh_compression';
+		this.targets = [ 'Geometry' ];
 		this.dracoLoader = dracoLoader;
 
 	}
 
-	GLTFDracoMeshCompressionExtension.prototype.decodePrimitive = function ( primitive, parser ) {
+	GLTFDracoMeshCompressionExtension.prototype = {
 
-		var json = this.json;
-		var dracoLoader = this.dracoLoader;
-		var bufferViewIndex = primitive.extensions[ this.name ].bufferView;
-		var gltfAttributeMap = primitive.extensions[ this.name ].attributes;
-		var threeAttributeMap = {};
-		var attributeNormalizedMap = {};
-		var attributeTypeMap = {};
+		constructor: GLTFDracoMeshCompressionExtension,
 
-		for ( var attributeName in gltfAttributeMap ) {
+		onGeometry: function ( primitiveDef, parser ) {
 
-			var threeAttributeName = ATTRIBUTES[ attributeName ] || attributeName.toLowerCase();
+			var extensions = primitiveDef.extensions;
+			var json = parser.json;
+			var dracoLoader = this.dracoLoader;
+			var bufferViewIndex = extensions[ this.name ].bufferView;
+			var gltfAttributeMap = extensions[ this.name ].attributes;
+			var threeAttributeMap = {};
+			var attributeNormalizedMap = {};
+			var attributeTypeMap = {};
 
-			threeAttributeMap[ threeAttributeName ] = gltfAttributeMap[ attributeName ];
+			for ( var attributeName in gltfAttributeMap ) {
 
-		}
+				var threeAttributeName = ATTRIBUTES[ attributeName ] || attributeName.toLowerCase();
 
-		for ( attributeName in primitive.attributes ) {
-
-			var threeAttributeName = ATTRIBUTES[ attributeName ] || attributeName.toLowerCase();
-
-			if ( gltfAttributeMap[ attributeName ] !== undefined ) {
-
-				var accessorDef = json.accessors[ primitive.attributes[ attributeName ] ];
-				var componentType = WEBGL_COMPONENT_TYPES[ accessorDef.componentType ];
-
-				attributeTypeMap[ threeAttributeName ] = componentType;
-				attributeNormalizedMap[ threeAttributeName ] = accessorDef.normalized === true;
+				threeAttributeMap[ threeAttributeName ] = gltfAttributeMap[ attributeName ];
 
 			}
 
-		}
+			for ( attributeName in primitiveDef.attributes ) {
 
-		return parser.getDependency( 'bufferView', bufferViewIndex ).then( function ( bufferView ) {
+				var threeAttributeName = ATTRIBUTES[ attributeName ] || attributeName.toLowerCase();
 
-			return new Promise( function ( resolve ) {
+				if ( gltfAttributeMap[ attributeName ] !== undefined ) {
 
-				dracoLoader.decodeDracoFile( bufferView, function ( geometry ) {
+					var accessorDef = json.accessors[ primitiveDef.attributes[ attributeName ] ];
+					var componentType = WEBGL_COMPONENT_TYPES[ accessorDef.componentType ];
 
-					for ( var attributeName in geometry.attributes ) {
+					attributeTypeMap[ threeAttributeName ] = componentType;
+					attributeNormalizedMap[ threeAttributeName ] = accessorDef.normalized === true;
 
-						var attribute = geometry.attributes[ attributeName ];
-						var normalized = attributeNormalizedMap[ attributeName ];
+				}
 
-						if ( normalized !== undefined ) attribute.normalized = normalized;
+			}
 
-					}
+			return parser.getDependency( 'bufferView', bufferViewIndex ).then( function ( bufferView ) {
 
-					resolve( geometry );
+				return new Promise( function ( resolve ) {
 
-				}, threeAttributeMap, attributeTypeMap );
+					dracoLoader.decodeDracoFile( bufferView, function ( geometry ) {
+
+						for ( var attributeName in geometry.attributes ) {
+
+							var attribute = geometry.attributes[ attributeName ];
+							var normalized = attributeNormalizedMap[ attributeName ];
+
+							if ( normalized !== undefined ) attribute.normalized = normalized;
+
+						}
+
+						resolve( geometry );
+
+					}, threeAttributeMap, attributeTypeMap );
+
+				} );
+
+			} ).then( function ( geometry ) {
+
+				return addPrimitiveAttributes( geometry, primitiveDef, parser );
 
 			} );
 
-		} );
+		},
+
+		createPrimitiveKey: function ( primitiveDef ) {
+
+			var extensions = primitiveDef.extensions;
+			var extension = extensions[ this.name ];
+
+			return 'draco:' + extension.bufferView
+				+ ':' + extension.indices
+				+ ':' + createAttributesKey( extension.attributes );
+
+		}
 
 	};
 
@@ -1586,24 +1609,20 @@ THREE.GLTFLoader = ( function () {
 
 	}
 
-	function createPrimitiveKey( primitiveDef ) {
+	function createPrimitiveKey( parser, primitiveDef ) {
 
-		var dracoExtension = primitiveDef.extensions && primitiveDef.extensions[ EXTENSIONS.KHR_DRACO_MESH_COMPRESSION ];
-		var geometryKey;
+		var dracoExtensionName = 'KHR_draco_mesh_compression';
 
-		if ( dracoExtension ) {
+		if ( primitiveDef.extensions && primitiveDef.extensions[ dracoExtensionName ] ) {
 
-			geometryKey = 'draco:' + dracoExtension.bufferView
-				+ ':' + dracoExtension.indices
-				+ ':' + createAttributesKey( dracoExtension.attributes );
+			var geometryPlugins = parser.options.plugins[ 'Geometry' ] || {};
+			var plugin = geometryPlugins[ dracoExtensionName ];
 
-		} else {
-
-			geometryKey = primitiveDef.indices + ':' + createAttributesKey( primitiveDef.attributes ) + ':' + primitiveDef.mode;
+			if ( plugin ) return plugin.createPrimitiveKey( primitiveDef );
 
 		}
 
-		return geometryKey;
+		return primitiveDef.indices + ':' + createAttributesKey( primitiveDef.attributes ) + ':' + primitiveDef.mode;
 
 	}
 
@@ -1858,8 +1877,6 @@ THREE.GLTFLoader = ( function () {
 			if ( ! plugin || plugin[ functionName ] === undefined ) continue;
 
 			var object = plugin[ functionName ]( def, parser );
-
-			if ( object === null ) continue;
 
 			return ( object instanceof Promise ) ? object : Promise.resolve( object );
 
@@ -2742,24 +2759,12 @@ THREE.GLTFLoader = ( function () {
 		var extensions = this.extensions;
 		var cache = this.primitiveCache;
 
-		function createDracoPrimitive( primitive ) {
-
-			return extensions[ EXTENSIONS.KHR_DRACO_MESH_COMPRESSION ]
-				.decodePrimitive( primitive, parser )
-				.then( function ( geometry ) {
-
-					return addPrimitiveAttributes( geometry, primitive, parser );
-
-				} );
-
-		}
-
 		var pending = [];
 
 		for ( var i = 0, il = primitives.length; i < il; i ++ ) {
 
 			var primitive = primitives[ i ];
-			var cacheKey = createPrimitiveKey( primitive );
+			var cacheKey = createPrimitiveKey( parser, primitive );
 
 			// See if we've already created this geometry
 			var cached = cache[ cacheKey ];
@@ -2771,16 +2776,10 @@ THREE.GLTFLoader = ( function () {
 
 			} else {
 
-				var geometryPromise;
+				var geometryPromise = this._on( 'Geometry', primitive );
 
-				if ( primitive.extensions && primitive.extensions[ EXTENSIONS.KHR_DRACO_MESH_COMPRESSION ] ) {
+				if ( geometryPromise === null ) {
 
-					// Use DRACO geometry if available
-					geometryPromise = createDracoPrimitive( primitive );
-
-				} else {
-
-					// Otherwise create a new geometry
 					geometryPromise = addPrimitiveAttributes( new THREE.BufferGeometry(), primitive, parser );
 
 				}
