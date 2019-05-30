@@ -1562,29 +1562,35 @@ THREE.GLTFLoader = ( function () {
 		// Mark the special nodes/meshes in json for efficient parse
 		this.markDefs();
 
-		Promise.all( [
+		this._onBefore( 'GLTF', json ).then( function ( json ) {
 
-			this.getDependencies( 'scene' ),
-			this.getDependencies( 'animation' ),
-			this.getDependencies( 'camera' ),
+			parser.json = json;
 
-		] ).then( function ( dependencies ) {
+			Promise.all( [
 
-			var result = {
-				scene: dependencies[ 0 ][ json.scene || 0 ],
-				scenes: dependencies[ 0 ],
-				animations: dependencies[ 1 ],
-				cameras: dependencies[ 2 ],
-				asset: json.asset,
-				parser: parser,
-				userData: {}
-			};
+				parser.getDependencies( 'scene' ),
+				parser.getDependencies( 'animation' ),
+				parser.getDependencies( 'camera' )
 
-			addUnknownExtensionsToUserData( extensions, result, json );
+			] ).then( function ( dependencies ) {
 
-			onLoad( result );
+				var result = {
+					scene: dependencies[ 0 ][ json.scene || 0 ],
+					scenes: dependencies[ 0 ],
+					animations: dependencies[ 1 ],
+					cameras: dependencies[ 2 ],
+					asset: json.asset,
+					parser: parser,
+					userData: {}
+				};
 
-		} ).catch( onError );
+				addUnknownExtensionsToUserData( extensions, result, json );
+
+				parser._onAfter( 'GLTF', result, json ).then( onLoad );
+
+			} ).catch( onError );
+
+		} );
 
 	};
 
