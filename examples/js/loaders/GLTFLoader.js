@@ -15,6 +15,7 @@ THREE.GLTFLoader = ( function () {
 		this.plugins = {};
 
 		this.registerPlugin( new GLTFTextureDDSExtension() );
+		this.registerPlugin( new GLTFTextureTransformExtension() );
 
 	}
 
@@ -210,10 +211,6 @@ THREE.GLTFLoader = ( function () {
 							extensions[ extensionName ] = new GLTFDracoMeshCompressionExtension( json, this.dracoLoader );
 							break;
 
-						case EXTENSIONS.KHR_TEXTURE_TRANSFORM:
-							extensions[ EXTENSIONS.KHR_TEXTURE_TRANSFORM ] = new GLTFTextureTransformExtension( json );
-							break;
-
 						default:
 
 							if ( extensionsRequired.indexOf( extensionName ) >= 0 ) {
@@ -288,8 +285,7 @@ THREE.GLTFLoader = ( function () {
 		KHR_DRACO_MESH_COMPRESSION: 'KHR_draco_mesh_compression',
 		KHR_LIGHTS_PUNCTUAL: 'KHR_lights_punctual',
 		KHR_MATERIALS_PBR_SPECULAR_GLOSSINESS: 'KHR_materials_pbrSpecularGlossiness',
-		KHR_MATERIALS_UNLIT: 'KHR_materials_unlit',
-		KHR_TEXTURE_TRANSFORM: 'KHR_texture_transform'
+		KHR_MATERIALS_UNLIT: 'KHR_materials_unlit'
 	};
 
 	/**
@@ -610,41 +606,51 @@ THREE.GLTFLoader = ( function () {
 	 */
 	function GLTFTextureTransformExtension() {
 
-		this.name = EXTENSIONS.KHR_TEXTURE_TRANSFORM;
+		this.name = 'KHR_texture_transform';
+		this.targets = [ 'Map' ];
 
 	}
 
-	GLTFTextureTransformExtension.prototype.extendTexture = function ( texture, transform ) {
+	GLTFTextureTransformExtension.prototype = {
 
-		texture = texture.clone();
+		constructor: GLTFTextureTransformExtension,
 
-		if ( transform.offset !== undefined ) {
+		onAfterMap: function ( texture, textureDef, parser ) {
 
-			texture.offset.fromArray( transform.offset );
+			var extensions = textureDef.extensions;
+			var transform = extensions[ this.name ];
+
+			texture = texture.clone();
+
+			if ( transform.offset !== undefined ) {
+
+				texture.offset.fromArray( transform.offset );
+
+			}
+
+			if ( transform.rotation !== undefined ) {
+
+				texture.rotation = transform.rotation;
+
+			}
+
+			if ( transform.scale !== undefined ) {
+
+				texture.repeat.fromArray( transform.scale );
+
+			}
+
+			if ( transform.texCoord !== undefined ) {
+
+				console.warn( 'THREE.GLTFLoader: Custom UV sets in "' + this.name + '" extension not yet supported.' );
+
+			}
+
+			texture.needsUpdate = true;
+
+			return texture;
 
 		}
-
-		if ( transform.rotation !== undefined ) {
-
-			texture.rotation = transform.rotation;
-
-		}
-
-		if ( transform.scale !== undefined ) {
-
-			texture.repeat.fromArray( transform.scale );
-
-		}
-
-		if ( transform.texCoord !== undefined ) {
-
-			console.warn( 'THREE.GLTFLoader: Custom UV sets in "' + this.name + '" extension not yet supported.' );
-
-		}
-
-		texture.needsUpdate = true;
-
-		return texture;
 
 	};
 
@@ -2349,37 +2355,33 @@ THREE.GLTFLoader = ( function () {
 
 		var parser = this;
 
-		return this.getDependency( 'texture', mapDef.index ).then( function ( texture ) {
+		return parser._onBefore( 'Map', mapDef ).then( function ( mapDef ) {
 
-			if ( ! texture.isCompressedTexture ) {
+			return parser.getDependency( 'texture', mapDef.index ).then( function ( texture ) {
 
-				switch ( mapName ) {
+				if ( ! texture.isCompressedTexture ) {
 
-					case 'aoMap':
-					case 'emissiveMap':
-					case 'metalnessMap':
-					case 'normalMap':
-					case 'roughnessMap':
-						texture.format = THREE.RGBFormat;
-						break;
+					switch ( mapName ) {
 
-				}
+						case 'aoMap':
+						case 'emissiveMap':
+						case 'metalnessMap':
+						case 'normalMap':
+						case 'roughnessMap':
+							texture.format = THREE.RGBFormat;
+							break;
 
-			}
-
-			if ( parser.extensions[ EXTENSIONS.KHR_TEXTURE_TRANSFORM ] ) {
-
-				var transform = mapDef.extensions !== undefined ? mapDef.extensions[ EXTENSIONS.KHR_TEXTURE_TRANSFORM ] : undefined;
-
-				if ( transform ) {
-
-					texture = parser.extensions[ EXTENSIONS.KHR_TEXTURE_TRANSFORM ].extendTexture( texture, transform );
+					}
 
 				}
 
-			}
+				return parser._onAfter( 'Map', texture, mapDef );
 
-			materialParams[ mapName ] = texture;
+			} ).then( function ( texture ) {
+
+				materialParams[ mapName ] = texture;
+
+			} );
 
 		} );
 
