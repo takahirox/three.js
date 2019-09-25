@@ -59,7 +59,8 @@
 
 			var world;
 			var mesh;
-			var boxes = [];
+			var box = new THREE.Object3D();
+			var bodies = [];
 			var boxSize = 4;
 
 			var ammoResources;
@@ -209,12 +210,11 @@
 
 				for ( var i = 0; i < objectNum; i ++ ) {
 
-					var box = new THREE.Object3D();
-
 					initBoxPosition( box );
-					box.scale.multiplyScalar( Math.random() * 0.5 + 0.5 );
-					setupBoxRigidBody( box );
-					boxes.push( box );
+					box.scale.set( 1, 1, 1 ).multiplyScalar( Math.random() * 0.5 + 0.5 );
+					var body = createBoxRigidBody( box );
+					body.scale = box.scale.clone(); // UGH...
+					bodies.push( body );
 					box.updateMatrix();
 					mesh.setMatrixAt( i, box.matrix );
 
@@ -242,8 +242,8 @@
 
 				for ( var i = 0; i < objectNum; i ++ ) {
 
-					initBoxPosition( boxes[ i ] );
-					updateBoxRigidBody( boxes[ i ] );
+					initBoxPosition( box );
+					updateBoxRigidBody( box, bodies[ i ] );
 
 				}
 
@@ -305,13 +305,15 @@
 
 			}
 
-			function setupBoxRigidBody( object ) {
+			function createBoxRigidBody( object ) {
 
 				var scale = object.scale.x;
 				var body = createRigidBody( scale * boxSize / 2, scale * boxSize / 2, scale * boxSize / 2, 1.0, object.position );
 				body.setSleepingThresholds( 0, 0 );
 				object.userData.body = body;
 				world.addRigidBody( body );
+
+				return body;
 
 			}
 
@@ -321,8 +323,7 @@
 
 				for ( var i = 0; i < objectNum; i ++ ) {
 
-					var box = boxes[ i ];
-					var body = box.userData.body;
+					var body = bodies[ i ];
 					var form = ammoResources.transform;
 					var q = ammoResources.quaternion;
 
@@ -334,6 +335,7 @@
 
 					box.position.set( o.x(), o.y(), o.z() );
 					box.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+					box.scale.copy( body.scale );
 					box.updateMatrix();
 
 					mesh.setMatrixAt( i, box.matrix );
@@ -344,9 +346,8 @@
 
 			}
 
-			function updateBoxRigidBody( box ) {
+			function updateBoxRigidBody( box, body ) {
 
-				var body = box.userData.body;
 				var form = ammoResources.transform;
 				var quaternion = ammoResources.quaternion;
 
