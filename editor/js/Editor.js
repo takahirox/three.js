@@ -57,7 +57,9 @@ var Editor = function () {
 		helperAdded: new Signal(),
 		helperRemoved: new Signal(),
 
+		materialAdded: new Signal(),
 		materialChanged: new Signal(),
+		materialRemoved: new Signal(),
 
 		scriptAdded: new Signal(),
 		scriptChanged: new Signal(),
@@ -234,6 +236,34 @@ Editor.prototype = {
 	addMaterial: function ( material ) {
 
 		this.materials[ material.uuid ] = material;
+		this.signals.materialAdded.dispatch();
+
+	},
+
+	removeMaterial: function ( material ) {
+
+		delete this.materials[ material.uuid ];
+		this.signals.materialRemoved.dispatch();
+
+	},
+
+	getMaterialById: function ( id ) {
+
+		var material;
+		var materials = Object.values( this.materials );
+
+		for ( var i = 0; i < materials.length; i ++ ) {
+
+			if ( materials[ i ].id === id ) {
+
+				material = materials[ i ];
+				break;
+
+			}
+
+		}
+
+		return material;
 
 	},
 
@@ -482,7 +512,11 @@ Editor.prototype = {
 
 	focus: function ( object ) {
 
-		this.signals.objectFocused.dispatch( object );
+		if ( object !== undefined ) {
+
+			this.signals.objectFocused.dispatch( object );
+
+		}
 
 	},
 
@@ -498,6 +532,8 @@ Editor.prototype = {
 		this.storage.clear();
 
 		this.camera.copy( this.DEFAULT_CAMERA );
+		this.scene.name = "Scene";
+		this.scene.userData = {};
 		this.scene.background.setHex( 0xaaaaaa );
 		this.scene.fog = null;
 

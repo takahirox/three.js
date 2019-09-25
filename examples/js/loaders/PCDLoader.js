@@ -10,13 +10,14 @@
 
 THREE.PCDLoader = function ( manager ) {
 
-	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	THREE.Loader.call( this, manager );
+
 	this.littleEndian = true;
 
 };
 
 
-THREE.PCDLoader.prototype = {
+THREE.PCDLoader.prototype = Object.assign( Object.create( THREE.Loader.prototype ), {
 
 	constructor: THREE.PCDLoader,
 
@@ -48,13 +49,6 @@ THREE.PCDLoader.prototype = {
 			}
 
 		}, onProgress, onError );
-
-	},
-
-	setPath: function ( value ) {
-
-		this.path = value;
-		return this;
 
 	},
 
@@ -169,7 +163,7 @@ THREE.PCDLoader.prototype = {
 
 		}
 
-		var textData = THREE.LoaderUtils.decodeText( data );
+		var textData = THREE.LoaderUtils.decodeText( new Uint8Array( data ) );
 
 		// parse header (always ascii format)
 
@@ -305,4 +299,4 @@ THREE.PCDLoader.prototype = {
 
 	}
 
-};
+} );

@@ -11,11 +11,13 @@
 
 THREE.VTKLoader = function ( manager ) {
 
-	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	THREE.Loader.call( this, manager );
 
 };
 
-Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
+THREE.VTKLoader.prototype = Object.assign( Object.create( THREE.Loader.prototype ), {
+
+	constructor: THREE.VTKLoader,
 
 	load: function ( url, onLoad, onProgress, onError ) {
 
@@ -29,13 +31,6 @@ Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
 			onLoad( scope.parse( text ) );
 
 		}, onProgress, onError );
-
-	},
-
-	setPath: function ( value ) {
-
-		this.path = value;
-		return this;
 
 	},
 
@@ -99,7 +94,13 @@ Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
 
 				var line = lines[ i ];
 
-				if ( inPointsSection ) {
+				if ( line.indexOf( 'DATASET' ) === 0 ) {
+
+					var dataset = line.split( ' ' )[ 1 ];
+
+					if ( dataset !== 'POLYDATA' ) throw new Error( 'Unsupported DATASET type: ' + dataset );
+
+				} else if ( inPointsSection ) {
 
 					// get the vertices
 					while ( ( result = pat3Floats.exec( line ) ) !== null ) {
@@ -354,7 +355,13 @@ Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
 				state = findString( buffer, index );
 				line = state.parsedString;
 
-				if ( line.indexOf( 'POINTS' ) === 0 ) {
+				if ( line.indexOf( 'DATASET' ) === 0 ) {
+
+					var dataset = line.split( ' ' )[ 1 ];
+
+					if ( dataset !== 'POLYDATA' ) throw new Error( 'Unsupported DATASET type: ' + dataset );
+
+				} else if ( line.indexOf( 'POINTS' ) === 0 ) {
 
 					vtk.push( line );
 					// Add the points
@@ -1117,7 +1124,7 @@ Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
 
 			} else {
 
-				// TODO for vtu,vti,and other xml formats
+				throw new Error( 'Unsupported DATASET type' );
 
 			}
 

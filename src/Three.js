@@ -1,4 +1,5 @@
 import './polyfills.js';
+import { REVISION } from './constants.js';
 
 export { WebGLMultisampleRenderTarget } from './renderers/WebGLMultisampleRenderTarget.js';
 export { WebGLRenderTargetCube } from './renderers/WebGLRenderTargetCube.js';
@@ -17,6 +18,7 @@ export { SkinnedMesh } from './objects/SkinnedMesh.js';
 export { Skeleton } from './objects/Skeleton.js';
 export { Bone } from './objects/Bone.js';
 export { Mesh } from './objects/Mesh.js';
+export { InstancedMesh } from './objects/InstancedMesh.js';
 export { LineSegments } from './objects/LineSegments.js';
 export { LineLoop } from './objects/LineLoop.js';
 export { Line } from './objects/Line.js';
@@ -55,11 +57,14 @@ export { SpotLight } from './lights/SpotLight.js';
 export { PointLight } from './lights/PointLight.js';
 export { RectAreaLight } from './lights/RectAreaLight.js';
 export { HemisphereLight } from './lights/HemisphereLight.js';
+export { HemisphereLightProbe } from './lights/HemisphereLightProbe.js';
 export { DirectionalLightShadow } from './lights/DirectionalLightShadow.js';
 export { DirectionalLight } from './lights/DirectionalLight.js';
 export { AmbientLight } from './lights/AmbientLight.js';
+export { AmbientLightProbe } from './lights/AmbientLightProbe.js';
 export { LightShadow } from './lights/LightShadow.js';
 export { Light } from './lights/Light.js';
+export { LightProbe } from './lights/LightProbe.js';
 export { StereoCamera } from './cameras/StereoCamera.js';
 export { PerspectiveCamera } from './cameras/PerspectiveCamera.js';
 export { OrthographicCamera } from './cameras/OrthographicCamera.js';
@@ -123,6 +128,7 @@ export { Vector3 } from './math/Vector3.js';
 export { Vector2 } from './math/Vector2.js';
 export { Quaternion } from './math/Quaternion.js';
 export { Color } from './math/Color.js';
+export { SphericalHarmonics3 } from './math/SphericalHarmonics3.js';
 export { ImmediateRenderObject } from './extras/objects/ImmediateRenderObject.js';
 export { VertexNormalsHelper } from './helpers/VertexNormalsHelper.js';
 export { SpotLightHelper } from './helpers/SpotLightHelper.js';
@@ -130,6 +136,7 @@ export { SkeletonHelper } from './helpers/SkeletonHelper.js';
 export { PointLightHelper } from './helpers/PointLightHelper.js';
 export { RectAreaLightHelper } from './helpers/RectAreaLightHelper.js';
 export { HemisphereLightHelper } from './helpers/HemisphereLightHelper.js';
+export { LightProbeHelper } from './helpers/LightProbeHelper.js';
 export { GridHelper } from './helpers/GridHelper.js';
 export { PolarGridHelper } from './helpers/PolarGridHelper.js';
 export { PositionalAudioHelper } from './helpers/PositionalAudioHelper.js';
@@ -153,3 +160,13 @@ export { ShapeUtils } from './extras/ShapeUtils.js';
 export { WebGLUtils } from './renderers/webgl/WebGLUtils.js';
 export * from './constants.js';
 export * from './Three.Legacy.js';
+
+if ( typeof __THREE_DEVTOOLS__ !== 'undefined' ) {
+
+	/* eslint-disable no-undef */
+	__THREE_DEVTOOLS__.dispatchEvent( new CustomEvent( 'register', { detail: {
+		revision: REVISION,
+	} } ) );
+	/* eslint-enable no-undef */
+
+}

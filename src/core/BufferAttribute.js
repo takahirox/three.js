@@ -45,21 +45,6 @@ Object.assign( BufferAttribute.prototype, {
 
 	onUploadCallback: function () {},
 
-	setArray: function ( array ) {
-
-		if ( Array.isArray( array ) ) {
-
-			throw new TypeError( 'THREE.BufferAttribute: array should be a Typed Array.' );
-
-		}
-
-		this.count = array !== undefined ? array.length / this.itemSize : 0;
-		this.array = array;
-
-		return this;
-
-	},
-
 	setDynamic: function ( value ) {
 
 		this.dynamic = value;
@@ -318,6 +303,17 @@ Object.assign( BufferAttribute.prototype, {
 	clone: function () {
 
 		return new this.constructor( this.array, this.itemSize ).copy( this );
+
+	},
+
+	toJSON: function () {
+
+		return {
+			itemSize: this.itemSize,
+			type: this.array.constructor.name,
+			array: Array.prototype.slice.call( this.array ),
+			normalized: this.normalized
+		};
 
 	}
 

@@ -38,11 +38,11 @@ var WEBGL_CONSTANTS = {
 var THREE_TO_WEBGL = {};
 
 THREE_TO_WEBGL[ THREE.NearestFilter ] = WEBGL_CONSTANTS.NEAREST;
-THREE_TO_WEBGL[ THREE.NearestMipMapNearestFilter ] = WEBGL_CONSTANTS.NEAREST_MIPMAP_NEAREST;
-THREE_TO_WEBGL[ THREE.NearestMipMapLinearFilter ] = WEBGL_CONSTANTS.NEAREST_MIPMAP_LINEAR;
+THREE_TO_WEBGL[ THREE.NearestMipmapNearestFilter ] = WEBGL_CONSTANTS.NEAREST_MIPMAP_NEAREST;
+THREE_TO_WEBGL[ THREE.NearestMipmapLinearFilter ] = WEBGL_CONSTANTS.NEAREST_MIPMAP_LINEAR;
 THREE_TO_WEBGL[ THREE.LinearFilter ] = WEBGL_CONSTANTS.LINEAR;
-THREE_TO_WEBGL[ THREE.LinearMipMapNearestFilter ] = WEBGL_CONSTANTS.LINEAR_MIPMAP_NEAREST;
-THREE_TO_WEBGL[ THREE.LinearMipMapLinearFilter ] = WEBGL_CONSTANTS.LINEAR_MIPMAP_LINEAR;
+THREE_TO_WEBGL[ THREE.LinearMipmapNearestFilter ] = WEBGL_CONSTANTS.LINEAR_MIPMAP_NEAREST;
+THREE_TO_WEBGL[ THREE.LinearMipmapLinearFilter ] = WEBGL_CONSTANTS.LINEAR_MIPMAP_LINEAR;
 
 THREE_TO_WEBGL[ THREE.ClampToEdgeWrapping ] = WEBGL_CONSTANTS.CLAMP_TO_EDGE;
 THREE_TO_WEBGL[ THREE.RepeatWrapping ] = WEBGL_CONSTANTS.REPEAT;
@@ -78,6 +78,7 @@ THREE.GLTFExporter.prototype = {
 			onlyVisible: true,
 			truncateDrawRange: true,
 			embedImages: true,
+			maxTextureSize: Infinity,
 			animations: [],
 			forceIndices: false,
 			forcePowerOfTwoTextures: false,
@@ -123,9 +124,23 @@ THREE.GLTFExporter.prototype = {
 
 		var cachedCanvas;
 
+		var uids = new Map();
+		var uid = 0;
+
 		/**
-		 * Compare two arrays
+		 * Assign and return a temporal unique id for an object
+		 * especially which doesn't have .uuid
+		 * @param  {Object} object
+		 * @return {Integer}
 		 */
+		function getUID( object ) {
+
+			if ( ! uids.has( object ) ) uids.set( object, uid ++ );
+
+			return uids.get( object );
+
+		}
+
 		/**
 		 * Compare two arrays
 		 * @param  {Array} array1 Array 1 to compare
@@ -737,10 +752,10 @@ THREE.GLTFExporter.prototype = {
 
 				var canvas = cachedCanvas = cachedCanvas || document.createElement( 'canvas' );
 
-				canvas.width = image.width;
-				canvas.height = image.height;
+				canvas.width = Math.min( image.width, options.maxTextureSize );
+				canvas.height = Math.min( image.height, options.maxTextureSize );
 
-				if ( options.forcePowerOfTwoTextures && ! isPowerOfTwo( image ) ) {
+				if ( options.forcePowerOfTwoTextures && ! isPowerOfTwo( canvas ) ) {
 
 					console.warn( 'GLTFExporter: Resized non-power-of-two image.', image );
 
@@ -853,6 +868,12 @@ THREE.GLTFExporter.prototype = {
 
 			};
 
+			if ( map.name ) {
+
+				gltfTexture.name = map.name;
+
+			}
+
 			outputJSON.textures.push( gltfTexture );
 
 			var index = outputJSON.textures.length - 1;
@@ -881,7 +902,7 @@ THREE.GLTFExporter.prototype = {
 
 			}
 
-			if ( material.isShaderMaterial ) {
+			if ( material.isShaderMaterial && ! material.isGLTFSpecularGlossinessMaterial ) {
 
 				console.warn( 'GLTFExporter: THREE.ShaderMaterial not supported.' );
 				return null;
@@ -900,6 +921,12 @@ THREE.GLTFExporter.prototype = {
 				gltfMaterial.extensions = { KHR_materials_unlit: {} };
 
 				extensionsUsed[ 'KHR_materials_unlit' ] = true;
+
+			} else if ( material.isGLTFSpecularGlossinessMaterial ) {
+
+				gltfMaterial.extensions = { KHR_materials_pbrSpecularGlossiness: {} };
+
+				extensionsUsed[ 'KHR_materials_pbrSpecularGlossiness' ] = true;
 
 			} else if ( ! material.isMeshStandardMaterial ) {
 
@@ -933,6 +960,23 @@ THREE.GLTFExporter.prototype = {
 
 			}
 
+			// pbrSpecularGlossiness diffuse, specular and glossiness factor
+			if ( material.isGLTFSpecularGlossinessMaterial ) {
+
+				if ( gltfMaterial.pbrMetallicRoughness.baseColorFactor ) {
+
+					gltfMaterial.extensions.KHR_materials_pbrSpecularGlossiness.diffuseFactor = gltfMaterial.pbrMetallicRoughness.baseColorFactor;
+
+				}
+
+				var specularFactor = [ 1, 1, 1 ];
+				material.specular.toArray( specularFactor, 0 );
+				gltfMaterial.extensions.KHR_materials_pbrSpecularGlossiness.specularFactor = specularFactor;
+
+				gltfMaterial.extensions.KHR_materials_pbrSpecularGlossiness.glossinessFactor = material.glossiness;
+
+			}
+
 			// pbrMetallicRoughness.metallicRoughnessTexture
 			if ( material.metalnessMap || material.roughnessMap ) {
 
@@ -950,12 +994,28 @@ THREE.GLTFExporter.prototype = {
 
 			}
 
-			// pbrMetallicRoughness.baseColorTexture
+			// pbrMetallicRoughness.baseColorTexture or pbrSpecularGlossiness diffuseTexture
 			if ( material.map ) {
 
 				var baseColorMapDef = { index: processTexture( material.map ) };
 				applyTextureTransform( baseColorMapDef, material.map );
+
+				if ( material.isGLTFSpecularGlossinessMaterial ) {
+
+					gltfMaterial.extensions.KHR_materials_pbrSpecularGlossiness.diffuseTexture = baseColorMapDef;
+
+				}
+
 				gltfMaterial.pbrMetallicRoughness.baseColorTexture = baseColorMapDef;
+
+			}
+
+			// pbrSpecularGlossiness specular map
+			if ( material.isGLTFSpecularGlossinessMaterial && material.specularMap ) {
+
+				var specularMapDef = { index: processTexture( material.specularMap ) };
+				applyTextureTransform( specularMapDef, material.specularMap );
+				gltfMaterial.extensions.KHR_materials_pbrSpecularGlossiness.specularGlossinessTexture = specularMapDef;
 
 			}
 
@@ -990,7 +1050,7 @@ THREE.GLTFExporter.prototype = {
 
 				var normalMapDef = { index: processTexture( material.normalMap ) };
 
-				if ( material.normalScale.x !== - 1 ) {
+				if ( material.normalScale && material.normalScale.x !== - 1 ) {
 
 					if ( material.normalScale.x !== material.normalScale.y ) {
 
@@ -1029,13 +1089,15 @@ THREE.GLTFExporter.prototype = {
 			}
 
 			// alphaMode
-			if ( material.transparent || material.alphaTest > 0.0 ) {
+			if ( material.transparent ) {
 
-				gltfMaterial.alphaMode = material.opacity < 1.0 ? 'BLEND' : 'MASK';
+				gltfMaterial.alphaMode = 'BLEND';
 
-				// Write alphaCutoff if it's non-zero and different from the default (0.5).
-				if ( material.alphaTest > 0.0 && material.alphaTest !== 0.5 ) {
+			} else {
 
+				if ( material.alphaTest > 0.0 ) {
+
+					gltfMaterial.alphaMode = 'MASK';
 					gltfMaterial.alphaCutoff = material.alphaTest;
 
 				}
@@ -1178,9 +1240,9 @@ THREE.GLTFExporter.prototype = {
 
 				}
 
-				if ( cachedData.attributes.has( attribute ) ) {
+				if ( cachedData.attributes.has( getUID( attribute ) ) ) {
 
-					attributes[ attributeName ] = cachedData.attributes.get( attribute );
+					attributes[ attributeName ] = cachedData.attributes.get( getUID( attribute ) );
 					continue;
 
 				}
@@ -1201,7 +1263,7 @@ THREE.GLTFExporter.prototype = {
 				if ( accessor !== null ) {
 
 					attributes[ attributeName ] = accessor;
-					cachedData.attributes.set( attribute, accessor );
+					cachedData.attributes.set( getUID( attribute ), accessor );
 
 				}
 
@@ -1267,9 +1329,9 @@ THREE.GLTFExporter.prototype = {
 
 						var baseAttribute = geometry.attributes[ attributeName ];
 
-						if ( cachedData.attributes.has( attribute ) ) {
+						if ( cachedData.attributes.has( getUID( attribute ) ) ) {
 
-							target[ gltfAttributeName ] = cachedData.attributes.get( attribute );
+							target[ gltfAttributeName ] = cachedData.attributes.get( getUID( attribute ) );
 							continue;
 
 						}
@@ -1289,7 +1351,7 @@ THREE.GLTFExporter.prototype = {
 						}
 
 						target[ gltfAttributeName ] = processAccessor( relativeAttribute, geometry );
-						cachedData.attributes.set( baseAttribute, target[ gltfAttributeName ] );
+						cachedData.attributes.set( getUID( baseAttribute ), target[ gltfAttributeName ] );
 
 					}
 
@@ -1358,14 +1420,22 @@ THREE.GLTFExporter.prototype = {
 
 				if ( geometry.index !== null ) {
 
-					if ( cachedData.attributes.has( geometry.index ) ) {
+					var cacheKey = getUID( geometry.index );
 
-						primitive.indices = cachedData.attributes.get( geometry.index );
+					if ( groups[ i ].start !== undefined || groups[ i ].count !== undefined ) {
+
+						cacheKey += ':' + groups[ i ].start + ':' + groups[ i ].count;
+
+					}
+
+					if ( cachedData.attributes.has( cacheKey ) ) {
+
+						primitive.indices = cachedData.attributes.get( cacheKey );
 
 					} else {
 
 						primitive.indices = processAccessor( geometry.index, geometry, groups[ i ].start, groups[ i ].count );
-						cachedData.attributes.set( geometry.index, primitive.indices );
+						cachedData.attributes.set( cacheKey, primitive.indices );
 
 					}
 
@@ -1718,7 +1788,12 @@ THREE.GLTFExporter.prototype = {
 
 			} else {
 
-				object.updateMatrix();
+				if ( object.matrixAutoUpdate ) {
+
+					object.updateMatrix();
+
+				}
+
 				if ( ! equalArray( object.matrix.elements, [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ] ) ) {
 
 					gltfNode.matrix = object.matrix.elements;
@@ -2197,8 +2272,6 @@ THREE.GLTFExporter.Utils = {
 
 			}
 
-			var mergedKeyframeIndex = 0;
-			var sourceKeyframeIndex = 0;
 			var sourceInterpolant = sourceTrack.createInterpolant( new sourceTrack.ValueBufferType( 1 ) );
 
 			mergedTrack = mergedTracks[ sourceTrackNode.uuid ];

@@ -5,21 +5,19 @@
 
 THREE.ColladaLoader = function ( manager ) {
 
-	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	THREE.Loader.call( this, manager );
 
 };
 
-THREE.ColladaLoader.prototype = {
+THREE.ColladaLoader.prototype = Object.assign( Object.create( THREE.Loader.prototype ), {
 
 	constructor: THREE.ColladaLoader,
-
-	crossOrigin: 'anonymous',
 
 	load: function ( url, onLoad, onProgress, onError ) {
 
 		var scope = this;
 
-		var path = ( scope.path === undefined ) ? THREE.LoaderUtils.extractUrlBase( url ) : scope.path;
+		var path = ( scope.path === '' ) ? THREE.LoaderUtils.extractUrlBase( url ) : scope.path;
 
 		var loader = new THREE.FileLoader( scope.manager );
 		loader.setPath( scope.path );
@@ -31,20 +29,6 @@ THREE.ColladaLoader.prototype = {
 
 	},
 
-	setPath: function ( value ) {
-
-		this.path = value;
-		return this;
-
-	},
-
-	setResourcePath: function ( value ) {
-
-		this.resourcePath = value;
-		return this;
-
-	},
-
 	options: {
 
 		set convertUpAxis( value ) {
@@ -52,13 +36,6 @@ THREE.ColladaLoader.prototype = {
 			console.warn( 'THREE.ColladaLoader: options.convertUpAxis() has been removed. Up axis is converted automatically.' );
 
 		}
-
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
-		return this;
 
 	},
 
@@ -3814,6 +3791,35 @@ THREE.ColladaLoader.prototype = {
 
 		}
 
+		// convert the parser error element into text with each child elements text
+		// separated by new lines.
+
+		function parserErrorToText( parserError ) {
+
+			var result = '';
+			var stack = [ parserError ];
+
+			while ( stack.length ) {
+
+				var node = stack.shift();
+
+				if ( node.nodeType === Node.TEXT_NODE ) {
+
+					result += node.textContent;
+
+				} else {
+
+					result += '\n';
+					stack.push.apply( stack, node.childNodes );
+
+				}
+
+			}
+
+			return result.trim();
+
+		}
+
 		if ( text.length === 0 ) {
 
 			return { scene: new THREE.Scene() };
@@ -3823,6 +3829,30 @@ THREE.ColladaLoader.prototype = {
 		var xml = new DOMParser().parseFromString( text, 'application/xml' );
 
 		var collada = getElementsByTagName( xml, 'COLLADA' )[ 0 ];
+
+		var parserError = xml.getElementsByTagName( 'parsererror' )[ 0 ];
+		if ( parserError !== undefined ) {
+
+			// Chrome will return parser error with a div in it
+
+			var errorElement = getElementsByTagName( parserError, 'div' )[ 0 ];
+			var errorText;
+
+			if ( errorElement ) {
+
+				errorText = errorElement.textContent;
+
+			} else {
+
+				errorText = parserErrorToText( parserError );
+
+			}
+
+			console.error( 'THREE.ColladaLoader: Failed to parse collada file.\n', errorText );
+
+			return null;
+
+		}
 
 		// metadata
 
@@ -3915,4 +3945,4 @@ THREE.ColladaLoader.prototype = {
 
 	}
 
-};
+} );
