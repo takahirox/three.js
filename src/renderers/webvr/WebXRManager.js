@@ -27,6 +27,8 @@ function WebXRManager( renderer, gl ) {
 	var controllers = [];
 	var sortedInputSources = [];
 
+	var firstAnimationFrame = false;
+
 	function isPresenting() {
 
 		return session !== null && referenceSpace !== null;
@@ -99,10 +101,10 @@ function WebXRManager( renderer, gl ) {
 
 		referenceSpace = value;
 
+		firstAnimationFrame = true;
+
 		animation.setContext( session );
 		animation.start();
-
-		scope.dispatchEvent( { type: 'sessionstart' } );
 
 	}
 
@@ -264,6 +266,13 @@ function WebXRManager( renderer, gl ) {
 					cameraVR.matrix.copy( camera.matrix );
 
 				}
+
+			}
+
+			if ( firstAnimationFrame ) {
+
+				firstAnimationFrame = false;
+				scope.dispatchEvent( { type: 'sessionstart' } );
 
 			}
 
