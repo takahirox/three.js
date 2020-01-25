@@ -416,6 +416,7 @@ THREE.GLTFLoader = ( function () {
 
 		onMaterial: function ( materialDef, parser ) {
 
+			var extensions = parser.plugins.extensions;
 			var materialParams = {};
 			var pending = [];
 
@@ -445,7 +446,38 @@ THREE.GLTFLoader = ( function () {
 
 			return Promise.all( pending ).then( function () {
 
-				return new THREE.MeshBasicMaterial( materialParams );
+				var material = new THREE.MeshBasicMaterial( materialParams );
+
+				if ( materialDef.name !== undefined ) material.name = materialDef.name;
+				if ( materialDef.doubleSided === true ) material.side = THREE.DoubleSide;
+
+				var alphaMode = materialDef.alphaMode || ALPHA_MODES.OPAQUE;
+
+				if ( alphaMode === ALPHA_MODES.BLEND ) {
+
+					material.transparent = true;
+
+				} else {
+
+					material.transparent = false;
+
+					if ( alphaMode === ALPHA_MODES.MASK ) {
+
+						material.alphaTest = materialDef.alphaCutoff !== undefined ? materialDef.alphaCutoff : 0.5;
+
+					}
+
+				}
+
+				// baseColorTexture, emissiveTexture, and specularGlossinessTexture use sRGB encoding.
+				if ( material.map ) material.map.encoding = THREE.sRGBEncoding;
+				if ( material.emissiveMap ) material.emissiveMap.encoding = THREE.sRGBEncoding;
+
+				assignExtrasToUserData( material, materialDef );
+
+				if ( materialDef.extensions ) addUnknownExtensionsToUserData( extensions, material, materialDef );
+
+				return material;
 
 			} );
 
@@ -1658,9 +1690,9 @@ THREE.GLTFLoader = ( function () {
 				case 'scene':
 					dependency = this._onBefore( 'Scene', json.scenes[ index ] ).then( function ( def ) {
 
-						return parser._on( 'Scene', def ).then( function ( customScene ) {
+						return parser._on( 'Scene', def ).then( function ( scene ) {
 
-							return parser.loadScene( index, def, customScene );
+							return scene || parser.loadScene( def );
 
 						} ).then( function ( scene ) {
 
@@ -1674,9 +1706,9 @@ THREE.GLTFLoader = ( function () {
 				case 'node':
 					dependency = this._onBefore( 'Node', json.nodes[ index ] ).then( function ( def ) {
 
-						return parser._on( 'Node', def ).then( function ( customNode ) {
+						return parser._on( 'Node', def ).then( function ( node ) {
 
-							return parser.loadNode( index, def, customNode );
+							return ( node && node.isLight ) ? node : parser.loadNode( def, node );
 
 						} ).then( function ( node ) {
 
@@ -1688,11 +1720,11 @@ THREE.GLTFLoader = ( function () {
 					break;
 
 				case 'mesh':
-					dependency = this._onBefore( 'Mesh', json.nodes[ index ] ).then( function ( def ) {
+					dependency = this._onBefore( 'Mesh', json.meshes[ index ] ).then( function ( def ) {
 
-						return parser._on( 'Mesh', def ).then( function ( customMesh ) {
+						return parser._on( 'Mesh', def ).then( function ( mesh ) {
 
-							return parser.loadMesh( index, def, customMesh );
+							return mesh || parser.loadMesh( index, def );
 
 						} ).then( function ( mesh ) {
 
@@ -1754,9 +1786,9 @@ THREE.GLTFLoader = ( function () {
 				case 'material':
 					dependency = this._onBefore( 'Material', json.materials[ index ] ).then( function ( def ) {
 
-						return parser._on( 'Material', def ).then( function ( customMaterial ) {
+						return parser._on( 'Material', def ).then( function ( material ) {
 
-							return parser.loadMaterial( index, def, customMaterial );
+							return material || parser.loadMaterial( def );
 
 						} ).then( function ( material ) {
 
@@ -2153,31 +2185,47 @@ THREE.GLTFLoader = ( function () {
 
 		var parser = this;
 
-		return this.getDependency( 'texture', mapDef.index ).then( function ( texture ) {
+		return this._onBefore( 'Map', mapDef ).then( function ( def ) {
 
-			if ( ! texture.isCompressedTexture ) {
+			mapDef = def;
 
-				switch ( mapName ) {
+			return parser._on( 'Map', mapDef );
 
-					case 'aoMap':
-					case 'emissiveMap':
-					case 'metalnessMap':
-					case 'normalMap':
-					case 'roughnessMap':
-						texture.format = THREE.RGBFormat;
-						break;
+		} ).then( function ( texture ) {
+
+			if ( texture ) return texture;
+
+			return parser.getDependency( 'texture', mapDef.index ).then( function ( texture ) {
+
+				if ( ! texture.isCompressedTexture ) {
+
+					switch ( mapName ) {
+
+						case 'aoMap':
+						case 'emissiveMap':
+						case 'metalnessMap':
+						case 'normalMap':
+						case 'roughnessMap':
+							texture.format = THREE.RGBFormat;
+							break;
+
+					}
 
 				}
 
-			}
+				// Materials sample aoMap from UV set 1 and other maps from UV set 0 - this can't be configured
+				// However, we will copy UV set 0 to UV set 1 on demand for aoMap
+				if ( mapDef.texCoord !== undefined && mapDef.texCoord != 0 && ! ( mapName === 'aoMap' && mapDef.texCoord == 1 ) ) {
 
-			// Materials sample aoMap from UV set 1 and other maps from UV set 0 - this can't be configured
-			// However, we will copy UV set 0 to UV set 1 on demand for aoMap
-			if ( mapDef.texCoord !== undefined && mapDef.texCoord != 0 && ! ( mapName === 'aoMap' && mapDef.texCoord == 1 ) ) {
+					console.warn( 'THREE.GLTFLoader: Custom UV set ' + mapDef.texCoord + ' for texture ' + mapName + ' not yet supported.' );
 
-				console.warn( 'THREE.GLTFLoader: Custom UV set ' + mapDef.texCoord + ' for texture ' + mapName + ' not yet supported.' );
+				}
 
-			}
+				return texture;
+
+			} );
+
+		} ).then( function ( texture ) {
 
 			return parser._onAfter( 'Map', texture, mapDef );
 
@@ -2305,109 +2353,92 @@ THREE.GLTFLoader = ( function () {
 
 	/**
 	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#materials
-	 * @param {number} materialIndex
 	 * @param {GLTF.definition} materialDef
-	 * @param {THREE.Material|null} customMaterial (optional)
 	 * @return {Promise<THREE.Material>}
 	 */
-	GLTFParser.prototype.loadMaterial = function ( materialIndex, materialDef, customMaterial ) {
+	GLTFParser.prototype.loadMaterial = function ( materialDef ) {
 
 		var parser = this;
 		var json = this.json;
-		var materialDef = json.materials[ materialIndex ];
 		var extensions = this.plugins.extensions;
 
-		var materialPending;
+		var materialParams = {};
+		var pending = [];
 
-		if ( customMaterial ) {
+		// Specification:
+		// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#metallic-roughness-material
 
-			materialPending = Promise.resolve( customMaterial );
+		var metallicRoughness = materialDef.pbrMetallicRoughness || {};
 
-		} else {
+		materialParams.color = new THREE.Color( 1.0, 1.0, 1.0 );
+		materialParams.opacity = 1.0;
 
-			var materialParams = {};
-			var pending = [];
+		if ( Array.isArray( metallicRoughness.baseColorFactor ) ) {
 
-			// Specification:
-			// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#metallic-roughness-material
+			var array = metallicRoughness.baseColorFactor;
 
-			var metallicRoughness = materialDef.pbrMetallicRoughness || {};
-
-			materialParams.color = new THREE.Color( 1.0, 1.0, 1.0 );
-			materialParams.opacity = 1.0;
-
-			if ( Array.isArray( metallicRoughness.baseColorFactor ) ) {
-
-				var array = metallicRoughness.baseColorFactor;
-
-				materialParams.color.fromArray( array );
-				materialParams.opacity = array[ 3 ];
-
-			}
-
-			if ( metallicRoughness.baseColorTexture !== undefined ) {
-
-				pending.push( parser.assignTexture( materialParams, 'map', metallicRoughness.baseColorTexture ) );
-
-			}
-
-			materialParams.metalness = metallicRoughness.metallicFactor !== undefined ? metallicRoughness.metallicFactor : 1.0;
-			materialParams.roughness = metallicRoughness.roughnessFactor !== undefined ? metallicRoughness.roughnessFactor : 1.0;
-
-			if ( metallicRoughness.metallicRoughnessTexture !== undefined ) {
-
-				pending.push( parser.assignTexture( materialParams, 'metalnessMap', metallicRoughness.metallicRoughnessTexture ) );
-				pending.push( parser.assignTexture( materialParams, 'roughnessMap', metallicRoughness.metallicRoughnessTexture ) );
-
-			}
-
-			if ( materialDef.normalTexture !== undefined ) {
-
-				pending.push( parser.assignTexture( materialParams, 'normalMap', materialDef.normalTexture ) );
-
-				materialParams.normalScale = new THREE.Vector2( 1, 1 );
-
-				if ( materialDef.normalTexture.scale !== undefined ) {
-
-					materialParams.normalScale.set( materialDef.normalTexture.scale, materialDef.normalTexture.scale );
-
-				}
-
-			}
-
-			if ( materialDef.occlusionTexture !== undefined ) {
-
-				pending.push( parser.assignTexture( materialParams, 'aoMap', materialDef.occlusionTexture ) );
-
-				if ( materialDef.occlusionTexture.strength !== undefined ) {
-
-					materialParams.aoMapIntensity = materialDef.occlusionTexture.strength;
-
-				}
-
-			}
-
-			if ( materialDef.emissiveFactor !== undefined ) {
-
-				materialParams.emissive = new THREE.Color().fromArray( materialDef.emissiveFactor );
-
-			}
-
-			if ( materialDef.emissiveTexture !== undefined ) {
-
-				pending.push( parser.assignTexture( materialParams, 'emissiveMap', materialDef.emissiveTexture ) );
-
-			}
-
-			materialPending = Promise.all( pending ).then( function () {
-
-				return new THREE.MeshStandardMaterial( materialParams );
-
-			} );
+			materialParams.color.fromArray( array );
+			materialParams.opacity = array[ 3 ];
 
 		}
 
-		return materialPending.then( function ( material ) {
+		if ( metallicRoughness.baseColorTexture !== undefined ) {
+
+			pending.push( parser.assignTexture( materialParams, 'map', metallicRoughness.baseColorTexture ) );
+
+		}
+
+		materialParams.metalness = metallicRoughness.metallicFactor !== undefined ? metallicRoughness.metallicFactor : 1.0;
+		materialParams.roughness = metallicRoughness.roughnessFactor !== undefined ? metallicRoughness.roughnessFactor : 1.0;
+
+		if ( metallicRoughness.metallicRoughnessTexture !== undefined ) {
+
+			pending.push( parser.assignTexture( materialParams, 'metalnessMap', metallicRoughness.metallicRoughnessTexture ) );
+			pending.push( parser.assignTexture( materialParams, 'roughnessMap', metallicRoughness.metallicRoughnessTexture ) );
+
+		}
+
+		if ( materialDef.normalTexture !== undefined ) {
+
+			pending.push( parser.assignTexture( materialParams, 'normalMap', materialDef.normalTexture ) );
+
+			materialParams.normalScale = new THREE.Vector2( 1, 1 );
+
+			if ( materialDef.normalTexture.scale !== undefined ) {
+
+				materialParams.normalScale.set( materialDef.normalTexture.scale, materialDef.normalTexture.scale );
+
+			}
+
+		}
+
+		if ( materialDef.occlusionTexture !== undefined ) {
+
+			pending.push( parser.assignTexture( materialParams, 'aoMap', materialDef.occlusionTexture ) );
+
+			if ( materialDef.occlusionTexture.strength !== undefined ) {
+
+				materialParams.aoMapIntensity = materialDef.occlusionTexture.strength;
+
+			}
+
+		}
+
+		if ( materialDef.emissiveFactor !== undefined ) {
+
+			materialParams.emissive = new THREE.Color().fromArray( materialDef.emissiveFactor );
+
+		}
+
+		if ( materialDef.emissiveTexture !== undefined ) {
+
+			pending.push( parser.assignTexture( materialParams, 'emissiveMap', materialDef.emissiveTexture ) );
+
+		}
+
+		return Promise.all( pending ).then( function () {
+
+			var material = new THREE.MeshStandardMaterial( materialParams );
 
 			if ( materialDef.name !== undefined ) material.name = materialDef.name;
 			if ( materialDef.doubleSided === true ) material.side = THREE.DoubleSide;
@@ -2750,15 +2781,13 @@ THREE.GLTFLoader = ( function () {
 	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#meshes
 	 * @param {number} meshIndex
 	 * @param {GLTF.definition} meshDef
-	 * @param {THREE.Group|THREE.Mesh|THREE.SkinnedMesh|null} customMesh (optional)
 	 * @return {Promise<THREE.Group|THREE.Mesh|THREE.SkinnedMesh>}
 	 */
-	GLTFParser.prototype.loadMesh = function ( meshIndex, meshDef, customMesh ) {
+	GLTFParser.prototype.loadMesh = function ( meshIndex, meshDef ) {
 
 		var parser = this;
 		var json = this.json;
 
-		var meshDef = json.meshes[ meshIndex ];
 		var primitives = meshDef.primitives;
 
 		var pending = [];
@@ -3136,12 +3165,11 @@ THREE.GLTFLoader = ( function () {
 
 	/**
 	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#nodes-and-hierarchy
-	 * @param {number} nodeIndex
 	 * @param {GLTF.definition} nodeDef
-	 * @param {THREE.Object3D|null} customNode (optional)
+	 * @param {THREE.Light|null} lightNode (optional)
 	 * @return {Promise<THREE.Object3D>}
 	 */
-	GLTFParser.prototype.loadNode = function ( nodeIndex, nodeDef, customNode ) {
+	GLTFParser.prototype.loadNode = function ( nodeDef, lightNode ) {
 
 		var json = this.json;
 		var extensions = this.plugins.extensions;
@@ -3154,9 +3182,9 @@ THREE.GLTFLoader = ( function () {
 
 			var pending = [];
 
-			if ( customNode ) {
+			if ( lightNode ) {
 
-				pending.push( Promise.resolve( customNode ) );
+				pending.push( Promise.resolve( lightNode ) );
 
 			}
 
@@ -3290,9 +3318,7 @@ THREE.GLTFLoader = ( function () {
 
 	/**
 	 * Specification: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#scenes
-	 * @param {number} sceneIndex
 	 * @param {GLTF.definition} sceneDef
-	 * @param {THREE.Scene|null} customScene (optional)
 	 * @return {Promise<THREE.Scene>}
 	 */
 	GLTFParser.prototype.loadScene = function () {
@@ -3395,41 +3421,25 @@ THREE.GLTFLoader = ( function () {
 
 		}
 
-		return function loadScene( sceneIndex, sceneDef, customScene ) {
+		return function loadScene( sceneDef ) {
 
 			var json = this.json;
 			var extensions = this.plugins.extensions;
 			var parser = this;
 
-			var scenePending;
+			var scene = new THREE.Scene();
 
-			if ( customScene ) {
+			var nodeIds = sceneDef.nodes || [];
 
-				scenePending = Promise.resolve( customScene );
+			var pending = [];
 
-			} else {
+			for ( var i = 0, il = nodeIds.length; i < il; i ++ ) {
 
-				var scene = new THREE.Scene();
-
-				var nodeIds = sceneDef.nodes || [];
-
-				var pending = [];
-
-				for ( var i = 0, il = nodeIds.length; i < il; i ++ ) {
-
-					pending.push( buildNodeHierachy( nodeIds[ i ], scene, json, parser ) );
-
-				}
-
-				scenePending = Promise.all( pending ).then( function () {
-
-					return scene;
-
-				} );
+				pending.push( buildNodeHierachy( nodeIds[ i ], scene, json, parser ) );
 
 			}
 
-			return scenePending.then( function ( scene ) {
+			return Promise.all( pending ).then( function () {
 
 				if ( sceneDef.name !== undefined ) scene.name = sceneDef.name;
 
