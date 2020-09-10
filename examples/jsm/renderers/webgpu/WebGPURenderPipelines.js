@@ -100,14 +100,16 @@ class WebGPURenderPipelines {
 
 			}
 
+			const shaderAttributes = parseGLSLAttributes( shader.vertexShader );
+			const shaderUniforms = parseGLSLUniforms( shader.vertexShader, shader.fragmentShader );
+
 			// layout
 
-			const bindLayout = this.bindings.get( object ).layout;
+			const bindLayout = this.bindings.get( object, shaderUniforms ).layout;
 			const layout = device.createPipelineLayout( { bindGroupLayouts: [ bindLayout ] } );
 
 			// vertex buffers
 
-			const shaderAttributes = parseGLSLAttributes( shader.vertexShader );
 			const vertexBuffers = [];
 
 			for ( const attribute of shaderAttributes ) {
@@ -118,8 +120,6 @@ class WebGPURenderPipelines {
 				} );
 
 			}
-
-			const shaderUniforms = parseGLSLUniforms( shader.vertexShader, shader.fragmentShader );
 
 			//
 
@@ -780,6 +780,9 @@ const ShaderLib = {
 		} cameraUniforms;
 		`,
 		fragmentShader: `#version 450
+
+		layout(location = 0) in vec2 vUv;
+		layout(location = 0) out vec4 outColor;
 		`
 	}
 };

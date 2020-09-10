@@ -1,7 +1,7 @@
 import WebGPUUniformsGroup from './WebGPUUniformsGroup.js';
 import WebGPUSampler from './WebGPUSampler.js';
 import WebGPUSampledTexture from './WebGPUSampledTexture.js';
-import { Matrix4 } from '../../../../build/three.module.js';
+import { Matrix4, Vector3 } from '../../../../build/three.module.js';
 
 class WebGPUBindings {
 
@@ -22,7 +22,7 @@ class WebGPUBindings {
 
 	}
 
-	get( object ) {
+	get( object, shaderUniforms ) {
 
 		let data = this.uniformsData.get( object );
 
@@ -44,6 +44,10 @@ class WebGPUBindings {
 			} else if ( material.isLineBasicMaterial ) {
 
 				bindings = this._getLinesBasicBindings();
+
+			} else if ( material.isShaderMaterial ) {
+
+				bindings = this._getShaderBindings( material, shaderUniforms );
 
 			} else {
 
@@ -115,7 +119,17 @@ class WebGPUBindings {
 			} else if ( binding.isSampler ) {
 
 				const material = object.material;
-				const texture = material[ binding.name ];
+
+				const names = binding.name.split( '.' );
+				let target = material;
+
+				for ( const name of names ) {
+
+					target = target[ name ];
+
+				}
+
+				const texture = target;
 
 				textures.updateSampler( texture );
 
@@ -131,7 +145,17 @@ class WebGPUBindings {
 			} else if ( binding.isSampledTexture ) {
 
 				const material = object.material;
-				const texture = material[ binding.name ];
+
+				const names = binding.name.split( '.' );
+				let target = material;
+
+				for ( const name of names ) {
+
+					target = target[ name ];
+
+				}
+
+				const texture = target;
 
 				const forceUpdate = textures.updateTexture( texture );
 				const textureGPU = textures.getTextureGPU( texture );
@@ -377,6 +401,147 @@ class WebGPUBindings {
 		} );
 
 		this.sharedUniformsGroups.set( cameraGroup.name, cameraGroup );
+
+	}
+
+	_getShaderBindings( material, shaderUniforms ) {
+
+		const bindings = [];
+
+		for ( const shaderUniform of shaderUniforms ) {
+
+			const name = shaderUniform.name;
+			const type = shaderUniform.type;
+			const groupType = shaderUniform.groupType;
+			const visibility = shaderUniform.visibility === 'fragment' ? GPUShaderStage.FRAGMENT : GPUShaderStage.VERTEX;
+			let group;
+
+			if ( name === 'modelUniforms' ) {
+
+				group = new WebGPUUniformsGroup();
+				group.setName( name );
+				group.visibility = visibility;
+				group.setUniform( 'modelMatrix', new Matrix4() );
+				group.setUniform( 'modelViewMatrix', new Matrix4() );
+				group.setUpdateCallback( function ( array, object/*, camera */ ) {
+
+					array.set( object.matrixWorld.elements, 0 );
+					array.set( object.modelViewMatrix.elements, 16 );
+
+					return true; // @TODO: Implement caching (return false when cache hits occurs)
+
+				} );
+
+			} else if ( name === 'cameraUniforms' ) {
+
+				group = this.sharedUniformsGroups.get( 'cameraUniforms' );
+
+			} else if ( groupType === 'uniform-buffer' ) {
+
+				group = new WebGPUUniformsGroup();
+				group.setName( name );
+				group.visibility = visibility;
+
+				const entries = shaderUniform.entries;
+
+				for ( const entry of entries ) {
+
+					group.setUniform( entry.name, getInitialValue( entry.type ) );
+
+				}
+
+				group.setUpdateCallback( function ( array, object/*, camera */ ) {
+
+					let offset = 0;
+
+					for ( let i = 0; i < entries.length; i ++ ) {
+
+						const entry = entries[ i ];
+						const value = material.uniforms[ name ].value[ i ];
+						updateValue( array, offset, value );
+						offset += getSize( entry.type );
+
+					}
+
+					return true; // @TODO: Implement caching (return false when cache hits occurs)
+
+				} );
+
+			} else if ( groupType === 'sampler' ) {
+
+				group = new WebGPUSampler();
+				group.setName( 'uniforms.' + name + '.value' );
+				group.visibility = visibility;
+
+			} else if ( groupType === 'sampled-texture' ) {
+
+				group = new WebGPUSampledTexture();
+				group.setName( 'uniforms.' + name + '.value' );
+				group.visibility = visibility;
+
+			} else {
+
+				console.error( 'THREE.WebGPURenderer: Unknown uniform type ' + type );
+
+			}
+
+			bindings.push( group );
+
+		}
+
+		return bindings;
+
+	}
+
+}
+
+function getInitialValue( type ) {
+
+	switch ( type ) {
+		case 'float':
+			return 0.0;
+		case 'vec3':
+			return new Vector3();
+		case 'mat4':
+			return new Matrix4();
+	}
+
+	console.error( 'THREE.WebGPURenderer: Unknown uniform type ' + type );
+
+}
+
+function getSize( type ) {
+
+	switch ( type ) {
+		case 'float':
+			return 1;
+		case 'vec3':
+			return 3;
+		case 'mat4':
+			return 16;
+	}
+
+	console.error( 'THREE.WebGPURenderer: Unknown uniform type ' + type );
+
+}
+
+function updateValue( array, offset, value ) {
+
+	if ( typeof value === 'number' ) {
+
+		array[ offset ] = value;
+
+	} else if ( value.isColor ) {
+
+		value.toArray( array, offset );
+
+	} else if ( value.isMatrix4 ) {
+
+		value.toArray( array, offset );
+
+	} else {
+
+		console.error( 'THREE.WebGPURenderer: Unknown uniform value type ', value );
 
 	}
 
