@@ -1,0 +1,240 @@
+<html lang="en">
+	<head>
+		<title>WebGPU Shader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> WebGPU - Shader<br/>(Chrome Canary with flag: --enable-unsafe-webgpu)
+		</div>
+
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import WebGPURenderer from './jsm/renderers/webgpu/WebGPURenderer.js';
+			import WebGPU from './jsm/renderers/webgpu/WebGPU.js';
+
+			import { 
+				ColorUniform,
+				FloatUniform,
+				Matrix3Uniform,
+				Matrix4Uniform
+			} from './jsm/renderers/webgpu/WebGPUUniform.js';
+			import WebGPUUniformsGroup from './jsm/renderers/webgpu/WebGPUUniformsGroup.js';
+			import WebGPUSampler from './jsm/renderers/webgpu/WebGPUSampler.js';
+			import { WebGPUSampledTexture } from './jsm/renderers/webgpu/WebGPUSampledTexture.js';
+
+			let camera, scene, renderer;
+			let box;
+			let clock;
+
+			init().then( animate ).catch( error );
+
+			async function init() {
+
+				if ( WebGPU.isAvailable() === false ) {
+
+					document.body.appendChild( WebGPU.getErrorMessage() );
+
+					throw 'No WebGPU support';
+
+				}
+
+				clock = new THREE.Clock();
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 10 );
+				camera.position.z = 3.5;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x222222 );
+
+				// textured mesh
+
+				const textureLoader = new THREE.TextureLoader();
+				const texture = textureLoader.load( './textures/uv_grid_opengl.jpg' );
+
+				const geometryBox = new THREE.BoxBufferGeometry( 2.0, 2.0, 2.0, 128, 128, 128 );
+				const materialBox = new THREE.RawShaderMaterial( {
+					vertexShader: `#version 450
+						#define PI 3.1415926535
+
+						layout(location = 0) in vec3 position;
+						layout(location = 1) in vec2 uv;
+
+						layout(location = 0) out vec2 vUv;
+						layout(location = 1) out vec3 vPosition;
+
+						layout(set = 0, binding = 0) uniform ModelUniforms {
+							mat4 modelMatrix;
+							mat4 modelViewMatrix;
+							mat3 normalMatrix;
+						} modelUniforms;
+
+						layout(set = 0, binding = 1) uniform CameraUniforms {
+							mat4 projectionMatrix;
+							mat4 viewMatrix;
+						} cameraUniforms;
+
+						layout(set = 0, binding = 2) uniform TimeUniforms {
+							float elapsed;
+						} timeUniforms;
+
+						void main(){
+							vUv = uv;
+							vPosition = position;
+							vec3 pos = position;
+							mat3 rotation = mat3( 1.0 );
+							float time = sin( timeUniforms.elapsed + pos.y ) * PI;
+							rotation[ 0 ][ 0 ] = rotation[ 2 ][ 2 ] = cos( time );
+							rotation[ 2 ][ 0 ] = sin( time );
+							rotation[ 0 ][ 2 ] = - sin( time );
+							pos = rotation * pos;
+							gl_Position = cameraUniforms.projectionMatrix * modelUniforms.modelViewMatrix * vec4( pos, 1.0 );
+						}
+					`,
+					fragmentShader: `#version 450
+						layout(set = 0, binding = 2) uniform TimeUniforms {
+							float elapsed;
+						} timeUniforms;
+
+						layout(set = 0, binding = 3) uniform ColorUniforms {
+							vec3 diffuse;
+							float opacity;
+						} colorUniforms;
+
+						layout(set = 0, binding = 4) uniform sampler mySampler;
+						layout(set = 0, binding = 5) uniform texture2D myTexture;
+
+						layout(location = 0) in vec2 vUv;
+						layout(location = 1) in vec3 vPosition;
+						layout(location = 0) out vec4 outColor;
+
+						void main() {
+							outColor = texture( sampler2D( myTexture, mySampler ), vUv );
+							outColor.rgb *= colorUniforms.diffuse * ( sin( timeUniforms.elapsed + vPosition.y * 2.0 ) * 0.3 + 0.7 );
+							outColor.a *= colorUniforms.opacity;
+						}
+					`
+				} );
+
+				const bindings = [];
+
+				const modelViewUniform = new Matrix4Uniform( 'modelMatrix' );
+				const modelViewMatrixUniform = new Matrix4Uniform( 'modelViewMatrix' );
+				const normalMatrixUniform = new Matrix3Uniform( 'normalMatrix' );
+
+				const modelGroup = new WebGPUUniformsGroup( 'modelUniforms' );
+				modelGroup.addUniform( modelViewUniform );
+				modelGroup.addUniform( modelViewMatrixUniform );
+				modelGroup.addUniform( normalMatrixUniform );
+				modelGroup.setOnBeforeUpdate( function ( object/*, camera */ ) {
+
+					modelViewUniform.setValue( object.matrixWorld );
+					modelViewMatrixUniform.setValue( object.modelViewMatrix );
+					normalMatrixUniform.setValue( object.normalMatrix );
+
+				} );
+
+				const projectionMatrixUniform = new Matrix4Uniform( 'projectionMatrix' );
+				const viewMatrixUniform = new Matrix4Uniform( 'viewMatrix' );
+
+				const cameraGroup = new WebGPUUniformsGroup( 'cameraUniforms' );
+				cameraGroup.addUniform( projectionMatrixUniform );
+				cameraGroup.addUniform( viewMatrixUniform );
+				cameraGroup.setOnBeforeUpdate( function ( object, camera ) {
+
+					projectionMatrixUniform.setValue( camera.projectionMatrix );
+					viewMatrixUniform.setValue( camera.matrixWorldInverse );
+
+				} );
+
+				const elapsedUniform = new FloatUniform( 'elapsed', 0.0 );
+				const timeGroup = new WebGPUUniformsGroup( 'timeUniforms' );
+				timeGroup.addUniform( elapsedUniform );
+				timeGroup.setVisibility( GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT );
+				timeGroup.setOnBeforeUpdate ( function () {
+
+					elapsedUniform.setValue( clock.getElapsedTime() );
+				
+				} );
+
+				const diffuseColor = new THREE.Color( 0xffffff );
+				const diffuseUniform = new ColorUniform( 'diffuse', diffuseColor );
+				const opacityUniform = new FloatUniform( 'opacity', 1 );
+
+				const colorGroup = new WebGPUUniformsGroup( 'colorUniforms' );
+				colorGroup.addUniform( diffuseUniform );
+				colorGroup.addUniform( opacityUniform );
+				colorGroup.setVisibility( GPUShaderStage.FRAGMENT );
+				colorGroup.setOnBeforeUpdate( function ( object/*, camera */ ) {
+
+					const material = object.material;
+					const opacity = ( material.transparent === true ) ? material.opacity : 1.0;
+
+					diffuseUniform.setValue( material.diffuse );
+					opacityUniform.setValue( opacity );
+
+				} );
+
+				const diffuseSampler = new WebGPUSampler( 'map' );
+				const diffuseTexture = new WebGPUSampledTexture( 'map' );
+
+				bindings.push( modelGroup );
+				bindings.push( cameraGroup );
+				bindings.push( timeGroup );
+				bindings.push( colorGroup );
+				bindings.push( diffuseSampler );
+				bindings.push( diffuseTexture );
+
+				materialBox.bindings = bindings;
+				materialBox.map = texture;
+				materialBox.diffuse = diffuseColor;
+
+				box = new THREE.Mesh( geometryBox, materialBox );
+				scene.add( box );
+
+				//
+
+				renderer = new WebGPURenderer( { extensions: [ 'texture-compression-bc' ] } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				return renderer.init();
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				box.rotation.x += 0.01;
+				box.rotation.y += 0.02;
+
+				renderer.render( scene, camera );
+
+			}
+
+			function error( error ) {
+
+				console.error( error );
+
+			}
+
+		</script>
+	</body>
+</html>

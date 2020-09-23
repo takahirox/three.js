@@ -53,6 +53,13 @@ class WebGPURenderPipelines {
 
 				shader = ShaderLib.line_basic;
 
+			} else if ( material.isRawShaderMaterial ) {
+
+				shader = {
+					vertexShader: material.vertexShader,
+					fragmentShader: material.fragmentShader
+				};
+
 			} else {
 
 				console.error( 'THREE.WebGPURenderer: Unknwon shader type.' );

@@ -49,6 +49,10 @@ class WebGPUBindings {
 
 				bindings = this._getLinesBasicBindings();
 
+			} else if ( material.isRawShaderMaterial ) {
+
+				bindings = material.bindings.slice();
+
 			} else {
 
 				console.error( 'THREE.WebGPURenderer: Unknwon shader type.' );

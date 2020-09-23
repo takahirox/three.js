@@ -325,6 +325,7 @@ var files = {
 		"webgpu_sandbox",
 		"webgpu_rtt",
 		"webgpu_compute",
+		"webgpu_shader"
 	],
 	"webaudio": [
 		"webaudio_orientation",
