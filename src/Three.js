@@ -94,6 +94,8 @@ export { InstancedInterleavedBuffer } from './core/InstancedInterleavedBuffer.js
 export { InterleavedBuffer } from './core/InterleavedBuffer.js';
 export { InstancedBufferAttribute } from './core/InstancedBufferAttribute.js';
 export { GLBufferAttribute } from './core/GLBufferAttribute.js';
+export { Buffer } from './core/Buffer.js';
+export { InterleavedBufferAttribute2 } from './core/InterleavedBufferAttribute2.js';
 export * from './core/BufferAttribute.js';
 export { Object3D } from './core/Object3D.js';
 export { Raycaster } from './core/Raycaster.js';

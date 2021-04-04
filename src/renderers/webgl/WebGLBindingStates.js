@@ -366,6 +366,18 @@
 						gl.bindBuffer( gl.ARRAY_BUFFER, buffer );
 						vertexAttribPointer( programAttribute, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
 
+					} else if ( geometryAttribute.isInterleavedBufferAttribute2 ) {
+
+						const stride = geometryAttribute.stride;
+						const offset = geometryAttribute.offset;
+
+						// @TODO: Support instancing
+
+						enableAttribute( programAttribute );
+
+						gl.bindBuffer( gl.ARRAY_BUFFER, buffer );
+						vertexAttribPointer( programAttribute, size, type, normalized, stride, offset );
+
 					} else {
 
 						if ( geometryAttribute.isInstancedBufferAttribute ) {
