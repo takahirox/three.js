@@ -596,6 +596,12 @@ function WebGLMaterials( properties ) {
 
 		}
 
+		if ( material.transmissionSamplerMap ) {
+
+			uniforms.transmissionSamplerMap.value = material.transmissionSamplerMap;
+
+		}
+
 	}
 
 	function refreshUniformsMatcap( uniforms, material ) {

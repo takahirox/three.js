@@ -299,6 +299,7 @@ ShaderLib.physical = {
 			sheen: { value: new Color( 0x000000 ) },
 			transmission: { value: 0 },
 			transmissionMap: { value: null },
+			transmissionSamplerMap: { value: null },
 		}
 	] ),
 

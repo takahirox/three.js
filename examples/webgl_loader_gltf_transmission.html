@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - glTF 2.0 - transmission</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - GLTFLoader + transmission extensions<br />
+		</div>
+
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import { RoomEnvironment } from './jsm/environments/RoomEnvironment.js';
+			import { OrbitControls } from './jsm/controls/OrbitControls.js';
+			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+
+			let camera, scene, renderer;
+			let renderTarget;
+
+			init();
+			render();
+
+			function init() {
+
+				const container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.outputEncoding = THREE.sRGBEncoding;
+				container.appendChild( renderer.domElement );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 2000 );
+				camera.position.set( 0, 0, 2 );
+
+				const environment = new RoomEnvironment();
+				const pmremGenerator = new THREE.PMREMGenerator( renderer );
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xbbbbbb );
+				scene.environment = pmremGenerator.fromScene( environment ).texture;
+
+				const loader = new GLTFLoader().setPath( 'models/gltf/TransmissionTest/glTF/' );
+				loader.load( 'TransmissionTest.gltf', function ( gltf ) {
+
+					scene.add( gltf.scene );
+
+					render();
+
+				} );
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render ); // use if there is no animation loop
+				controls.update();
+
+				renderTarget = new THREE.WebGLRenderTarget( 1024, 1024, {
+					generateMipmaps: true,
+					minFilter: THREE.LinearMipmapLinearFilter,
+					magFilter: THREE.Nearest,
+					wrapS: THREE.ClampToEdgeWrapping,
+					wrapT: THREE.ClampToEdgeWrapping
+				} );
+
+				renderTarget.texture.flipY = false;
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				render();
+
+			}
+
+			//
+
+			function render() {
+
+				scene.traverse(obj => {
+					if (obj.material) {
+						if (obj.material.transmission) {
+							obj.material.visible = false;
+							obj.material.transmissionSamplerMap = null;
+						}
+					}
+				});
+
+				renderer.setRenderTarget( renderTarget );
+				renderer.render( scene, camera );
+				renderer.setRenderTarget( null );
+
+				scene.traverse(obj => {
+					if (obj.material) {
+						if (obj.material.transmission) {
+							obj.material.transmissionSamplerMap = renderTarget.texture;
+						}
+						obj.material.visible = true;
+					}
+				});
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+</html>

@@ -2,6 +2,7 @@ export default /* glsl */`
 #define STANDARD
 
 varying vec3 vViewPosition;
+varying vec3 vPosition;
 
 #ifndef FLAT_SHADED
 
@@ -62,6 +63,9 @@ void main() {
 	#include <clipping_planes_vertex>
 
 	vViewPosition = - mvPosition.xyz;
+
+	vec4 mPosition = modelMatrix * vec4( position, 1.0 );
+	vPosition = mPosition.xyz / mPosition.w;
 
 	#include <worldpos_vertex>
 	#include <shadowmap_vertex>

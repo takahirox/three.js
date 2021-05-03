@@ -64,6 +64,8 @@ class MeshPhysicalMaterial extends MeshStandardMaterial {
 		this.transmission = 0.0;
 		this.transmissionMap = null;
 
+		this.tramsmissionSamplerMap = null;
+
 		this.setValues( parameters );
 
 	}

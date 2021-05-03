@@ -31,6 +31,7 @@ uniform float opacity;
 #endif
 
 varying vec3 vViewPosition;
+varying vec3 vPosition;
 
 #ifndef FLAT_SHADED
 
@@ -73,6 +74,54 @@ varying vec3 vViewPosition;
 #include <logdepthbuf_pars_fragment>
 #include <clipping_planes_pars_fragment>
 
+#ifdef USE_TRANSMISSIONSAMPLERMAP
+	uniform sampler2D transmissionSamplerMap;
+	uniform mat4 modelMatrix;
+	uniform mat4 projectionMatrix;
+
+	float applyIorToRoughness( float roughness, float ior ) {
+		return roughness * clamp( ior * 2.0 - 2.0, 0.0, 1.0 );
+	}
+
+	vec3 getTransmissionSample( vec2 fragCoord, float roughness, float ior ) {
+
+		float framebufferLod = log2( 1024.0 ) * applyIorToRoughness( roughness, ior );
+		vec3 transmittedLight = textureLod( transmissionSamplerMap, fragCoord, framebufferLod ).rgb;
+		// transmittedLight = sRGBToLinear( transmittedLight );
+		return transmittedLight;
+
+	}
+
+	vec3 getVolumeTransmissionRay( vec3 n, vec3 v, float thickness, float ior, mat4 modelMatrix ) {
+
+		vec3 refractionVector = refract( - v, normalize( n ), 1.0 / ior );
+		vec3 modelScale;
+		modelScale.x = length( vec3( modelMatrix[ 0 ].xyz ) );
+		modelScale.y = length( vec3( modelMatrix[ 1 ].xyz ) );
+		modelScale.z = length( vec3( modelMatrix[ 2 ].xyz ) );
+
+		return normalize( refractionVector ) * thickness * modelScale;
+
+	}
+
+	vec3 getIBLVolumeRefraction( vec3 n, vec3 v, float perceptualRoughness, vec3 f0, vec3 f90,
+		vec3 position, mat4 modelMatrix, mat4 viewMatrix, mat4 projMatrix, float ior,
+		float thickness ) {
+
+		vec3 transmissionRay = getVolumeTransmissionRay( n, v, thickness, ior, modelMatrix );
+		vec3 refractedRayExit = position + transmissionRay;
+
+		vec4 ndcPos = projMatrix * viewMatrix * vec4( refractedRayExit, 1.0 );
+		vec2 refractionCoords = ndcPos.xy / ndcPos.w;
+		refractionCoords += 1.0;
+		refractionCoords /= 2.0;
+
+		return getTransmissionSample( refractionCoords, perceptualRoughness, ior );
+
+	}
+
+#endif
+
 void main() {
 
 	#include <clipping_planes_fragment>
@@ -98,6 +147,18 @@ void main() {
 	#include <clearcoat_normal_fragment_maps>
 	#include <emissivemap_fragment>
 	#include <transmissionmap_fragment>
+
+	#ifdef USE_TRANSMISSIONSAMPLERMAP
+		vec3 v = normalize( cameraPosition - vPosition );
+		vec3 n = normalize( vNormal );
+		vec3 f0 = vec3( 0.04 );
+		vec3 f90 = vec3( 1.0 );
+
+		diffuseColor.rgb *= getIBLVolumeRefraction(
+			n, v, roughnessFactor, f0, f90,
+			vPosition, modelMatrix, viewMatrix, projectionMatrix, 1.5 /*ior*/,
+			0.01 /*thickness*/ );
+	#endif
 
 	// accumulation
 	#include <lights_physical_fragment>

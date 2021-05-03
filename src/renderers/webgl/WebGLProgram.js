@@ -469,6 +469,7 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 			parameters.metalnessMap ? '#define USE_METALNESSMAP' : '',
 			parameters.alphaMap ? '#define USE_ALPHAMAP' : '',
 			parameters.transmissionMap ? '#define USE_TRANSMISSIONMAP' : '',
+			parameters.transmissionSamplerMap ? '#define USE_TRANSMISSIONSAMPLERMAP' : '',
 
 			parameters.vertexTangents ? '#define USE_TANGENT' : '',
 			parameters.vertexColors ? '#define USE_COLOR' : '',
@@ -610,6 +611,7 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 
 			parameters.sheen ? '#define USE_SHEEN' : '',
 			parameters.transmissionMap ? '#define USE_TRANSMISSIONMAP' : '',
+			parameters.transmissionSamplerMap ? '#define USE_TRANSMISSIONSAMPLERMAP' : '',
 
 			parameters.vertexTangents ? '#define USE_TANGENT' : '',
 			parameters.vertexColors || parameters.instancingColor ? '#define USE_COLOR' : '',
