@@ -149,15 +149,19 @@ void main() {
 	#include <transmissionmap_fragment>
 
 	#ifdef USE_TRANSMISSIONSAMPLERMAP
+		vec3 f_transmission = vec3( 0.0 );
 		vec3 v = normalize( cameraPosition - vPosition );
 		vec3 n = normalize( vNormal );
 		vec3 f0 = vec3( 0.04 );
 		vec3 f90 = vec3( 1.0 );
 
-		diffuseColor.rgb *= getIBLVolumeRefraction(
+		f_transmission += diffuseColor.rgb * totalTransmission * getIBLVolumeRefraction(
 			n, v, roughnessFactor, f0, f90,
 			vPosition, modelMatrix, viewMatrix, projectionMatrix, 1.5 /*ior*/,
 			0.01 /*thickness*/ );
+
+		diffuseColor.rgb = mix( diffuseColor.rgb, f_transmission, totalTransmission );
+
 	#endif
 
 	// accumulation
@@ -173,7 +177,7 @@ void main() {
 
 	// this is a stub for the transmission model
 	#ifdef TRANSMISSION
-		diffuseColor.a *= mix( saturate( 1. - totalTransmission + linearToRelativeLuminance( reflectedLight.directSpecular + reflectedLight.indirectSpecular ) ), 1.0, metalness );
+	//	diffuseColor.a *= mix( saturate( 1. - totalTransmission + linearToRelativeLuminance( reflectedLight.directSpecular + reflectedLight.indirectSpecular ) ), 1.0, metalness );
 	#endif
 
 	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
