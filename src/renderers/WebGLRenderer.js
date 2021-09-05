@@ -170,6 +170,11 @@ function WebGLRenderer( parameters = {} ) {
 
 	let _transmissionRenderTarget = null;
 
+	// Multi draw
+
+	const multiDrawStarts = [];
+	const multiDrawCounts = [];
+
 	// camera matrices cache
 
 	const _projScreenMatrix = new Matrix4();
@@ -863,6 +868,18 @@ function WebGLRenderer( parameters = {} ) {
 
 			renderer.renderInstances( drawStart, drawCount, instanceCount );
 
+		} else if ( object.isBatchedMesh ) {
+
+			// @TODO: Instancing Batched mesh support
+
+			object.getDrawStartsAndCounts( multiDrawStarts, multiDrawCounts );
+
+			if ( multiDrawStarts.length > 0 ) {
+
+				renderer.renderMultiDraw( multiDrawStarts, multiDrawCounts, multiDrawStarts.length );
+
+			}
+
 		} else {
 
 			renderer.render( drawStart, drawCount );
@@ -1182,6 +1199,32 @@ function WebGLRenderer( parameters = {} ) {
 				}
 
 				currentRenderList.push( object, null, object.material, groupOrder, _vector3.z, null );
+
+			} else if ( object.isBatchedMesh ) {
+
+				object.resetCullingStatus();
+
+				if ( ! object.frustumCulled || object.intersectsFrustum( _frustum ) ) {
+
+					if ( sortObjects ) {
+
+						_vector3.setFromMatrixPosition( object.matrixWorld )
+							.applyMatrix4( _projScreenMatrix );
+
+					}
+
+					const geometry = objects.update( object );
+					const material = object.material;
+
+					// @TODO: Support multi materials?
+
+					if ( material.visible ) {
+
+						currentRenderList.push( object, geometry, material, groupOrder, _vector3.z, null );
+
+					}
+
+				}
 
 			} else if ( object.isMesh || object.isLine || object.isPoints ) {
 
@@ -1735,6 +1778,13 @@ function WebGLRenderer( parameters = {} ) {
 				}
 
 			}
+
+		}
+
+		if ( object.isBatchedMesh ) {
+
+			p_uniforms.setValue( _gl, 'batchingTexture', object.matricesTexture, textures );
+			p_uniforms.setValue( _gl, 'batchingTextureSize', object.matricesTextureSize );
 
 		}
 

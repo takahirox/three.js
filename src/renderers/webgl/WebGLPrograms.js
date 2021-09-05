@@ -34,7 +34,7 @@ function WebGLPrograms( renderer, cubemaps, cubeuvmaps, extensions, capabilities
 	};
 
 	const parameterNames = [
-		'precision', 'isWebGL2', 'supportsVertexTextures', 'outputEncoding', 'instancing', 'instancingColor',
+		'precision', 'isWebGL2', 'supportsVertexTextures', 'outputEncoding', 'instancing', 'instancingColor', 'batching',
 		'map', 'mapEncoding', 'matcap', 'matcapEncoding', 'envMap', 'envMapMode', 'envMapEncoding', 'envMapCubeUV',
 		'lightMap', 'lightMapEncoding', 'aoMap', 'emissiveMap', 'emissiveMapEncoding', 'bumpMap', 'normalMap',
 		'objectSpaceNormalMap', 'tangentSpaceNormalMap',
@@ -176,6 +176,8 @@ function WebGLPrograms( renderer, cubemaps, cubeuvmaps, extensions, capabilities
 			instancing: object.isInstancedMesh === true,
 			instancingColor: object.isInstancedMesh === true && object.instanceColor !== null,
 
+			batching: object.isBatchedMesh === true,
+
 			supportsVertexTextures: vertexTextures,
 			outputEncoding: ( currentRenderTarget !== null ) ? getTextureEncodingFromMap( currentRenderTarget.texture ) : renderer.outputEncoding,
 			map: !! material.map,
@@ -283,6 +285,7 @@ function WebGLPrograms( renderer, cubemaps, cubeuvmaps, extensions, capabilities
 			rendererExtensionFragDepth: isWebGL2 || extensions.has( 'EXT_frag_depth' ),
 			rendererExtensionDrawBuffers: isWebGL2 || extensions.has( 'WEBGL_draw_buffers' ),
 			rendererExtensionShaderTextureLod: isWebGL2 || extensions.has( 'EXT_shader_texture_lod' ),
+			rendererExtensionMultiDraw: object.isBatchedMesh && extensions.has( 'WEBGL_multi_draw' ),
 
 			customProgramCacheKey: material.customProgramCacheKey()
 

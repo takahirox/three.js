@@ -442,6 +442,8 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 
 		prefixVertex = [
 
+			parameters.rendererExtensionMultiDraw ? '#extension GL_ANGLE_multi_draw : require' : '',
+
 			generatePrecision( parameters ),
 
 			'#define SHADER_NAME ' + parameters.shaderName,
@@ -450,6 +452,8 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 
 			parameters.instancing ? '#define USE_INSTANCING' : '',
 			parameters.instancingColor ? '#define USE_INSTANCING_COLOR' : '',
+
+			parameters.batching ? '#define USE_BATCHING' : '',
 
 			parameters.supportsVertexTextures ? '#define VERTEX_TEXTURES' : '',
 

@@ -7,6 +7,7 @@ export const vertex = /* glsl */`
 #include <fog_pars_vertex>
 #include <morphtarget_pars_vertex>
 #include <skinning_pars_vertex>
+#include <batching_pars_vertex>
 #include <logdepthbuf_pars_vertex>
 #include <clipping_planes_pars_vertex>
 
@@ -16,12 +17,14 @@ void main() {
 	#include <uv2_vertex>
 	#include <color_vertex>
 
-	#if defined ( USE_ENVMAP ) || defined ( USE_SKINNING )
+	#if defined ( USE_ENVMAP ) || defined ( USE_SKINNING ) || defined( USE_BATCHING )
 
 		#include <beginnormal_vertex>
 		#include <morphnormal_vertex>
 		#include <skinbase_vertex>
 		#include <skinnormal_vertex>
+		#include <batchingbase_vertex>
+		#include <batchingnormal_vertex>
 		#include <defaultnormal_vertex>
 
 	#endif
@@ -29,6 +32,7 @@ void main() {
 	#include <begin_vertex>
 	#include <morphtarget_vertex>
 	#include <skinning_vertex>
+	#include <batching_vertex>
 	#include <project_vertex>
 	#include <logdepthbuf_vertex>
 	#include <clipping_planes_vertex>
