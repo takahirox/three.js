@@ -8,7 +8,7 @@
 	</head>
 <body>
 
-	<audio loop id="music" preload="auto" style="display: none">
+	<audio loop id="music" preload="auto" style="display: none" crossOrigin="anonymous">
 		<source src="sounds/376737_Skullbeatz___Bad_Cat_Maste.ogg" type="audio/ogg">
 		<source src="sounds/376737_Skullbeatz___Bad_Cat_Maste.mp3" type="audio/mpeg">
 	</audio>
@@ -91,13 +91,13 @@
 			const audioElement = document.getElementById( 'music' );
 			audioElement.play();
 
-			const positionalAudio = new THREE.PositionalAudio( listener );
+			const positionalAudio = new THREE.Audio( listener );
 			positionalAudio.setMediaElementSource( audioElement );
-			positionalAudio.setRefDistance( 1 );
-			positionalAudio.setDirectionalCone( 180, 230, 0.1 );
+			//positionalAudio.setRefDistance( 1 );
+			//positionalAudio.setDirectionalCone( 180, 230, 0.1 );
 
-			const helper = new PositionalAudioHelper( positionalAudio, 0.1 );
-			positionalAudio.add( helper );
+			//const helper = new PositionalAudioHelper( positionalAudio, 0.1 );
+			//positionalAudio.add( helper );
 
 			//
 
