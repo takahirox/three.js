@@ -19,6 +19,8 @@ class FileLoader extends Loader {
 	constructor( manager ) {
 
 		super( manager );
+		this.offset = null;
+		this.length = null;
 
 	}
 
@@ -30,7 +32,12 @@ class FileLoader extends Loader {
 
 		url = this.manager.resolveURL( url );
 
-		const cached = Cache.get( url );
+		const offset = this.offset;
+		const length = this.length;
+		const isRangeRequest = offset !== null;
+		const key = url + ( isRangeRequest ? `:${offset}-${length}` : '' );
+
+		const cached = Cache.get( key );
 
 		if ( cached !== undefined ) {
 
@@ -50,9 +57,9 @@ class FileLoader extends Loader {
 
 		// Check if request is duplicate
 
-		if ( loading[ url ] !== undefined ) {
+		if ( loading[ key ] !== undefined ) {
 
-			loading[ url ].push( {
+			loading[ key ].push( {
 
 				onLoad: onLoad,
 				onProgress: onProgress,
@@ -65,17 +72,33 @@ class FileLoader extends Loader {
 		}
 
 		// Initialise array for duplicate requests
-		loading[ url ] = [];
+		loading[ key ] = [];
 
-		loading[ url ].push( {
+		loading[ key ].push( {
 			onLoad: onLoad,
 			onProgress: onProgress,
 			onError: onError,
 		} );
 
+		let rangeHeader;
+
+		if ( isRangeRequest ) {
+
+			const rangeQuery = length !== null
+				? `bytes=${offset}-${offset + length - 1}`
+				: `bytes=${offset}-`;
+
+			rangeHeader = { Range: rangeQuery };
+
+		} else {
+
+			rangeHeader = {};
+
+		}
+
 		// create request
 		const req = new Request( url, {
-			headers: new Headers( this.requestHeader ),
+			headers: new Headers( Object.assign( rangeHeader, this.requestHeader ) ),
 			credentials: this.withCredentials ? 'include' : 'same-origin',
 			// An abort controller could be added within a future PR
 		} );
@@ -83,12 +106,17 @@ class FileLoader extends Loader {
 		// record states ( avoid data race )
 		const mimeType = this.mimeType;
 		const responseType = this.responseType;
+		let responseStatus = null;
+		let responseUrl = null;
 
 		// start the fetch
 		fetch( req )
 			.then( response => {
 
-				if ( response.status === 200 || response.status === 0 ) {
+				if ( response.status === 200 || response.status === 206 || response.status === 0 ) {
+
+					responseStatus = response.status;
+					responseUrl = response.url;
 
 					// Some browsers return HTTP Status 0 when using non-http protocol
 					// e.g. 'file://' or 'data://'. Handle as success.
@@ -107,7 +135,7 @@ class FileLoader extends Loader {
 
 					}
 
-					const callbacks = loading[ url ];
+					const callbacks = loading[ key ];
 					const reader = response.body.getReader();
 					const contentLength = response.headers.get( 'Content-Length' );
 					const total = contentLength ? parseInt( contentLength ) : 0;
@@ -210,12 +238,29 @@ class FileLoader extends Loader {
 			} )
 			.then( data => {
 
+				// Fallback for servers not supporting range requests and responding with 200
+				if ( isRangeRequest && responseStatus === 200 ) {
+
+					if ( responseType === 'arraybuffer' || responseType === 'blob' ) {
+
+						data = length !== null ? data.slice( offset, offset + length ) : data.slice( offset );
+
+					} else {
+
+						// Hard to rescue other types so throw an error
+
+						throw new HttpError( `range request fetch for "${responseUrl}" responded with 200` );
+
+					}
+
+				}
+
 				// Add to cache only on HTTP success, so that we do not cache
 				// error response bodies as proper responses to requests.
-				Cache.add( url, data );
+				Cache.add( key, data );
 
-				const callbacks = loading[ url ];
-				delete loading[ url ];
+				const callbacks = loading[ key ];
+				delete loading[ key ];
 
 				for ( let i = 0, il = callbacks.length; i < il; i ++ ) {
 
@@ -229,7 +274,7 @@ class FileLoader extends Loader {
 
 				// Abort errors and other errors are handled the same
 
-				const callbacks = loading[ url ];
+				const callbacks = loading[ key ];
 
 				if ( callbacks === undefined ) {
 
@@ -239,7 +284,7 @@ class FileLoader extends Loader {
 
 				}
 
-				delete loading[ url ];
+				delete loading[ key ];
 
 				for ( let i = 0, il = callbacks.length; i < il; i ++ ) {
 
@@ -271,6 +316,14 @@ class FileLoader extends Loader {
 	setMimeType( value ) {
 
 		this.mimeType = value;
+		return this;
+
+	}
+
+	setRange( offset = null, length = null ) {
+
+		this.offset = offset;
+		this.length = length;
 		return this;
 
 	}
