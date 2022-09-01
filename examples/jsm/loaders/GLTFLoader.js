@@ -73,6 +73,8 @@ class GLTFLoader extends Loader {
 		this.ktx2Loader = null;
 		this.meshoptDecoder = null;
 
+		this.glbProgressiveLoadingEnabled = false;
+
 		this.pluginCallbacks = [];
 
 		this.register( function ( parser ) {
@@ -151,8 +153,6 @@ class GLTFLoader extends Loader {
 
 	load( url, onLoad, onProgress, onError ) {
 
-		const scope = this;
-
 		let resourcePath;
 
 		if ( this.resourcePath !== '' ) {
@@ -174,7 +174,7 @@ class GLTFLoader extends Loader {
 		// be incorrect, but ensures manager.onLoad() does not fire early.
 		this.manager.itemStart( url );
 
-		const _onError = function ( e ) {
+		const _onError = ( e ) => {
 
 			if ( onError ) {
 
@@ -186,8 +186,8 @@ class GLTFLoader extends Loader {
 
 			}
 
-			scope.manager.itemError( url );
-			scope.manager.itemEnd( url );
+			this.manager.itemError( url );
+			this.manager.itemEnd( url );
 
 		};
 
@@ -198,17 +198,44 @@ class GLTFLoader extends Loader {
 		loader.setRequestHeader( this.requestHeader );
 		loader.setWithCredentials( this.withCredentials );
 
-		loader.load( url, function ( data ) {
+		let glbLoader = null;
+
+		( this.glbProgressiveLoadingEnabled
+			? isGLBFile( loader, url )
+			: Promise.resolve( false ) ).then( doGLBProgressiveLoading => {
+
+			if ( doGLBProgressiveLoading ) {
+
+				// If progressive loading is enabled and the file is GLB,
+				// load the json chunk now and lazily load the partial bin chunk on demand.
+
+				glbLoader = new GLBProgressiveFileLoader( url, loader );
+				return glbLoader.loadContent();
+
+			} else {
+
+				// If progressive loading is disabled or the file is not GLB,
+				// load the entire content.
+
+				return new Promise( ( resolve, reject ) => {
+
+					loader.load( url, resolve, onProgress, reject );
+
+				} );
+
+			}
+
+		} ).then( content => {
 
 			try {
 
-				scope.parse( data, resourcePath, function ( gltf ) {
+				this.parse( content, resourcePath, ( gltf ) => {
 
 					onLoad( gltf );
 
-					scope.manager.itemEnd( url );
+					this.manager.itemEnd( url );
 
-				}, _onError );
+				}, _onError, glbLoader );
 
 			} catch ( e ) {
 
@@ -216,7 +243,7 @@ class GLTFLoader extends Loader {
 
 			}
 
-		}, onProgress, _onError );
+		} ).catch ( _onError );
 
 	}
 
@@ -251,6 +278,13 @@ class GLTFLoader extends Loader {
 
 	}
 
+	enableGLBProgressiveLoading( enabled ) {
+
+		this.glbProgressiveLoadingEnabled = enabled;
+		return this;
+
+	}
+
 	register( callback ) {
 
 		if ( this.pluginCallbacks.indexOf( callback ) === - 1 ) {
@@ -275,7 +309,7 @@ class GLTFLoader extends Loader {
 
 	}
 
-	parse( data, path, onLoad, onError ) {
+	parse( data, path, onLoad, onError, glbLoader = null ) {
 
 		let content;
 		const extensions = {};
@@ -287,13 +321,11 @@ class GLTFLoader extends Loader {
 
 		} else {
 
-			const magic = LoaderUtils.decodeText( new Uint8Array( data, 0, 4 ) );
-
-			if ( magic === BINARY_EXTENSION_HEADER_MAGIC ) {
+			if ( glbLoader === null && isGLB( data ) ) {
 
 				try {
 
-					extensions[ EXTENSIONS.KHR_BINARY_GLTF ] = new GLTFBinaryExtension( data );
+					glbLoader = new GLBLoader( data );
 
 				} catch ( error ) {
 
@@ -302,7 +334,7 @@ class GLTFLoader extends Loader {
 
 				}
 
-				content = extensions[ EXTENSIONS.KHR_BINARY_GLTF ].content;
+				content = glbLoader.content;
 
 			} else {
 
@@ -328,11 +360,10 @@ class GLTFLoader extends Loader {
 			requestHeader: this.requestHeader,
 			manager: this.manager,
 			ktx2Loader: this.ktx2Loader,
-			meshoptDecoder: this.meshoptDecoder
+			meshoptDecoder: this.meshoptDecoder,
+			glbLoader: glbLoader
 
 		} );
-
-		parser.fileLoader.setRequestHeader( this.requestHeader );
 
 		for ( let i = 0; i < this.pluginCallbacks.length; i ++ ) {
 
@@ -451,7 +482,6 @@ function GLTFRegistry() {
 /*********************************/
 
 const EXTENSIONS = {
-	KHR_BINARY_GLTF: 'KHR_binary_glTF',
 	KHR_DRACO_MESH_COMPRESSION: 'KHR_draco_mesh_compression',
 	KHR_LIGHTS_PUNCTUAL: 'KHR_lights_punctual',
 	KHR_MATERIALS_CLEARCOAT: 'KHR_materials_clearcoat',
@@ -1377,77 +1407,6 @@ class GLTFMeshoptCompression {
 		} else {
 
 			return null;
-
-		}
-
-	}
-
-}
-
-/* BINARY EXTENSION */
-const BINARY_EXTENSION_HEADER_MAGIC = 'glTF';
-const BINARY_EXTENSION_HEADER_LENGTH = 12;
-const BINARY_EXTENSION_CHUNK_TYPES = { JSON: 0x4E4F534A, BIN: 0x004E4942 };
-
-class GLTFBinaryExtension {
-
-	constructor( data ) {
-
-		this.name = EXTENSIONS.KHR_BINARY_GLTF;
-		this.content = null;
-		this.body = null;
-
-		const headerView = new DataView( data, 0, BINARY_EXTENSION_HEADER_LENGTH );
-
-		this.header = {
-			magic: LoaderUtils.decodeText( new Uint8Array( data.slice( 0, 4 ) ) ),
-			version: headerView.getUint32( 4, true ),
-			length: headerView.getUint32( 8, true )
-		};
-
-		if ( this.header.magic !== BINARY_EXTENSION_HEADER_MAGIC ) {
-
-			throw new Error( 'THREE.GLTFLoader: Unsupported glTF-Binary header.' );
-
-		} else if ( this.header.version < 2.0 ) {
-
-			throw new Error( 'THREE.GLTFLoader: Legacy binary file detected.' );
-
-		}
-
-		const chunkContentsLength = this.header.length - BINARY_EXTENSION_HEADER_LENGTH;
-		const chunkView = new DataView( data, BINARY_EXTENSION_HEADER_LENGTH );
-		let chunkIndex = 0;
-
-		while ( chunkIndex < chunkContentsLength ) {
-
-			const chunkLength = chunkView.getUint32( chunkIndex, true );
-			chunkIndex += 4;
-
-			const chunkType = chunkView.getUint32( chunkIndex, true );
-			chunkIndex += 4;
-
-			if ( chunkType === BINARY_EXTENSION_CHUNK_TYPES.JSON ) {
-
-				const contentArray = new Uint8Array( data, BINARY_EXTENSION_HEADER_LENGTH + chunkIndex, chunkLength );
-				this.content = LoaderUtils.decodeText( contentArray );
-
-			} else if ( chunkType === BINARY_EXTENSION_CHUNK_TYPES.BIN ) {
-
-				const byteOffset = BINARY_EXTENSION_HEADER_LENGTH + chunkIndex;
-				this.body = data.slice( byteOffset, byteOffset + chunkLength );
-
-			}
-
-			// Clients must ignore chunks with unknown types.
-
-			chunkIndex += chunkLength;
-
-		}
-
-		if ( this.content === null ) {
-
-			throw new Error( 'THREE.GLTFLoader: JSON content not found.' );
 
 		}
 
@@ -2390,6 +2349,222 @@ function getImageURIMimeType( uri ) {
 
 }
 
+// GLB File Format handlers
+// Specification: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#glb-file-format-specification
+
+const BINARY_HEADER_MAGIC = 'glTF';
+const BINARY_HEADER_MAGIC_LENGTH = 4;
+const BINARY_HEADER_LENGTH = 12;
+const BINARY_CHUNK_TYPES = { JSON: 0x4E4F534A, BIN: 0x004E4942 };
+
+function loadPartially( fileLoader, url, offset, length ) {
+
+	return new Promise( ( resolve, reject ) => {
+
+		const currentOffset = fileLoader.offset;
+		const currentLength = fileLoader.length;
+
+		fileLoader
+			.setRange( offset, length )
+			.load( url, resolve, undefined, reject );
+
+		fileLoader.setRange( currentOffset, currentLength );
+
+	} );
+
+}
+
+function isGLB( buffer ) {
+
+	return LoaderUtils.decodeText( buffer.slice( 0, BINARY_HEADER_MAGIC_LENGTH ) ) === BINARY_HEADER_MAGIC;
+
+}
+
+function isGLBFile( fileLoader, url ) {
+
+	return loadPartially( fileLoader, url, 0, BINARY_HEADER_MAGIC_LENGTH ).then( isGLB );
+
+}
+
+class GLBLoader {
+
+	constructor( data ) {
+
+		this.content = null;
+		this.body = null;
+
+		const headerView = new DataView( data, 0, BINARY_HEADER_LENGTH );
+
+		this.header = {
+			magic: LoaderUtils.decodeText( new Uint8Array( data.slice( 0, BINARY_HEADER_MAGIC_LENGTH ) ) ),
+			version: headerView.getUint32( 4, true ),
+			length: headerView.getUint32( 8, true )
+		};
+
+		if ( this.header.version < 2.0 ) {
+
+			throw new Error( 'THREE.GLTFLoader: Legacy binary file detected.' );
+
+		}
+
+		const chunkContentsLength = this.header.length - BINARY_HEADER_LENGTH;
+		const chunkView = new DataView( data, BINARY_HEADER_LENGTH );
+		let chunkIndex = 0;
+
+		while ( chunkIndex < chunkContentsLength ) {
+
+			const chunkLength = chunkView.getUint32( chunkIndex, true );
+			chunkIndex += 4;
+
+			const chunkType = chunkView.getUint32( chunkIndex, true );
+			chunkIndex += 4;
+
+			if ( chunkType === BINARY_CHUNK_TYPES.JSON ) {
+
+				const contentArray = new Uint8Array( data, BINARY_HEADER_LENGTH + chunkIndex, chunkLength );
+				this.content = LoaderUtils.decodeText( contentArray );
+
+			} else if ( chunkType === BINARY_CHUNK_TYPES.BIN ) {
+
+				const byteOffset = BINARY_HEADER_LENGTH + chunkIndex;
+				this.body = data.slice( byteOffset, byteOffset + chunkLength );
+
+			}
+
+			// Clients must ignore chunks with unknown types.
+
+			chunkIndex += chunkLength;
+
+		}
+
+		if ( this.content === null ) {
+
+			throw new Error( 'THREE.GLTFLoader: JSON content not found.' );
+
+		}
+
+	}
+
+	loadBufferView( offset, length ) {
+
+		return this.loadBuffer().then( buffer => buffer.slice( offset, offset + length ) );
+
+	}
+
+	loadBuffer() {
+
+		return Promise.resolve( this.body );
+
+	}
+
+}
+
+class GLBProgressiveFileLoader {
+
+	constructor( url, fileLoader ) {
+
+		this.url = url;
+		this.fileLoader = fileLoader;
+
+		// The followings will be set up later
+
+		this.header = null;
+		this.contentChunkOffset = null;
+		this.contentChunkLength = null;
+		this.binChunkOffset = null;
+		this.binChunkLength = null;
+
+	}
+
+	_loadPartially( offset, length ) {
+
+		return loadPartially( this.fileLoader, this.url, offset, length );
+
+	}
+
+	_loadHeader() {
+
+		return this._loadPartially( 0, BINARY_HEADER_LENGTH ).then( buffer => {
+
+			const view = new DataView( buffer );
+
+			this.header = {
+				magic: LoaderUtils.decodeText( new Uint8Array( buffer.slice( 0, 4 ) ) ),
+				version: view.getUint32( 4, true ),
+				length: view.getUint32( 8, true )
+			};
+
+			if ( this.header.version < 2.0 ) {
+
+				return Promise.reject( new Error( 'THREE.GLTFLoader: Legacy binary file detected.' ) );
+
+			}
+
+			return this.header;
+
+		} );
+
+	}
+
+	_loadChunkOffsets( offset ) {
+
+		return this._loadPartially( offset, 8 ).then( buffer => {
+
+			const view = new DataView( buffer );
+
+			const length = view.getUint32( 0, true );
+			const type = view.getUint32( 4, true );
+
+			offset += 8;
+
+			if ( type === BINARY_CHUNK_TYPES.JSON ) {
+
+				this.contentChunkOffset = offset;
+				this.contentChunkLength = length;
+
+			} else if ( type === BINARY_CHUNK_TYPES.BIN ) {
+
+				this.binChunkOffset = offset;
+				this.binChunkLength = length;
+
+			}
+
+			offset += length;
+
+			return offset < this.header.length ? this._loadChunkOffsets( offset ) : Promise.resolve();
+
+		} );
+
+	}
+
+	_loadContentChunk() {
+
+		return this._loadPartially( this.contentChunkOffset, this.contentChunkLength );
+
+	}
+
+	loadContent() {
+
+		return this._loadHeader()
+			.then( () => this._loadChunkOffsets( BINARY_HEADER_LENGTH ) )
+			.then( () => this._loadContentChunk() );
+
+	}
+
+	loadBufferView( offset, length ) {
+
+		return this._loadPartially( this.binChunkOffset + offset, length );
+
+	}
+
+	loadBuffer() {
+
+		return this._loadPartially( this.binChunkOffset, this.binChunkLength );
+
+	}
+
+}
+
 /* GLTF PARSER */
 
 class GLTFParser {
@@ -2443,6 +2618,7 @@ class GLTFParser {
 
 		this.fileLoader = new FileLoader( this.options.manager );
 		this.fileLoader.setResponseType( 'arraybuffer' );
+		this.fileLoader.setRequestHeader( this.options.requestHeader );
 
 		if ( this.options.crossOrigin === 'use-credentials' ) {
 
@@ -2799,7 +2975,6 @@ class GLTFParser {
 	loadBuffer( bufferIndex ) {
 
 		const bufferDef = this.json.buffers[ bufferIndex ];
-		const loader = this.fileLoader;
 
 		if ( bufferDef.type && bufferDef.type !== 'arraybuffer' ) {
 
@@ -2807,14 +2982,16 @@ class GLTFParser {
 
 		}
 
-		// If present, GLB container is required to be the first buffer.
-		if ( bufferDef.uri === undefined && bufferIndex === 0 ) {
+		const options = this.options;
 
-			return Promise.resolve( this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ].body );
+		// If present, GLB container is required to be the first buffer.
+		if ( bufferDef.uri === undefined && bufferIndex === 0 && options.glbLoader ) {
+
+			return options.glbLoader.loadBuffer();
 
 		}
 
-		const options = this.options;
+		const loader = this.fileLoader;
 
 		return new Promise( function ( resolve, reject ) {
 
@@ -2836,6 +3013,18 @@ class GLTFParser {
 	loadBufferView( bufferViewIndex ) {
 
 		const bufferViewDef = this.json.bufferViews[ bufferViewIndex ];
+
+		const bufferIndex = bufferViewDef.buffer;
+		const bufferDef = this.json.buffers[ bufferIndex ];
+
+		// If present, GLB container is required to be the first buffer.
+		if ( bufferDef.uri === undefined && bufferIndex === 0 &&
+			( bufferDef.type === undefined || bufferDef.type === 'arraybuffer' ) &&
+			this.options.glbLoader ) {
+
+			return this.options.glbLoader.loadBufferView( bufferViewDef.byteOffset || 0, bufferViewDef.byteLength || 0 );
+
+		}
 
 		return this.getDependency( 'buffer', bufferViewDef.buffer ).then( function ( buffer ) {
 
