@@ -33,6 +33,8 @@ class FileLoader extends Loader {
 		const isRangeRequest = this.requestHeader.Range !== undefined;
 		const key = url + ( isRangeRequest ? `:${this.requestHeader.Range}` : '' );
 
+		console.log( this.requestHeader.Range );
+
 		const cached = Cache.get( key );
 
 		if ( cached !== undefined ) {
