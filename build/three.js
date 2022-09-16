@@ -28568,7 +28568,10 @@
 			if (url === undefined) url = '';
 			if (this.path !== undefined) url = this.path + url;
 			url = this.manager.resolveURL(url);
-			const cached = Cache.get(url);
+			const isRangeRequest = this.requestHeader.Range !== undefined;
+			const key = url + (isRangeRequest ? `:${this.requestHeader.Range}` : '');
+			console.log(this.requestHeader.Range);
+			const cached = Cache.get(key);
 
 			if (cached !== undefined) {
 				this.manager.itemStart(url);
@@ -28580,8 +28583,8 @@
 			} // Check if request is duplicate
 
 
-			if (loading[url] !== undefined) {
-				loading[url].push({
+			if (loading[key] !== undefined) {
+				loading[key].push({
 					onLoad: onLoad,
 					onProgress: onProgress,
 					onError: onError
@@ -28590,8 +28593,8 @@
 			} // Initialise array for duplicate requests
 
 
-			loading[url] = [];
-			loading[url].push({
+			loading[key] = [];
+			loading[key].push({
 				onLoad: onLoad,
 				onProgress: onProgress,
 				onError: onError
@@ -28607,11 +28610,15 @@
 			const responseType = this.responseType; // start the fetch
 
 			fetch(req).then(response => {
-				if (response.status === 200 || response.status === 0) {
+				if (response.status === 200 || response.status === 206 || response.status === 0) {
 					// Some browsers return HTTP Status 0 when using non-http protocol
 					// e.g. 'file://' or 'data://'. Handle as success.
 					if (response.status === 0) {
 						console.warn('THREE.FileLoader: HTTP Status 0 received.');
+					}
+
+					if (isRangeRequest && response.status === 200) {
+						throw new HttpError(`range request fetch for "${response.url}" responded with ${response.status}: ${response.statusText}`, response);
 					} // Workaround: Checking if response.body === undefined for Alipay browser #23548
 
 
@@ -28619,7 +28626,7 @@
 						return response;
 					}
 
-					const callbacks = loading[url];
+					const callbacks = loading[key];
 					const reader = response.body.getReader();
 					const contentLength = response.headers.get('Content-Length');
 					const total = contentLength ? parseInt(contentLength) : 0;
@@ -28695,9 +28702,9 @@
 			}).then(data => {
 				// Add to cache only on HTTP success, so that we do not cache
 				// error response bodies as proper responses to requests.
-				Cache.add(url, data);
-				const callbacks = loading[url];
-				delete loading[url];
+				Cache.add(key, data);
+				const callbacks = loading[key];
+				delete loading[key];
 
 				for (let i = 0, il = callbacks.length; i < il; i++) {
 					const callback = callbacks[i];
@@ -28705,7 +28712,7 @@
 				}
 			}).catch(err => {
 				// Abort errors and other errors are handled the same
-				const callbacks = loading[url];
+				const callbacks = loading[key];
 
 				if (callbacks === undefined) {
 					// When onLoad was called and url was deleted in `loading`
@@ -28713,7 +28720,7 @@
 					throw err;
 				}
 
-				delete loading[url];
+				delete loading[key];
 
 				for (let i = 0, il = callbacks.length; i < il; i++) {
 					const callback = callbacks[i];
@@ -34281,15 +34288,15 @@
 			// TODO: delete this comment?
 			const distanceGeometry = new THREE.IcosahedronGeometry( 1, 2 );
 			const distanceMaterial = new THREE.MeshBasicMaterial( { color: hexColor, fog: false, wireframe: true, opacity: 0.1, transparent: true } );
-			this.lightSphere = new THREE.Mesh( bulbGeometry, bulbMaterial );
+				this.lightSphere = new THREE.Mesh( bulbGeometry, bulbMaterial );
 			this.lightDistance = new THREE.Mesh( distanceGeometry, distanceMaterial );
-			const d = light.distance;
-			if ( d === 0.0 ) {
-				this.lightDistance.visible = false;
-			} else {
-				this.lightDistance.scale.set( d, d, d );
-			}
-			this.add( this.lightDistance );
+				const d = light.distance;
+				if ( d === 0.0 ) {
+					this.lightDistance.visible = false;
+				} else {
+					this.lightDistance.scale.set( d, d, d );
+				}
+				this.add( this.lightDistance );
 			*/
 		}
 
@@ -34306,12 +34313,12 @@
 			}
 			/*
 			const d = this.light.distance;
-				if ( d === 0.0 ) {
-					this.lightDistance.visible = false;
-				} else {
-					this.lightDistance.visible = true;
+					if ( d === 0.0 ) {
+						this.lightDistance.visible = false;
+					} else {
+						this.lightDistance.visible = true;
 				this.lightDistance.scale.set( d, d, d );
-				}
+					}
 			*/
 
 		}
@@ -34801,7 +34808,7 @@
 			1/___0/|
 			| 6__|_7
 			2/___3/
-				0: max.x, max.y, max.z
+					0: max.x, max.y, max.z
 			1: min.x, max.y, max.z
 			2: min.x, min.y, max.z
 			3: max.x, min.y, max.z
@@ -35964,3 +35971,4 @@
 	Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidGhyZWUuanMiLCJzb3VyY2VzIjpbXSwic291cmNlc0NvbnRlbnQiOltdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiIn0=
