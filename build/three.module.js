@@ -39758,7 +39758,10 @@ class FileLoader extends Loader {
 
 		url = this.manager.resolveURL( url );
 
-		const cached = Cache.get( url );
+		const isRangeRequest = this.requestHeader.Range !== undefined;
+		const key = url + ( isRangeRequest ? `:${this.requestHeader.Range}` : '' );
+
+		const cached = Cache.get( key );
 
 		if ( cached !== undefined ) {
 
@@ -39778,9 +39781,9 @@ class FileLoader extends Loader {
 
 		// Check if request is duplicate
 
-		if ( loading[ url ] !== undefined ) {
+		if ( loading[ key ] !== undefined ) {
 
-			loading[ url ].push( {
+			loading[ key ].push( {
 
 				onLoad: onLoad,
 				onProgress: onProgress,
@@ -39793,9 +39796,9 @@ class FileLoader extends Loader {
 		}
 
 		// Initialise array for duplicate requests
-		loading[ url ] = [];
+		loading[ key ] = [];
 
-		loading[ url ].push( {
+		loading[ key ].push( {
 			onLoad: onLoad,
 			onProgress: onProgress,
 			onError: onError,
@@ -39816,7 +39819,7 @@ class FileLoader extends Loader {
 		fetch( req )
 			.then( response => {
 
-				if ( response.status === 200 || response.status === 0 ) {
+				if ( response.status === 200 || response.status === 206 || response.status === 0 ) {
 
 					// Some browsers return HTTP Status 0 when using non-http protocol
 					// e.g. 'file://' or 'data://'. Handle as success.
@@ -39824,6 +39827,12 @@ class FileLoader extends Loader {
 					if ( response.status === 0 ) {
 
 						console.warn( 'THREE.FileLoader: HTTP Status 0 received.' );
+
+					}
+
+					if ( isRangeRequest && response.status === 200 ) {
+
+						throw new HttpError( `range request fetch for "${response.url}" responded with ${response.status}: ${response.statusText}`, response );
 
 					}
 
@@ -39835,7 +39844,7 @@ class FileLoader extends Loader {
 
 					}
 
-					const callbacks = loading[ url ];
+					const callbacks = loading[ key ];
 					const reader = response.body.getReader();
 					const contentLength = response.headers.get( 'Content-Length' );
 					const total = contentLength ? parseInt( contentLength ) : 0;
@@ -39940,10 +39949,10 @@ class FileLoader extends Loader {
 
 				// Add to cache only on HTTP success, so that we do not cache
 				// error response bodies as proper responses to requests.
-				Cache.add( url, data );
+				Cache.add( key, data );
 
-				const callbacks = loading[ url ];
-				delete loading[ url ];
+				const callbacks = loading[ key ];
+				delete loading[ key ];
 
 				for ( let i = 0, il = callbacks.length; i < il; i ++ ) {
 
@@ -39957,7 +39966,7 @@ class FileLoader extends Loader {
 
 				// Abort errors and other errors are handled the same
 
-				const callbacks = loading[ url ];
+				const callbacks = loading[ key ];
 
 				if ( callbacks === undefined ) {
 
@@ -39967,7 +39976,7 @@ class FileLoader extends Loader {
 
 				}
 
-				delete loading[ url ];
+				delete loading[ key ];
 
 				for ( let i = 0, il = callbacks.length; i < il; i ++ ) {
 
