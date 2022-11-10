@@ -1189,7 +1189,7 @@
 		'yellow': 0xFFFF00,
 		'yellowgreen': 0x9ACD32
 	};
-	const _rgb = {
+	const _rgb$1 = {
 		r: 0,
 		g: 0,
 		b: 0
@@ -1394,8 +1394,8 @@
 			return this;
 		}
 		getHex(colorSpace = SRGBColorSpace) {
-			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb), colorSpace);
-			return clamp(_rgb.r * 255, 0, 255) << 16 ^ clamp(_rgb.g * 255, 0, 255) << 8 ^ clamp(_rgb.b * 255, 0, 255) << 0;
+			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb$1), colorSpace);
+			return clamp(_rgb$1.r * 255, 0, 255) << 16 ^ clamp(_rgb$1.g * 255, 0, 255) << 8 ^ clamp(_rgb$1.b * 255, 0, 255) << 0;
 		}
 		getHexString(colorSpace = SRGBColorSpace) {
 			return ('000000' + this.getHex(colorSpace).toString(16)).slice(-6);
@@ -1403,10 +1403,10 @@
 		getHSL(target, colorSpace = LinearSRGBColorSpace) {
 			// h,s,l ranges are in 0.0 - 1.0
 
-			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb), colorSpace);
-			const r = _rgb.r,
-				g = _rgb.g,
-				b = _rgb.b;
+			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb$1), colorSpace);
+			const r = _rgb$1.r,
+				g = _rgb$1.g,
+				b = _rgb$1.b;
 			const max = Math.max(r, g, b);
 			const min = Math.min(r, g, b);
 			let hue, saturation;
@@ -1436,19 +1436,19 @@
 			return target;
 		}
 		getRGB(target, colorSpace = LinearSRGBColorSpace) {
-			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb), colorSpace);
-			target.r = _rgb.r;
-			target.g = _rgb.g;
-			target.b = _rgb.b;
+			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb$1), colorSpace);
+			target.r = _rgb$1.r;
+			target.g = _rgb$1.g;
+			target.b = _rgb$1.b;
 			return target;
 		}
 		getStyle(colorSpace = SRGBColorSpace) {
-			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb), colorSpace);
+			ColorManagement.fromWorkingColorSpace(toComponents(this, _rgb$1), colorSpace);
 			if (colorSpace !== SRGBColorSpace) {
 				// Requires CSS Color Module Level 4 (https://www.w3.org/TR/css-color-4/).
-				return `color(${colorSpace} ${_rgb.r} ${_rgb.g} ${_rgb.b})`;
+				return `color(${colorSpace} ${_rgb$1.r} ${_rgb$1.g} ${_rgb$1.b})`;
 			}
-			return `rgb(${_rgb.r * 255 | 0},${_rgb.g * 255 | 0},${_rgb.b * 255 | 0})`;
+			return `rgb(${_rgb$1.r * 255 | 0},${_rgb$1.g * 255 | 0},${_rgb$1.b * 255 | 0})`;
 		}
 		offsetHSL(h, s, l) {
 			this.getHSL(_hslA);
@@ -7498,6 +7498,13 @@
 		}
 		return dst;
 	}
+	function getUnlitUniformColorSpace(renderer) {
+		if (renderer.getRenderTarget() === null) {
+			// https://github.com/mrdoob/three.js/pull/23937#issuecomment-1111067398
+			return renderer.outputEncoding === sRGBEncoding ? SRGBColorSpace : LinearSRGBColorSpace;
+		}
+		return LinearSRGBColorSpace;
+	}
 
 	// Legacy
 
@@ -9414,6 +9421,11 @@
 		fragmentShader: ShaderChunk.meshphysical_frag
 	};
 
+	const _rgb = {
+		r: 0,
+		b: 0,
+		g: 0
+	};
 	function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, premultipliedAlpha) {
 		const clearColor = new Color(0x000000);
 		let clearAlpha = alpha === true ? 0 : 1;
@@ -9528,7 +9540,8 @@
 			}
 		}
 		function setClear(color, alpha) {
-			state.buffers.color.setClear(color.r, color.g, color.b, alpha, premultipliedAlpha);
+			color.getRGB(_rgb, getUnlitUniformColorSpace(renderer));
+			state.buffers.color.setClear(_rgb.r, _rgb.g, _rgb.b, alpha, premultipliedAlpha);
 		}
 		return {
 			getClearColor: function () {
@@ -16793,7 +16806,7 @@
 
 	function WebGLMaterials(renderer, properties) {
 		function refreshFogUniforms(uniforms, fog) {
-			uniforms.fogColor.value.copy(fog.color);
+			fog.color.getRGB(uniforms.fogColor.value, getUnlitUniformColorSpace(renderer));
 			if (fog.isFog) {
 				uniforms.fogNear.value = fog.near;
 				uniforms.fogFar.value = fog.far;
@@ -31003,15 +31016,15 @@
 			// TODO: delete this comment?
 			const distanceGeometry = new THREE.IcosahedronGeometry( 1, 2 );
 			const distanceMaterial = new THREE.MeshBasicMaterial( { color: hexColor, fog: false, wireframe: true, opacity: 0.1, transparent: true } );
-			this.lightSphere = new THREE.Mesh( bulbGeometry, bulbMaterial );
+				this.lightSphere = new THREE.Mesh( bulbGeometry, bulbMaterial );
 			this.lightDistance = new THREE.Mesh( distanceGeometry, distanceMaterial );
-			const d = light.distance;
-			if ( d === 0.0 ) {
-				this.lightDistance.visible = false;
-			} else {
-				this.lightDistance.scale.set( d, d, d );
-			}
-			this.add( this.lightDistance );
+				const d = light.distance;
+				if ( d === 0.0 ) {
+					this.lightDistance.visible = false;
+				} else {
+					this.lightDistance.scale.set( d, d, d );
+				}
+				this.add( this.lightDistance );
 			*/
 		}
 
@@ -31029,12 +31042,12 @@
 
 			/*
 			const d = this.light.distance;
-				if ( d === 0.0 ) {
-					this.lightDistance.visible = false;
-				} else {
-					this.lightDistance.visible = true;
+					if ( d === 0.0 ) {
+						this.lightDistance.visible = false;
+					} else {
+						this.lightDistance.visible = true;
 				this.lightDistance.scale.set( d, d, d );
-				}
+					}
 			*/
 		}
 	}
@@ -31511,7 +31524,7 @@
 			1/___0/|
 			| 6__|_7
 			2/___3/
-				0: max.x, max.y, max.z
+					0: max.x, max.y, max.z
 			1: min.x, max.y, max.z
 			2: min.x, min.y, max.z
 			3: max.x, min.y, max.z
