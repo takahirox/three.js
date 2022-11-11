@@ -5,7 +5,7 @@ function WebGLMaterials( renderer, properties ) {
 
 	function refreshFogUniforms( uniforms, fog ) {
 
-		fog.color.getRGB( uniforms.fogColor.value, getUnlitUniformColorSpace( renderer ) );
+		uniforms.fogColor.value.copy( fog.color );
 
 		if ( fog.isFog ) {
 
