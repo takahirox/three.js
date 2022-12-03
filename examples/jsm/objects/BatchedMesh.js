@@ -28,6 +28,10 @@ const batchingParsVertex = `
 	attribute float id;
 	uniform highp sampler2D batchingTexture;
 	uniform int batchingTextureSize;
+	uniform highp sampler2D batchingColorTexture;
+	uniform int batchingColorTextureSize;
+	varying vec4 vBatchingColor;
+
 	mat4 getBatchingMatrix( const in float i ) {
 		float j = i * 4.0;
 		float x = mod( j, float( batchingTextureSize ) );
@@ -41,6 +45,15 @@ const batchingParsVertex = `
 		vec4 v4 = texture2D( batchingTexture, vec2( dx * ( x + 3.5 ), y ) );
 		mat4 bone = mat4( v1, v2, v3, v4 );
 		return bone;
+	}
+
+	vec4 getBatchingColor( const in float i ) {
+		float x = mod( i, float( batchingColorTextureSize ) );
+		float y = floor( i / float( batchingColorTextureSize ) );
+		float dx = 1.0 / float( batchingColorTextureSize );
+		float dy = 1.0 / float( batchingColorTextureSize );
+		y = dy * ( y + 0.5 );
+		return texture2D( batchingColorTexture, vec2( dx * ( x + 0.5 ), y ) );
 	}
 #endif
 `;
@@ -63,6 +76,24 @@ const batchingnormalVertex = `
 const batchingVertex = `
 #ifdef BATCHING
 	transformed = ( batchingMatrix * vec4( transformed, 1.0 ) ).xyz;
+#endif
+`;
+
+const batchingColorVertex = `
+#ifdef BATCHING
+	vBatchingColor = getBatchingColor( id );
+#endif
+`;
+
+const batchingColorParsFragment = `
+#ifdef BATCHING
+	varying vec4 vBatchingColor;
+#endif
+`;
+
+const batchingColorFragment = `
+#ifdef BATCHING
+	diffuseColor *= vBatchingColor;
 #endif
 `;
 
@@ -101,15 +132,23 @@ class BatchedMesh extends Mesh {
 		this._matricesTexture = null;
 		this._matricesTextureSize = null;
 
+		// Color per geometry by using data texture
+		this._colorArray = null;
+		this._colorTexture = null;
+		this._colorTextureSize = null;
+
 		// @TODO: Calculate the entire binding box and make frustomCulled true
 		this.frustomCulled = false;
 
 		this._customUniforms = {
 			batchingTexture: { value: null },
-			batchingTextureSize: { value: 0 }
+			batchingTextureSize: { value: 0 },
+			batchingColorTexture: { value: null },
+			batchingColorTextureSize: { value: 0 }
 		};
 
 		this._initMatricesTexture();
+		this._initColorTexture();
 		this._initShader();
 
 	}
@@ -139,6 +178,35 @@ class BatchedMesh extends Mesh {
 
 	}
 
+	_initColorTexture() {
+
+		// Using attribute can be another option if color is not updated often
+
+		// layout (1 color = 1 pixel)
+
+		let size = Math.sqrt( this._maxGeometryCount ); // 1 pixel needed for 1 color
+		size = MathUtils.ceilPowerOfTwo( size );
+
+		const colorArray = new Float32Array( size * size * 4 ); // 4 floats per RGBA pixel
+		const colorTexture = new DataTexture( colorArray, size, size, RGBAFormat, FloatType );
+
+		for ( let i = 0; i < colorArray.length; i ++ ) {
+
+			colorArray[ i ] = 1.0;
+
+		}
+
+		this._colorArray = colorArray;
+		this._colorTexture = colorTexture;
+		this._colorTextureSize = size;
+
+		this._customUniforms.batchingColorTexture.value = this._colorTexture;
+		this._customUniforms.batchingColorTextureSize.value = this._colorTextureSize;
+
+		this._colorTexture.needsUpdate = true;
+
+	}
+
 	_initShader() {
 
 		const material = this.material;
@@ -147,7 +215,7 @@ class BatchedMesh extends Mesh {
 
 		material.onBeforeCompile = function onBeforeCompile ( parameters, renderer ) {
 
-			// Is this replacement stable across any materials?
+			// Are these replacement stable across any materials?
 			parameters.vertexShader = parameters.vertexShader
 				.replace(
 					'#include <skinning_pars_vertex>',
@@ -164,6 +232,19 @@ class BatchedMesh extends Mesh {
 					'#include <skinning_vertex>',
 					'#include <skinning_vertex>\n'
 						+ batchingVertex
+						+ batchingColorVertex
+				);
+
+			parameters.fragmentShader = parameters.fragmentShader
+				.replace(
+					'#include <common>',
+					'#include <common>\n'
+						+ batchingColorParsFragment
+				)
+				.replace(
+					'vec4 diffuseColor = vec4( diffuse, opacity );',
+					'vec4 diffuseColor = vec4( diffuse, opacity );\n'
+						+ batchingColorFragment
 				);
 
 			for ( const uniformName in customUniforms ) {
@@ -173,7 +254,7 @@ class BatchedMesh extends Mesh {
 			}
 
 			// for debug
-			// console.log( parameters.vertexShader, parameters.uniforms );
+			//console.log( parameters.vertexShader, parameters.fragmentShader, parameters.uniforms );
 
 			currentOnBeforeCompile.call( this, parameters, renderer );
 
@@ -366,6 +447,35 @@ class BatchedMesh extends Mesh {
 		}
 
 		return matrix.copy( this._matrices[ geometryId ] );
+
+	}
+
+	setColorAt( geometryId, color ) {
+
+		if ( geometryId >= this._alives.length || this._alives[ geometryId ] === false ) {
+
+			// @TODO: Warning?
+			return true;
+
+		}
+
+		color.toArray( this._colorArray, geometryId * 4 );
+		this._colorTexture.needsUpdate = true;
+
+		return this;
+
+	}
+
+	getColorAt( geometryId, color ) {
+
+		if ( geometryId >= this._alives.length || this._alives[ geometryId ] === false ) {
+
+			// @TODO: Warning?
+			return color;
+
+		}
+
+		return color.fromArray( this._colorArray, geometryId * 4 );
 
 	}
 
